@@ -24,7 +24,7 @@
     </PackageReference>
     <PackageReference Include="QuestPDF" Version="2025.4.0" />
     <PackageReference Include="Riok.Mapperly" Version="4.1.1" />
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="8.1.0" />
+    <PackageReference Include="Scalar.AspNetCore" Version="2.4.1" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.9.0" />
   </ItemGroup>
 

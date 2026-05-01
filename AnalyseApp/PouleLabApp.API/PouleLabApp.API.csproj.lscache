@@ -55,6 +55,13 @@ TemporaryDependencyNodeTargetIdentifier=net10.0
 /warnaserror+:NU1605,SYSLIB0011
 
 [sourceFiles]
+Data/
+ ApplicationDbContext.cs
+ ApplicationDbContextFactory.cs
+Migrations/
+ 20260501175334_InitialCreate.cs
+ 20260501175334_InitialCreate.Designer.cs
+ ApplicationDbContextModelSnapshot.cs
 Models/
  AnalysisRequest.cs
  AnalysisResult.cs
@@ -412,9 +419,7 @@ Program.cs
  microsoft.sqlserver.server/1.0.0/lib/netstandard2.0/Microsoft.SqlServer.Server.dll
  questpdf/2025.4.0/lib/net8.0/QuestPDF.dll
  riok.mapperly/4.1.1/lib/netstandard2.0/Riok.Mapperly.Abstractions.dll
- swashbuckle.aspnetcore.swagger/8.1.0/lib/net9.0/Swashbuckle.AspNetCore.Swagger.dll
- swashbuckle.aspnetcore.swaggergen/8.1.0/lib/net9.0/Swashbuckle.AspNetCore.SwaggerGen.dll
- swashbuckle.aspnetcore.swaggerui/8.1.0/lib/net9.0/Swashbuckle.AspNetCore.SwaggerUI.dll
+ scalar.aspnetcore/2.4.1/lib/net9.0/Scalar.AspNetCore.dll
  system.clientmodel/1.5.1/lib/net8.0/System.ClientModel.dll
  system.identitymodel.tokens.jwt/8.9.0/lib/net9.0/System.IdentityModel.Tokens.Jwt.dll
  system.memory.data/8.0.1/lib/net8.0/System.Memory.Data.dll

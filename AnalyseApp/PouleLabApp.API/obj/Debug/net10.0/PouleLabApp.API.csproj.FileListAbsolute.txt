@@ -114,9 +114,6 @@ C:\Users\lilia\Desktop\Stage\V1\AnalyseApp\PouleLabApp.API\bin\Debug\net10.0\Mon
 C:\Users\lilia\Desktop\Stage\V1\AnalyseApp\PouleLabApp.API\bin\Debug\net10.0\Newtonsoft.Json.dll
 C:\Users\lilia\Desktop\Stage\V1\AnalyseApp\PouleLabApp.API\bin\Debug\net10.0\QuestPDF.dll
 C:\Users\lilia\Desktop\Stage\V1\AnalyseApp\PouleLabApp.API\bin\Debug\net10.0\Riok.Mapperly.Abstractions.dll
-C:\Users\lilia\Desktop\Stage\V1\AnalyseApp\PouleLabApp.API\bin\Debug\net10.0\Swashbuckle.AspNetCore.Swagger.dll
-C:\Users\lilia\Desktop\Stage\V1\AnalyseApp\PouleLabApp.API\bin\Debug\net10.0\Swashbuckle.AspNetCore.SwaggerGen.dll
-C:\Users\lilia\Desktop\Stage\V1\AnalyseApp\PouleLabApp.API\bin\Debug\net10.0\Swashbuckle.AspNetCore.SwaggerUI.dll
 C:\Users\lilia\Desktop\Stage\V1\AnalyseApp\PouleLabApp.API\bin\Debug\net10.0\System.ClientModel.dll
 C:\Users\lilia\Desktop\Stage\V1\AnalyseApp\PouleLabApp.API\bin\Debug\net10.0\System.CodeDom.dll
 C:\Users\lilia\Desktop\Stage\V1\AnalyseApp\PouleLabApp.API\bin\Debug\net10.0\System.Composition.AttributedModel.dll
@@ -271,3 +268,4 @@ C:\Users\lilia\Desktop\Stage\V1\AnalyseApp\PouleLabApp.API\obj\Debug\net10.0\ref
 C:\Users\lilia\Desktop\Stage\V1\AnalyseApp\PouleLabApp.API\obj\Debug\net10.0\PouleLabApp.API.pdb
 C:\Users\lilia\Desktop\Stage\V1\AnalyseApp\PouleLabApp.API\obj\Debug\net10.0\PouleLabApp.API.genruntimeconfig.cache
 C:\Users\lilia\Desktop\Stage\V1\AnalyseApp\PouleLabApp.API\obj\Debug\net10.0\ref\PouleLabApp.API.dll
+C:\Users\lilia\Desktop\Stage\V1\AnalyseApp\PouleLabApp.API\bin\Debug\net10.0\Scalar.AspNetCore.dll
