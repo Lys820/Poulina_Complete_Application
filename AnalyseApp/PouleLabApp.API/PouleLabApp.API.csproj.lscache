@@ -55,7 +55,9 @@ TemporaryDependencyNodeTargetIdentifier=net10.0
 /warnaserror+:NU1605,SYSLIB0011
 
 [sourceFiles]
-Controllers/AuthController.cs
+Controllers/
+ AuthController.cs
+ UserController.cs
 Data/
  ApplicationDbContext.cs
  ApplicationDbContextFactory.cs
@@ -65,6 +67,9 @@ DTOs/Auth/
  LoginDto.cs
  RefreshTokenDto.cs
  RegisterDto.cs
+DTOs/User/
+ UpdateUserDto.cs
+ UserDto.cs
 Migrations/
  20260501175334_InitialCreate.cs
  20260501175334_InitialCreate.Designer.cs
