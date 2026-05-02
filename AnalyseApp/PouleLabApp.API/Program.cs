@@ -9,6 +9,7 @@ using PouleLabApp.API.Services;
 using PouleLabApp.API.Services.Interfaces;
 using Scalar.AspNetCore;
 
+
 var builder = WebApplication.CreateBuilder(args);
 
 // ============================================================
@@ -121,5 +122,17 @@ app.UseCors("AllowAngular");  // CORS doit être avant Authentication et Authori
 app.UseAuthentication();      // Vérifie le token JWT sur chaque requête
 app.UseAuthorization();       // Vérifie les droits après l'authentification
 app.MapControllers();
+
+// ============================================================
+// SEEDING — Initialisation des données au démarrage
+// S'exécute uniquement si les données n'existent pas encore
+// ============================================================
+using (var scope = app.Services.CreateScope())
+{
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+    await DataSeeder.SeedAsync(roleManager, userManager);
+}
+
 
 app.Run();
