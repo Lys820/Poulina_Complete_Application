@@ -80,6 +80,9 @@ obj/Debug/net10.0/
  PouleLabApp.API.AssemblyInfo.cs
  PouleLabApp.API.GlobalUsings.g.cs
 Program.cs
+Services/
+ Interfaces/IJwtTokenService.cs
+ JwtTokenService.cs
 
 [metadataReferences]
 <DOTNET>/packs/Microsoft.AspNetCore.App.Ref/10.0.7/ref/net10.0/
