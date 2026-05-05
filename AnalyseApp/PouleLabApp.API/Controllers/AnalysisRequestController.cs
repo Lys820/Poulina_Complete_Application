@@ -162,5 +162,52 @@ namespace PouleLabApp.API.Controllers
             var result = await _requestService.CompleteAnalysisAsync(id, analystId);
             return Ok(result);
         }
+
+        // -------------------------------------------------------
+        // PUT /api/requests/{id}/validate
+        // Valider les résultats (Chef de labo)
+        // -------------------------------------------------------
+        [HttpPut("{id}/validate")]
+        [Authorize(Policy = "RequireLabChief")]
+        public async Task<IActionResult> Validate(int id)
+        {
+            var labChiefId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                ?? User.FindFirst("sub")?.Value;
+
+            if (labChiefId == null)
+                return Unauthorized(new { message = "Utilisateur non identifié." });
+
+            var result = await _requestService.ValidateAsync(id, labChiefId);
+            return Ok(result);
+        }
+
+        // -------------------------------------------------------
+        // PUT /api/requests/{id}/invalidate
+        // Rejeter et renvoyer à la réception (Chef de labo)
+        // -------------------------------------------------------
+        [HttpPut("{id}/invalidate")]
+        [Authorize(Policy = "RequireLabChief")]
+        public async Task<IActionResult> Invalidate(int id, [FromBody] string reason)
+        {
+            var labChiefId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                ?? User.FindFirst("sub")?.Value;
+
+            if (labChiefId == null)
+                return Unauthorized(new { message = "Utilisateur non identifié." });
+
+            var result = await _requestService.InvalidateAsync(id, labChiefId, reason);
+            return Ok(result);
+        }
+
+        // -------------------------------------------------------
+        // GET /api/requests/{id}/history
+        // Historique complet d'une demande
+        // -------------------------------------------------------
+        [HttpGet("{id}/history")]
+        public async Task<IActionResult> GetHistory(int id)
+        {
+            var history = await _requestService.GetHistoryAsync(id);
+            return Ok(history);
+        }
     }
 }

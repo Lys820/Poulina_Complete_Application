@@ -10,10 +10,12 @@ namespace PouleLabApp.API.Services
     public class AnalysisRequestService : IAnalysisRequestService
     {
         private readonly ApplicationDbContext _context;
-
-        public AnalysisRequestService(ApplicationDbContext context)
+        private readonly IAuditLogService _auditLogService;
+        public AnalysisRequestService(ApplicationDbContext context,
+    IAuditLogService auditLogService)
         {
             _context = context;
+            _auditLogService = auditLogService;
         }
 
         // -------------------------------------------------------
@@ -310,6 +312,99 @@ namespace PouleLabApp.API.Services
 
             return await GetByIdAsync(requestId)
                 ?? throw new Exception("Erreur lors de la récupération de la demande.");
+        }
+
+        // -------------------------------------------------------
+        // Valider les résultats (Chef de laboratoire)
+        // Passe la demande en Validated — résultats disponibles pour le client
+        // -------------------------------------------------------
+        public async Task<RequestDetailDto> ValidateAsync(int requestId, string labChiefId)
+        {
+            var request = await _context.AnalysisRequests
+                .FindAsync(requestId)
+                ?? throw new KeyNotFoundException("Demande introuvable.");
+
+            if (request.Status != RequestStatus.InReview)
+                throw new ArgumentException("Seules les demandes en cours de révision peuvent être validées.");
+
+            var oldStatus = request.Status.ToString();
+
+            // Passer en Validated
+            request.Status = RequestStatus.Validated;
+            await _context.SaveChangesAsync();
+
+            // Enregistrer dans l'historique
+            await _auditLogService.LogAsync(
+                requestId,
+                labChiefId,
+                "Validation des résultats",
+                oldStatus,
+                RequestStatus.Validated.ToString()
+            );
+
+            return await GetByIdAsync(requestId)
+                ?? throw new Exception("Erreur lors de la récupération de la demande.");
+        }
+
+        // -------------------------------------------------------
+        // Rejeter et renvoyer à la réception (Chef de laboratoire)
+        // Passe la demande en Rejected — sera renvoyée pour re-analyse
+        // -------------------------------------------------------
+        public async Task<RequestDetailDto> InvalidateAsync(
+            int requestId,
+            string labChiefId,
+            string reason)
+        {
+            var request = await _context.AnalysisRequests
+                .FindAsync(requestId)
+                ?? throw new KeyNotFoundException("Demande introuvable.");
+
+            if (request.Status != RequestStatus.InReview)
+                throw new ArgumentException("Seules les demandes en cours de révision peuvent être rejetées.");
+
+            var oldStatus = request.Status.ToString();
+
+            // Repasser en Received pour relancer le processus depuis la réception
+            request.Status = RequestStatus.Rejected;
+            request.Notes = string.IsNullOrEmpty(request.Notes)
+                ? $"Rejet chef de labo : {reason}"
+                : $"{request.Notes} | Rejet chef de labo : {reason}";
+
+            await _context.SaveChangesAsync();
+
+            // Enregistrer dans l'historique
+            await _auditLogService.LogAsync(
+                requestId,
+                labChiefId,
+                "Rejet des résultats",
+                oldStatus,
+                RequestStatus.Rejected.ToString()
+            );
+
+            return await GetByIdAsync(requestId)
+                ?? throw new Exception("Erreur lors de la récupération de la demande.");
+        }
+
+        // -------------------------------------------------------
+        // Récupérer l'historique complet d'une demande
+        // -------------------------------------------------------
+        public async Task<List<AuditLogDto>> GetHistoryAsync(int requestId)
+        {
+            var logs = await _context.AuditLogs
+                .Include(a => a.PerformedBy)
+                .Where(a => a.RequestId == requestId)
+                .OrderBy(a => a.PerformedAt)
+                .ToListAsync();
+
+            return logs.Select(a => new AuditLogDto
+            {
+                Id = a.Id,
+                Action = a.Action,
+                PerformedBy = $"{a.PerformedBy?.FirstName} {a.PerformedBy?.LastName}",
+                OldValue = a.OldValue,
+                NewValue = a.NewValue,
+                PerformedAt = a.PerformedAt
+            }).ToList();
         }
 
         // -------------------------------------------------------

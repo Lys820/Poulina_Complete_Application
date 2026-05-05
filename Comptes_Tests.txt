@@ -5,3 +5,15 @@ Admin@1234
 Compte utilisateur test :
 lilia@test.com
 Test@1234
+
+Compte réceptionniste :
+sarra.receptionist@test.com
+Test@1234
+
+Compte Analyst :
+karim.analyst@test.com
+Test@1234
+
+Compte Chef labo :
+ahmed.labchief@test.com
+Test@1234

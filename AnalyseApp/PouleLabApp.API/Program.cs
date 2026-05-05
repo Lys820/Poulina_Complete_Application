@@ -99,6 +99,7 @@ builder.Services.AddCors(options =>
 // ============================================================
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddScoped<IAnalysisRequestService, AnalysisRequestService>();
+builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 // D'autres services seront ajoutés ici au fil des semaines
 
 // ============================================================

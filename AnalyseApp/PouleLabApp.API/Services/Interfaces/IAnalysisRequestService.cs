@@ -14,5 +14,14 @@ namespace PouleLabApp.API.Services.Interfaces
         Task<RequestDetailDto> RejectAsync(int requestId, string reason);
         Task<RequestDetailDto> SaveResultsAsync(int requestId, string analystId, List<SaveResultDto> results);
         Task<RequestDetailDto> CompleteAnalysisAsync(int requestId, string analystId);
+
+        // Valider les résultats (Chef de labo)
+        Task<RequestDetailDto> ValidateAsync(int requestId, string labChiefId);
+
+        // Rejeter et renvoyer à la réception (Chef de labo)
+        Task<RequestDetailDto> InvalidateAsync(int requestId, string labChiefId, string reason);
+
+        // Récupérer l'historique complet d'une demande
+        Task<List<AuditLogDto>> GetHistoryAsync(int requestId);
     }
 }
