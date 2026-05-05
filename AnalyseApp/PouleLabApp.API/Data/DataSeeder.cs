@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using PouleLabApp.API.Models;
 
 namespace PouleLabApp.API.Data
@@ -9,25 +10,20 @@ namespace PouleLabApp.API.Data
     {
         public static async Task SeedAsync(
             RoleManager<IdentityRole> roleManager,
-            UserManager<ApplicationUser> userManager)
+            UserManager<ApplicationUser> userManager,
+            ApplicationDbContext context)
         {
             // -------------------------------------------------------
-            // 1. CRÉER LES RÔLES
-            // On crée chaque rôle s'il n'existe pas déjà en base
+            // 1. RÔLES
             // -------------------------------------------------------
             var roles = new[]
             {
-                "Administrator",
-                "Manager",
-                "Receptionist",
-                "Analyst",
-                "LabChief",
-                "Client"
+                "Administrator", "Manager", "Receptionist",
+                "Analyst", "LabChief", "Client"
             };
 
             foreach (var role in roles)
             {
-                // RoleExistsAsync vérifie en base avant de créer pour éviter les doublons
                 if (!await roleManager.RoleExistsAsync(role))
                 {
                     await roleManager.CreateAsync(new IdentityRole(role));
@@ -36,14 +32,11 @@ namespace PouleLabApp.API.Data
             }
 
             // -------------------------------------------------------
-            // 2. CRÉER LE COMPTE ADMINISTRATEUR INITIAL
-            // Ce compte permet de se connecter la première fois
-            // et de créer les autres utilisateurs via l'API
+            // 2. COMPTE ADMINISTRATEUR INITIAL
             // -------------------------------------------------------
             const string adminEmail = "admin@poulelabapp.com";
             const string adminPassword = "Admin@1234";
 
-            // Vérifier si l'admin existe déjà avant de le créer
             var existingAdmin = await userManager.FindByEmailAsync(adminEmail);
             if (existingAdmin == null)
             {
@@ -56,34 +49,56 @@ namespace PouleLabApp.API.Data
                     FilialeName = "Poulina Group Holding",
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow,
-                    EmailConfirmed = true // On confirme l'email directement pour éviter les blocages
+                    EmailConfirmed = true
                 };
 
-                // Identity hash automatiquement le mot de passe
                 var result = await userManager.CreateAsync(admin, adminPassword);
-
                 if (result.Succeeded)
                 {
-                    // Assigner le rôle Administrator au compte admin
                     await userManager.AddToRoleAsync(admin, "Administrator");
                     Console.WriteLine($"[Seeder] Compte admin créé : {adminEmail}");
-                }
-                else
-                {
-                    // Afficher les erreurs si la création échoue
-                    foreach (var error in result.Errors)
-                    {
-                        Console.WriteLine($"[Seeder] Erreur : {error.Description}");
-                    }
                 }
             }
 
             // -------------------------------------------------------
-            // 3. CRÉER LES LABORATOIRES INITIAUX
-            // Les 4 laboratoires de Poulina mentionnés dans le cahier des charges
+            // 3. LABORATOIRES
+            // Les 4 laboratoires du groupe Poulina mentionnés dans le cahier des charges
             // -------------------------------------------------------
-            // Note : les laboratoires seront ajoutés ici à la semaine 3
-            // quand on aura le DbContext accessible depuis le Seeder
+            if (!await context.Laboratories.AnyAsync())
+            {
+                var laboratories = new List<Laboratory>
+                {
+                    new() { Name = "DICK",   Description = "Laboratoire DICK",   Address = "Tunis, Tunisie" },
+                    new() { Name = "SNA",    Description = "Laboratoire SNA",    Address = "Sfax, Tunisie" },
+                    new() { Name = "GIPA",   Description = "Laboratoire GIPA",   Address = "Sousse, Tunisie" },
+                    new() { Name = "MEDOIL", Description = "Laboratoire MEDOIL", Address = "Bizerte, Tunisie" }
+                };
+
+                context.Laboratories.AddRange(laboratories);
+                await context.SaveChangesAsync();
+                Console.WriteLine("[Seeder] Laboratoires créés : DICK, SNA, GIPA, MEDOIL");
+            }
+
+            // -------------------------------------------------------
+            // 4. TYPES D'ANALYSES
+            // Exemples de types d'analyses avec valeurs de référence
+            // -------------------------------------------------------
+            if (!await context.AnalysisTypes.AnyAsync())
+            {
+                var analysisTypes = new List<AnalysisType>
+                {
+                    new() { Name = "pH",              Unit = "pH",    Description = "Mesure de l'acidité",           ReferenceMin = 6.5,  ReferenceMax = 8.5  },
+                    new() { Name = "Viscosité",       Unit = "cSt",   Description = "Viscosité cinématique",         ReferenceMin = 28.0, ReferenceMax = 35.0 },
+                    new() { Name = "Densité",         Unit = "g/cm³", Description = "Densité à 15°C",               ReferenceMin = 0.85, ReferenceMax = 0.95 },
+                    new() { Name = "Indice d'acide",  Unit = "mgKOH", Description = "Indice d'acidité totale",      ReferenceMin = 0.0,  ReferenceMax = 2.5  },
+                    new() { Name = "Teneur en eau",   Unit = "%",     Description = "Pourcentage d'eau",            ReferenceMin = 0.0,  ReferenceMax = 0.1  },
+                    new() { Name = "Point d'éclair",  Unit = "°C",    Description = "Température d'inflammation",   ReferenceMin = 180,  ReferenceMax = 250  }
+                };
+
+                context.AnalysisTypes.AddRange(analysisTypes);
+                await context.SaveChangesAsync();
+                Console.WriteLine("[Seeder] Types d'analyses créés : pH, Viscosité, Densité...");
+            }
         }
     }
 }

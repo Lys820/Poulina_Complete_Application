@@ -98,6 +98,7 @@ builder.Services.AddCors(options =>
 // Injection de dépendances — on déclare ici tous nos services
 // ============================================================
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
+builder.Services.AddScoped<IAnalysisRequestService, AnalysisRequestService>();
 // D'autres services seront ajoutés ici au fil des semaines
 
 // ============================================================
@@ -135,11 +136,13 @@ app.MapControllers();
 // SEEDING — Initialisation des données au démarrage
 // S'exécute uniquement si les données n'existent pas encore
 // ============================================================
+// Après
 using (var scope = app.Services.CreateScope())
 {
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
     var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-    await DataSeeder.SeedAsync(roleManager, userManager);
+    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    await DataSeeder.SeedAsync(roleManager, userManager, context);
 }
 
 

@@ -1,0 +1,7 @@
+Compte admin :
+admin@poulelabapp.com
+Admin@1234
+
+Compte utilisateur test :
+lilia@test.com
+Test@1234

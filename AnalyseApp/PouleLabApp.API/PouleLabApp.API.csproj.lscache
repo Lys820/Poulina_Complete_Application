@@ -56,6 +56,7 @@ TemporaryDependencyNodeTargetIdentifier=net10.0
 
 [sourceFiles]
 Controllers/
+ AnalysisRequestController.cs
  AuthController.cs
  RoleController.cs
  UserController.cs
@@ -68,6 +69,10 @@ DTOs/Auth/
  LoginDto.cs
  RefreshTokenDto.cs
  RegisterDto.cs
+DTOs/Request/
+ CreateRequestDto.cs
+ RequestDetailDto.cs
+ RequestListDto.cs
 DTOs/User/
  UpdateUserDto.cs
  UserDto.cs
@@ -95,7 +100,10 @@ obj/Debug/net10.0/
  PouleLabApp.API.GlobalUsings.g.cs
 Program.cs
 Services/
- Interfaces/IJwtTokenService.cs
+ AnalysisRequestService.cs
+ Interfaces/
+  IAnalysisRequestService.cs
+  IJwtTokenService.cs
  JwtTokenService.cs
 
 [metadataReferences]
