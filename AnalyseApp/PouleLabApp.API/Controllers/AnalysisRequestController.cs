@@ -125,5 +125,42 @@ namespace PouleLabApp.API.Controllers
             var result = await _requestService.RejectAsync(id, reason);
             return Ok(result);
         }
+
+        // -------------------------------------------------------
+        // POST /api/requests/{id}/results
+        // Saisir les résultats d'analyse (Laborantin)
+        // -------------------------------------------------------
+        [HttpPost("{id}/results")]
+        [Authorize(Policy = "RequireAnalyst")]
+        public async Task<IActionResult> SaveResults(int id, [FromBody] List<SaveResultDto> results)
+        {
+            // Récupérer l'ID du laborantin connecté depuis le JWT
+            var analystId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                ?? User.FindFirst("sub")?.Value;
+
+            if (analystId == null)
+                return Unauthorized(new { message = "Utilisateur non identifié." });
+
+            var result = await _requestService.SaveResultsAsync(id, analystId, results);
+            return Ok(result);
+        }
+
+        // -------------------------------------------------------
+        // PUT /api/requests/{id}/complete-analysis
+        // Marquer les analyses comme terminées (Laborantin)
+        // -------------------------------------------------------
+        [HttpPut("{id}/complete-analysis")]
+        [Authorize(Policy = "RequireAnalyst")]
+        public async Task<IActionResult> CompleteAnalysis(int id)
+        {
+            var analystId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                ?? User.FindFirst("sub")?.Value;
+
+            if (analystId == null)
+                return Unauthorized(new { message = "Utilisateur non identifié." });
+
+            var result = await _requestService.CompleteAnalysisAsync(id, analystId);
+            return Ok(result);
+        }
     }
 }

@@ -73,6 +73,7 @@ DTOs/Request/
  CreateRequestDto.cs
  RequestDetailDto.cs
  RequestListDto.cs
+ SaveResultDto.cs
 DTOs/User/
  UpdateUserDto.cs
  UserDto.cs

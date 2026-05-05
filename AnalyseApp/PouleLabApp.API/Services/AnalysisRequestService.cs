@@ -231,6 +231,88 @@ namespace PouleLabApp.API.Services
         }
 
         // -------------------------------------------------------
+        // Saisir les résultats d'analyse (Laborantin)
+        // IsAnomaly est calculé automatiquement selon les bornes
+        // -------------------------------------------------------
+        public async Task<RequestDetailDto> SaveResultsAsync(
+            int requestId,
+            string analystId,
+            List<SaveResultDto> results)
+        {
+            var request = await _context.AnalysisRequests
+                .Include(r => r.Samples)
+                    .ThenInclude(s => s.Results)
+                .FirstOrDefaultAsync(r => r.Id == requestId)
+                ?? throw new KeyNotFoundException("Demande introuvable.");
+
+            // Vérifier que la demande est bien assignée à ce laborantin
+            if (request.AssignedToId != analystId)
+                throw new UnauthorizedAccessException("Vous n'êtes pas assigné à cette demande.");
+
+            // Vérifier que la demande est en cours d'analyse
+            if (request.Status != RequestStatus.InProgress)
+                throw new ArgumentException("La demande doit être en cours d'analyse pour saisir des résultats.");
+
+            // Mettre à jour chaque résultat
+            foreach (var resultDto in results)
+            {
+                // Chercher le résultat dans les échantillons de la demande
+                var result = request.Samples
+                    .SelectMany(s => s.Results)
+                    .FirstOrDefault(r => r.Id == resultDto.ResultId)
+                    ?? throw new KeyNotFoundException($"Résultat id={resultDto.ResultId} introuvable.");
+
+                // Enregistrer la valeur mesurée
+                result.MeasuredValue = resultDto.MeasuredValue;
+                result.RecordedById = analystId;
+                result.RecordedAt = DateTime.UtcNow;
+
+                // Calcul automatique de l'anomalie
+                // IsAnomaly = true si la valeur est en dehors des bornes de référence
+                result.IsAnomaly = resultDto.MeasuredValue < result.LowerBound ||
+                                resultDto.MeasuredValue > result.UpperBound;
+            }
+
+            await _context.SaveChangesAsync();
+
+            return await GetByIdAsync(requestId)
+                ?? throw new Exception("Erreur lors de la récupération de la demande.");
+        }
+
+        // -------------------------------------------------------
+        // Marquer les analyses comme terminées (Laborantin)
+        // Passe la demande en InReview pour le chef de labo
+        // -------------------------------------------------------
+        public async Task<RequestDetailDto> CompleteAnalysisAsync(int requestId, string analystId)
+        {
+            var request = await _context.AnalysisRequests
+                .Include(r => r.Samples)
+                    .ThenInclude(s => s.Results)
+                .FirstOrDefaultAsync(r => r.Id == requestId)
+                ?? throw new KeyNotFoundException("Demande introuvable.");
+
+            // Vérifier que la demande est assignée à ce laborantin
+            if (request.AssignedToId != analystId)
+                throw new UnauthorizedAccessException("Vous n'êtes pas assigné à cette demande.");
+
+            if (request.Status != RequestStatus.InProgress)
+                throw new ArgumentException("La demande doit être en cours d'analyse.");
+
+            // Vérifier que tous les résultats ont été saisis (MeasuredValue != 0)
+            var allResults = request.Samples.SelectMany(s => s.Results).ToList();
+            if (allResults.Any(r => r.MeasuredValue == 0))
+                throw new ArgumentException("Tous les résultats doivent être saisis avant de terminer.");
+
+            // Passer en InReview — le chef de labo peut maintenant valider
+            request.Status = RequestStatus.InReview;
+
+            await _context.SaveChangesAsync();
+
+            return await GetByIdAsync(requestId)
+                ?? throw new Exception("Erreur lors de la récupération de la demande.");
+        }
+
+        // -------------------------------------------------------
         // Méthodes privées de mapping Model → DTO
         // -------------------------------------------------------
 
