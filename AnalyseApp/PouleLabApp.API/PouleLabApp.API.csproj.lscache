@@ -57,6 +57,7 @@ TemporaryDependencyNodeTargetIdentifier=net10.0
 [sourceFiles]
 Controllers/
  AuthController.cs
+ RoleController.cs
  UserController.cs
 Data/
  ApplicationDbContext.cs
@@ -70,6 +71,7 @@ DTOs/Auth/
 DTOs/User/
  UpdateUserDto.cs
  UserDto.cs
+Middleware/GlobalExceptionHandler.cs
 Migrations/
  20260501175334_InitialCreate.cs
  20260501175334_InitialCreate.Designer.cs

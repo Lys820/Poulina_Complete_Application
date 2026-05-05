@@ -8,6 +8,7 @@ using PouleLabApp.API.Models;
 using PouleLabApp.API.Services;
 using PouleLabApp.API.Services.Interfaces;
 using Scalar.AspNetCore;
+using PouleLabApp.API.Middleware;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -110,6 +111,8 @@ builder.Services.AddOpenApi();
 // CONSTRUCTION DE L'APPLICATION
 // ============================================================
 var app = builder.Build();
+// Doit être le premier middleware pour intercepter toutes les erreurs
+app.UseMiddleware<GlobalExceptionHandler>();
 
 if (app.Environment.IsDevelopment())
 {
@@ -117,7 +120,12 @@ if (app.Environment.IsDevelopment())
     app.MapScalarApiReference(); // Interface de test de l'API sur /scalar
 }
 
-app.UseHttpsRedirection();
+// Redirection HTTPS désactivée en développement pour éviter les conflits de port
+// À réactiver en production avec un vrai certificat SSL
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 app.UseCors("AllowAngular");  // CORS doit être avant Authentication et Authorization
 app.UseAuthentication();      // Vérifie le token JWT sur chaque requête
 app.UseAuthorization();       // Vérifie les droits après l'authentification
