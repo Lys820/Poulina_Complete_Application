@@ -41,11 +41,11 @@ namespace PouleLabApp.API.Services
                     .OrderBy(t => t)
                     .ToList();
 
-                // Chercher une demande active identique du même client vers le même labo
-                var existingRequest = await _context.AnalysisRequests
+                // Chercher une demande active identique — peu importe le client qui l'a faite
+                // Bloque si même laboratoire + mêmes types d'échantillons + statut actif
+                var existingRequests = await _context.AnalysisRequests
                     .Include(r => r.Samples)
                     .Where(r =>
-                        r.ClientId == clientId &&
                         r.LaboratoryId == dto.LaboratoryId &&
                         (r.Status == RequestStatus.Submitted ||
                         r.Status == RequestStatus.Received ||
@@ -53,8 +53,7 @@ namespace PouleLabApp.API.Services
                         r.Status == RequestStatus.InReview))
                     .ToListAsync();
 
-                // Comparer les types d'échantillons avec les demandes existantes
-                var isDuplicate = existingRequest.Any(r =>
+                var isDuplicate = existingRequests.Any(r =>
                 {
                     var existingSampleTypes = r.Samples
                         .Select(s => s.Type.ToLower().Trim())
