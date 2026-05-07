@@ -72,11 +72,20 @@ builder.Services.AddAuthentication(options =>
 // ============================================================
 builder.Services.AddAuthorization(options =>
 {
+    // Policies strictes — Admin n'a PAS accès au workflow métier
+    options.AddPolicy("RequireReceptionistOnly", policy => policy.RequireRole("Receptionist"));
+    options.AddPolicy("RequireAnalystOnly",      policy => policy.RequireRole("Analyst"));
+    options.AddPolicy("RequireLabChiefOnly",     policy => policy.RequireRole("LabChief"));
+
+    // Policies admin — gestion des utilisateurs uniquement
     options.AddPolicy("RequireAdmin",        policy => policy.RequireRole("Administrator"));
     options.AddPolicy("RequireManager",      policy => policy.RequireRole("Administrator", "Manager"));
-    options.AddPolicy("RequireReceptionist", policy => policy.RequireRole("Administrator", "Manager", "Receptionist"));
-    options.AddPolicy("RequireAnalyst",      policy => policy.RequireRole("Administrator", "Analyst"));
-    options.AddPolicy("RequireLabChief",     policy => policy.RequireRole("Administrator", "LabChief"));
+
+    // Historique accessible uniquement à l'Admin et au Chef de labo
+    options.AddPolicy("RequireAdminOrLabChief", policy => policy.RequireRole("Administrator", "LabChief"));
+
+    // Création de demande — Client, Manager, Admin uniquement
+    options.AddPolicy("RequireClientRole", policy => policy.RequireRole("Administrator", "Manager", "Client"));
 });
 
 // ============================================================

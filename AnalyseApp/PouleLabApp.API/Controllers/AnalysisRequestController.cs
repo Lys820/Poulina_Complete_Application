@@ -1,31 +1,37 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using PouleLabApp.API.DTOs.Request;
+using PouleLabApp.API.Models;
 using PouleLabApp.API.Services.Interfaces;
 
 namespace PouleLabApp.API.Controllers
 {
     [ApiController]
     [Route("api/requests")]
-    [Authorize] // JWT obligatoire pour tous les endpoints
+    [Authorize]
     public class AnalysisRequestController : ControllerBase
     {
         private readonly IAnalysisRequestService _requestService;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public AnalysisRequestController(IAnalysisRequestService requestService)
+        public AnalysisRequestController(
+            IAnalysisRequestService requestService,
+            UserManager<ApplicationUser> userManager)
         {
             _requestService = requestService;
+            _userManager = userManager;
         }
 
         // -------------------------------------------------------
         // POST /api/requests
-        // Créer une nouvelle demande (brouillon ou soumise)
-        // Accessible à tous les utilisateurs connectés
+        // Créer une demande — uniquement Client, Manager, Admin
+        // Receptionist, Analyst, LabChief ne peuvent pas créer
         // -------------------------------------------------------
         [HttpPost]
+        [Authorize(Policy = "RequireClientRole")]
         public async Task<IActionResult> Create([FromBody] CreateRequestDto dto)
         {
-            // Récupérer l'ID du client connecté depuis le JWT
             var clientId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
                 ?? User.FindFirst("sub")?.Value;
 
@@ -38,47 +44,46 @@ namespace PouleLabApp.API.Controllers
 
         // -------------------------------------------------------
         // PUT /api/requests/{id}/submit
-        // Soumettre un brouillon existant
+        // Soumettre un brouillon — uniquement le créateur de la demande
         // -------------------------------------------------------
         [HttpPut("{id}/submit")]
         public async Task<IActionResult> Submit(int id)
         {
-            var clientId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
                 ?? User.FindFirst("sub")?.Value;
 
-            if (clientId == null)
+            if (userId == null)
                 return Unauthorized(new { message = "Utilisateur non identifié." });
 
-            var result = await _requestService.SubmitAsync(id, clientId);
+            // La vérification que l'utilisateur est bien le créateur
+            // est faite dans le service (SubmitAsync)
+            var result = await _requestService.SubmitAsync(id, userId);
             return Ok(result);
         }
 
         // -------------------------------------------------------
         // GET /api/requests
-        // Liste toutes les demandes (Admin/Manager/Receptionist)
-        // ou seulement les siennes (Client)
+        // Client voit ses demandes, les autres voient tout
         // -------------------------------------------------------
         [HttpGet]
         public async Task<IActionResult> GetAll([FromQuery] string? status = null)
         {
-            var clientId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
                 ?? User.FindFirst("sub")?.Value;
 
-            // Un Client ne voit que ses propres demandes
             if (User.IsInRole("Client"))
             {
-                var clientRequests = await _requestService.GetByClientAsync(clientId!);
+                var clientRequests = await _requestService.GetByClientAsync(userId!);
                 return Ok(clientRequests);
             }
 
-            // Les autres rôles voient toutes les demandes (avec filtre optionnel)
             var requests = await _requestService.GetAllAsync(status);
             return Ok(requests);
         }
 
         // -------------------------------------------------------
         // GET /api/requests/{id}
-        // Récupérer le détail d'une demande
+        // Détail d'une demande — tous les rôles connectés
         // -------------------------------------------------------
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)
@@ -92,10 +97,10 @@ namespace PouleLabApp.API.Controllers
 
         // -------------------------------------------------------
         // PUT /api/requests/{id}/receive
-        // Réceptionner une demande (Réceptionniste)
+        // Réceptionner — uniquement Receptionist (pas Admin)
         // -------------------------------------------------------
         [HttpPut("{id}/receive")]
-        [Authorize(Policy = "RequireReceptionist")]
+        [Authorize(Policy = "RequireReceptionistOnly")]
         public async Task<IActionResult> Receive(int id)
         {
             var result = await _requestService.ReceiveAsync(id);
@@ -104,22 +109,32 @@ namespace PouleLabApp.API.Controllers
 
         // -------------------------------------------------------
         // PUT /api/requests/{id}/assign
-        // Assigner une demande à un laborantin (Réceptionniste)
+        // Assigner — uniquement Receptionist, uniquement vers un Analyst
         // -------------------------------------------------------
         [HttpPut("{id}/assign")]
-        [Authorize(Policy = "RequireReceptionist")]
+        [Authorize(Policy = "RequireReceptionistOnly")]
         public async Task<IActionResult> Assign(int id, [FromBody] string analystId)
         {
+            // Vérifier que l'utilisateur cible existe
+            var analyst = await _userManager.FindByIdAsync(analystId);
+            if (analyst == null)
+                return NotFound(new { message = "Utilisateur introuvable." });
+
+            // Vérifier que l'utilisateur cible a bien le rôle Analyst
+            var roles = await _userManager.GetRolesAsync(analyst);
+            if (!roles.Contains("Analyst"))
+                return BadRequest(new { message = "L'utilisateur sélectionné n'est pas un laborantin." });
+
             var result = await _requestService.AssignAsync(id, analystId);
             return Ok(result);
         }
 
         // -------------------------------------------------------
         // PUT /api/requests/{id}/reject
-        // Refuser une demande
+        // Refuser — uniquement Receptionist
         // -------------------------------------------------------
         [HttpPut("{id}/reject")]
-        [Authorize(Policy = "RequireReceptionist")]
+        [Authorize(Policy = "RequireReceptionistOnly")]
         public async Task<IActionResult> Reject(int id, [FromBody] string reason)
         {
             var result = await _requestService.RejectAsync(id, reason);
@@ -128,13 +143,12 @@ namespace PouleLabApp.API.Controllers
 
         // -------------------------------------------------------
         // POST /api/requests/{id}/results
-        // Saisir les résultats d'analyse (Laborantin)
+        // Saisir les résultats — uniquement Analyst (pas Admin)
         // -------------------------------------------------------
         [HttpPost("{id}/results")]
-        [Authorize(Policy = "RequireAnalyst")]
+        [Authorize(Policy = "RequireAnalystOnly")]
         public async Task<IActionResult> SaveResults(int id, [FromBody] List<SaveResultDto> results)
         {
-            // Récupérer l'ID du laborantin connecté depuis le JWT
             var analystId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
                 ?? User.FindFirst("sub")?.Value;
 
@@ -147,10 +161,10 @@ namespace PouleLabApp.API.Controllers
 
         // -------------------------------------------------------
         // PUT /api/requests/{id}/complete-analysis
-        // Marquer les analyses comme terminées (Laborantin)
+        // Terminer l'analyse — uniquement Analyst (pas Admin)
         // -------------------------------------------------------
         [HttpPut("{id}/complete-analysis")]
-        [Authorize(Policy = "RequireAnalyst")]
+        [Authorize(Policy = "RequireAnalystOnly")]
         public async Task<IActionResult> CompleteAnalysis(int id)
         {
             var analystId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
@@ -165,10 +179,10 @@ namespace PouleLabApp.API.Controllers
 
         // -------------------------------------------------------
         // PUT /api/requests/{id}/validate
-        // Valider les résultats (Chef de labo)
+        // Valider — uniquement LabChief (pas Admin)
         // -------------------------------------------------------
         [HttpPut("{id}/validate")]
-        [Authorize(Policy = "RequireLabChief")]
+        [Authorize(Policy = "RequireLabChiefOnly")]
         public async Task<IActionResult> Validate(int id)
         {
             var labChiefId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
@@ -183,10 +197,10 @@ namespace PouleLabApp.API.Controllers
 
         // -------------------------------------------------------
         // PUT /api/requests/{id}/invalidate
-        // Rejeter et renvoyer à la réception (Chef de labo)
+        // Rejeter — uniquement LabChief (pas Admin)
         // -------------------------------------------------------
         [HttpPut("{id}/invalidate")]
-        [Authorize(Policy = "RequireLabChief")]
+        [Authorize(Policy = "RequireLabChiefOnly")]
         public async Task<IActionResult> Invalidate(int id, [FromBody] string reason)
         {
             var labChiefId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
@@ -201,9 +215,10 @@ namespace PouleLabApp.API.Controllers
 
         // -------------------------------------------------------
         // GET /api/requests/{id}/history
-        // Historique complet d'une demande
+        // Historique — uniquement Admin et LabChief
         // -------------------------------------------------------
         [HttpGet("{id}/history")]
+        [Authorize(Policy = "RequireAdminOrLabChief")]
         public async Task<IActionResult> GetHistory(int id)
         {
             var history = await _requestService.GetHistoryAsync(id);

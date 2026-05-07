@@ -27,6 +27,48 @@ namespace PouleLabApp.API.Services
             var lab = await _context.Laboratories.FindAsync(dto.LaboratoryId)
                 ?? throw new KeyNotFoundException("Laboratoire introuvable.");
 
+            // -------------------------------------------------------
+            // Vérification des doublons
+            // Une demande est considérée comme doublon si le même client
+            // a déjà une demande active (Submitted ou InProgress) 
+            // vers le même laboratoire avec les mêmes types d'échantillons
+            // -------------------------------------------------------
+            if (!dto.IsDraft)
+            {
+                // Récupérer les types d'échantillons demandés (triés pour comparaison)
+                var newSampleTypes = dto.Samples
+                    .Select(s => s.Type.ToLower().Trim())
+                    .OrderBy(t => t)
+                    .ToList();
+
+                // Chercher une demande active identique du même client vers le même labo
+                var existingRequest = await _context.AnalysisRequests
+                    .Include(r => r.Samples)
+                    .Where(r =>
+                        r.ClientId == clientId &&
+                        r.LaboratoryId == dto.LaboratoryId &&
+                        (r.Status == RequestStatus.Submitted ||
+                        r.Status == RequestStatus.Received ||
+                        r.Status == RequestStatus.InProgress ||
+                        r.Status == RequestStatus.InReview))
+                    .ToListAsync();
+
+                // Comparer les types d'échantillons avec les demandes existantes
+                var isDuplicate = existingRequest.Any(r =>
+                {
+                    var existingSampleTypes = r.Samples
+                        .Select(s => s.Type.ToLower().Trim())
+                        .OrderBy(t => t)
+                        .ToList();
+
+                    return existingSampleTypes.SequenceEqual(newSampleTypes);
+                });
+
+                if (isDuplicate)
+                    throw new ArgumentException(
+                        "Une demande identique est déjà en cours de traitement pour ce laboratoire.");
+            }
+
             // Créer la demande
             var request = new AnalysisRequest
             {
