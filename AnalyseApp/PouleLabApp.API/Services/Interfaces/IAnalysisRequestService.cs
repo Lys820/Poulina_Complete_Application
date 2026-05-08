@@ -23,5 +23,11 @@ namespace PouleLabApp.API.Services.Interfaces
 
         // Récupérer l'historique complet d'une demande
         Task<List<AuditLogDto>> GetHistoryAsync(int requestId);
+
+        // Définir les échéances d'une demande
+        Task<RequestDetailDto> SetDeadlinesAsync(int requestId, List<SetDeadlineDto> deadlines);
+
+        // Récupérer les échéances d'une demande
+        Task<List<DeadlineDto>> GetDeadlinesAsync(int requestId);
     }
 }

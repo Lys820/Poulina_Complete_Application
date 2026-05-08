@@ -109,6 +109,8 @@ builder.Services.AddCors(options =>
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddScoped<IAnalysisRequestService, AnalysisRequestService>();
 builder.Services.AddScoped<IAuditLogService, AuditLogService>();
+// Background service — vérifie les échéances dépassées toutes les heures
+builder.Services.AddHostedService<DeadlineCheckerService>();
 // D'autres services seront ajoutés ici au fil des semaines
 
 // ============================================================

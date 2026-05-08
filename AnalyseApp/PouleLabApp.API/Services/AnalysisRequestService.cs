@@ -521,5 +521,76 @@ namespace PouleLabApp.API.Services
                 }).ToList() ?? new()
             }).ToList() ?? new()
         };
+
+        // -------------------------------------------------------
+// Définir les échéances d'une demande
+// -------------------------------------------------------
+public async Task<RequestDetailDto> SetDeadlinesAsync(
+    int requestId,
+    List<SetDeadlineDto> deadlines)
+{
+    var request = await _context.AnalysisRequests
+        .Include(r => r.Deadlines)
+        .FirstOrDefaultAsync(r => r.Id == requestId)
+        ?? throw new KeyNotFoundException("Demande introuvable.");
+
+    foreach (var deadlineDto in deadlines)
+    {
+        // Vérifier que la phase est valide
+        if (!Enum.TryParse<DeadlinePhase>(deadlineDto.Phase, true, out var phase))
+            throw new ArgumentException($"Phase invalide : {deadlineDto.Phase}");
+
+        // Vérifier que la date est dans le futur
+        if (deadlineDto.PlannedDate <= DateTime.UtcNow)
+            throw new ArgumentException($"La date pour la phase {deadlineDto.Phase} doit être dans le futur.");
+
+        // Mettre à jour si l'échéance existe déjà, sinon en créer une nouvelle
+        var existing = request.Deadlines
+            .FirstOrDefault(d => d.Phase == phase);
+
+        if (existing != null)
+        {
+            existing.PlannedDate = deadlineDto.PlannedDate;
+            existing.IsOverdue = false;
+        }
+        else
+        {
+            _context.Deadlines.Add(new Deadline
+            {
+                RequestId = requestId,
+                Phase = phase,
+                PlannedDate = deadlineDto.PlannedDate,
+                IsOverdue = false
+            });
+        }
     }
+
+    await _context.SaveChangesAsync();
+
+    return await GetByIdAsync(requestId)
+        ?? throw new Exception("Erreur lors de la récupération de la demande.");
+    }
+
+        // -------------------------------------------------------
+        // Récupérer les échéances d'une demande
+        // -------------------------------------------------------
+        public async Task<List<DeadlineDto>> GetDeadlinesAsync(int requestId)
+        {
+            var deadlines = await _context.Deadlines
+                .Where(d => d.RequestId == requestId)
+                .OrderBy(d => d.Phase)
+                .ToListAsync();
+
+            return deadlines.Select(d => new DeadlineDto
+            {
+                Id = d.Id,
+                Phase = d.Phase.ToString(),
+                PlannedDate = d.PlannedDate,
+                ActualDate = d.ActualDate,
+                IsOverdue = d.IsOverdue
+            }).ToList();
+        }
+    }
+
+    
 }

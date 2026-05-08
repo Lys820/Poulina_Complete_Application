@@ -224,5 +224,44 @@ namespace PouleLabApp.API.Controllers
             var history = await _requestService.GetHistoryAsync(id);
             return Ok(history);
         }
+
+        // -------------------------------------------------------
+        // PUT /api/requests/{id}/deadlines
+        // Définir les échéances — Receptionist et Admin uniquement
+        // -------------------------------------------------------
+        [HttpPut("{id}/deadlines")]
+        [Authorize(Policy = "RequireClientRole")]
+        public async Task<IActionResult> SetDeadlines(
+            int id,
+            [FromBody] List<SetDeadlineDto> deadlines)
+        {
+            // Récupérer l'ID de l'utilisateur connecté
+            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+            ?? User.FindFirst("sub")?.Value;
+            
+            // Vérifier que la demande existe
+            var request = await _requestService.GetByIdAsync(id);
+            if (request == null)
+                return NotFound(new { message = "Demande introuvable." });
+
+            // Vérifier que c'est bien le créateur de la demande qui définit les échéances ou l'admin 
+            if (request.ClientId != userId && !User.IsInRole("Administrator"))
+                return StatusCode(403, new { message = "Seul le créateur de la demande ou un administrateur peut définir les échéances." });
+            
+            var result = await _requestService.SetDeadlinesAsync(id, deadlines);
+            return Ok(result);
+        }
+
+        // -------------------------------------------------------
+        // GET /api/requests/{id}/deadlines
+        // Consulter les échéances — tous les rôles connectés
+        // -------------------------------------------------------
+        [HttpGet("{id}/deadlines")]
+        public async Task<IActionResult> GetDeadlines(int id)
+        {
+            var deadlines = await _requestService.GetDeadlinesAsync(id);
+            return Ok(deadlines);
+        }
     }
+
 }
