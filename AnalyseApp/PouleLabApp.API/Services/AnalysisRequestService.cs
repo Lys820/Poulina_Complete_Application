@@ -35,14 +35,19 @@ namespace PouleLabApp.API.Services
             // -------------------------------------------------------
             if (!dto.IsDraft)
             {
-                // Récupérer les types d'échantillons demandés (triés pour comparaison)
-                var newSampleTypes = dto.Samples
-                    .Select(s => s.Type.ToLower().Trim())
-                    .OrderBy(t => t)
+                // Une demande est un vrai doublon seulement si TOUS les champs
+                // des échantillons sont identiques — même type, mêmes caractéristiques,
+                // même quantité ET même unité vers le même laboratoire
+                var newSamples = dto.Samples
+                    .Select(s => new {
+                        Type = s.Type.ToLower().Trim(),
+                        Characteristics = s.Characteristics.ToLower().Trim(),
+                        Quantity = s.Quantity,
+                        Unit = s.Unit.ToLower().Trim()
+                    })
+                    .OrderBy(s => s.Type)
                     .ToList();
 
-                // Chercher une demande active identique — peu importe le client qui l'a faite
-                // Bloque si même laboratoire + mêmes types d'échantillons + statut actif
                 var existingRequests = await _context.AnalysisRequests
                     .Include(r => r.Samples)
                     .Where(r =>
@@ -55,12 +60,26 @@ namespace PouleLabApp.API.Services
 
                 var isDuplicate = existingRequests.Any(r =>
                 {
-                    var existingSampleTypes = r.Samples
-                        .Select(s => s.Type.ToLower().Trim())
-                        .OrderBy(t => t)
+                    // Vérifier d'abord que le nombre d'échantillons est identique
+                    if (r.Samples.Count != dto.Samples.Count) return false;
+
+                    var existingSamples = r.Samples
+                        .Select(s => new {
+                            Type = s.Type.ToLower().Trim(),
+                            Characteristics = s.Characteristics.ToLower().Trim(),
+                            Quantity = s.Quantity,
+                            Unit = s.Unit.ToLower().Trim()
+                        })
+                        .OrderBy(s => s.Type)
                         .ToList();
 
-                    return existingSampleTypes.SequenceEqual(newSampleTypes);
+                    // Comparer chaque champ de chaque échantillon
+                    return newSamples.Zip(existingSamples, (n, e) =>
+                        n.Type == e.Type &&
+                        n.Characteristics == e.Characteristics &&
+                        n.Quantity == e.Quantity &&
+                        n.Unit == e.Unit
+                    ).All(match => match);
                 });
 
                 if (isDuplicate)
