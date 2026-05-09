@@ -10,5 +10,7 @@ namespace PouleLabApp.API.Models
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public ICollection<AnalysisRequest> Requests { get; set; } = new List<AnalysisRequest>();
+        // Détermine quel template de formulaire PDF utiliser pour ce labo
+        public FormTemplateType TemplateType { get; set; } = FormTemplateType.SNA;
     }
 }

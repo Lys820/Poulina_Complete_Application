@@ -29,5 +29,8 @@ namespace PouleLabApp.API.Services.Interfaces
 
         // Récupérer les échéances d'une demande
         Task<List<DeadlineDto>> GetDeadlinesAsync(int requestId);
+
+        // Modifier une demande existante — uniquement si en brouillon
+Task<RequestDetailDto> UpdateAsync(int requestId, string userId, UpdateRequestDto dto);
     }
 }

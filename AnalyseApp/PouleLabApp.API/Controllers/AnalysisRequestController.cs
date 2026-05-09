@@ -262,6 +262,38 @@ namespace PouleLabApp.API.Controllers
             var deadlines = await _requestService.GetDeadlinesAsync(id);
             return Ok(deadlines);
         }
+
+        // -------------------------------------------------------
+        // PUT /api/requests/{id}
+        // Modifier une demande — uniquement le créateur ou l'Admin
+        // Uniquement si la demande est en brouillon
+        // -------------------------------------------------------
+        [HttpPut("{id}")]
+        [Authorize(Policy = "RequireClientRole")]
+        public async Task<IActionResult> Update(int id, [FromBody] UpdateRequestDto dto)
+        {
+            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                ?? User.FindFirst("sub")?.Value;
+
+            if (userId == null)
+                return Unauthorized(new { message = "Utilisateur non identifié." });
+
+            // Vérifier que la demande existe
+            var request = await _requestService.GetByIdAsync(id);
+            if (request == null)
+                return NotFound(new { message = "Demande introuvable." });
+
+            // Vérifier le statut
+            if (request.Status != "Draft")
+                return BadRequest(new { message = "Seules les demandes en brouillon peuvent être modifiées." });
+
+            // Vérifier que c'est le créateur ou un Admin
+            if (request.ClientId != userId && !User.IsInRole("Administrator"))
+                return StatusCode(403, new { message = "Seul le créateur de la demande peut la modifier." });
+
+            var result = await _requestService.UpdateAsync(id, userId, dto);
+            return Ok(result);
+        }
     }
 
 }

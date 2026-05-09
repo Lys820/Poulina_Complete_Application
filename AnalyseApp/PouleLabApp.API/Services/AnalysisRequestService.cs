@@ -606,5 +606,86 @@ namespace PouleLabApp.API.Services
                 }).ToList() ?? new()
             }).ToList() ?? new()
         };
+
+        // -------------------------------------------------------
+        // Modifier une demande existante
+        // Uniquement possible si la demande est en statut Draft
+        // -------------------------------------------------------
+        public async Task<RequestDetailDto> UpdateAsync(
+            int requestId, string userId, UpdateRequestDto dto)
+        {
+            var request = await _context.AnalysisRequests
+                .Include(r => r.Samples)
+                    .ThenInclude(s => s.Results)
+                .FirstOrDefaultAsync(r => r.Id == requestId)
+                ?? throw new KeyNotFoundException("Demande introuvable.");
+
+            if (request.ClientId != userId)
+                throw new UnauthorizedAccessException(
+                    "Vous n'êtes pas autorisé à modifier cette demande.");
+
+            // Vérifier que la demande est en brouillon
+            if (request.Status != RequestStatus.Draft)
+                throw new ArgumentException(
+                    "Seules les demandes en brouillon peuvent être modifiées.");
+
+            // Vérifier que le laboratoire existe
+            var lab = await _context.Laboratories.FindAsync(dto.LaboratoryId)
+                ?? throw new KeyNotFoundException("Laboratoire introuvable.");
+
+            // Mettre à jour les infos de base
+            request.LaboratoryId = dto.LaboratoryId;
+            request.Notes = dto.Notes;
+            request.IsDraft = dto.IsDraft;
+            request.Status = dto.IsDraft
+                ? RequestStatus.Draft
+                : RequestStatus.Submitted;
+
+            if (!dto.IsDraft)
+                request.SubmittedAt = DateTime.UtcNow;
+
+            // Supprimer les anciens échantillons et résultats
+            var oldResults = request.Samples
+                .SelectMany(s => s.Results).ToList();
+            _context.AnalysisResults.RemoveRange(oldResults);
+            _context.Samples.RemoveRange(request.Samples);
+            await _context.SaveChangesAsync();
+
+            // Recréer les nouveaux échantillons
+            foreach (var sampleDto in dto.Samples)
+            {
+                var sample = new Sample
+                {
+                    RequestId = requestId,
+                    Type = sampleDto.Type,
+                    Characteristics = sampleDto.Characteristics,
+                    Quantity = sampleDto.Quantity,
+                    Unit = sampleDto.Unit
+                };
+                _context.Samples.Add(sample);
+                await _context.SaveChangesAsync();
+
+                foreach (var analysisTypeId in sampleDto.AnalysisTypeIds)
+                {
+                    var analysisType = await _context.AnalysisTypes
+                        .FindAsync(analysisTypeId);
+                    if (analysisType == null) continue;
+
+                    _context.AnalysisResults.Add(new AnalysisResult
+                    {
+                        SampleId = sample.Id,
+                        AnalysisTypeId = analysisTypeId,
+                        LowerBound = analysisType.ReferenceMin,
+                        UpperBound = analysisType.ReferenceMax,
+                        RecordedById = userId
+                    });
+                }
+            }
+
+            await _context.SaveChangesAsync();
+
+            return await GetByIdAsync(requestId)
+                ?? throw new Exception("Erreur lors de la récupération de la demande.");
+        }
     }
 }

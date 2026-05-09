@@ -68,10 +68,30 @@ namespace PouleLabApp.API.Data
             {
                 var laboratories = new List<Laboratory>
                 {
-                    new() { Name = "DICK",   Description = "Laboratoire DICK",   Address = "Tunis, Tunisie" },
-                    new() { Name = "SNA",    Description = "Laboratoire SNA",    Address = "Sfax, Tunisie" },
-                    new() { Name = "GIPA",   Description = "Laboratoire GIPA",   Address = "Sousse, Tunisie" },
-                    new() { Name = "MEDOIL", Description = "Laboratoire MEDOIL", Address = "Bizerte, Tunisie" }
+                    new() {
+                        Name = "DICK",
+                        Description = "Laboratoire vétérinaire et aviculture",
+                        Address = "Tunis, Tunisie",
+                        TemplateType = FormTemplateType.DICK
+                    },
+                    new() {
+                        Name = "SNA",
+                        Description = "Analyses industrielles standard",
+                        Address = "Sfax, Tunisie",
+                        TemplateType = FormTemplateType.SNA
+                    },
+                    new() {
+                        Name = "GIPA",
+                        Description = "Analyses huiles et lubrifiants",
+                        Address = "Sousse, Tunisie",
+                        TemplateType = FormTemplateType.GIPA
+                    },
+                    new() {
+                        Name = "MEDOIL",
+                        Description = "Analyses corps gras et huiles alimentaires",
+                        Address = "Bizerte, Tunisie",
+                        TemplateType = FormTemplateType.MEDOIL
+                    }
                 };
 
                 context.Laboratories.AddRange(laboratories);

@@ -112,6 +112,7 @@ builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 // Background service — vérifie les échéances dépassées toutes les heures
 builder.Services.AddHostedService<DeadlineCheckerService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IPdfService, PdfService>();
 // D'autres services seront ajoutés ici au fil des semaines
 
 // ============================================================
