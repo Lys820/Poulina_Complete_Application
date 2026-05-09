@@ -106,9 +106,11 @@ Services/
  AnalysisRequestService.cs
  AuditLogService.cs
  DeadlineCheckerService.cs
+ EmailService.cs
  Interfaces/
   IAnalysisRequestService.cs
   IAuditLogService.cs
+  IEmailService.cs
   IJwtTokenService.cs
  JwtTokenService.cs
 

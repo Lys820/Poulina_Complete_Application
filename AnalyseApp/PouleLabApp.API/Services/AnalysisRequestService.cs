@@ -11,11 +11,16 @@ namespace PouleLabApp.API.Services
     {
         private readonly ApplicationDbContext _context;
         private readonly IAuditLogService _auditLogService;
-        public AnalysisRequestService(ApplicationDbContext context,
-    IAuditLogService auditLogService)
+        private readonly IEmailService _emailService;
+
+        public AnalysisRequestService(
+            ApplicationDbContext context,
+            IAuditLogService auditLogService,
+            IEmailService emailService)
         {
             _context = context;
             _auditLogService = auditLogService;
+            _emailService = emailService;
         }
 
         // -------------------------------------------------------
@@ -27,17 +32,9 @@ namespace PouleLabApp.API.Services
             var lab = await _context.Laboratories.FindAsync(dto.LaboratoryId)
                 ?? throw new KeyNotFoundException("Laboratoire introuvable.");
 
-            // -------------------------------------------------------
-            // Vérification des doublons
-            // Une demande est considérée comme doublon si le même client
-            // a déjà une demande active (Submitted ou InProgress) 
-            // vers le même laboratoire avec les mêmes types d'échantillons
-            // -------------------------------------------------------
+            // Vérification des doublons — même labo + mêmes échantillons + statut actif
             if (!dto.IsDraft)
             {
-                // Une demande est un vrai doublon seulement si TOUS les champs
-                // des échantillons sont identiques — même type, mêmes caractéristiques,
-                // même quantité ET même unité vers le même laboratoire
                 var newSamples = dto.Samples
                     .Select(s => new {
                         Type = s.Type.ToLower().Trim(),
@@ -53,14 +50,13 @@ namespace PouleLabApp.API.Services
                     .Where(r =>
                         r.LaboratoryId == dto.LaboratoryId &&
                         (r.Status == RequestStatus.Submitted ||
-                        r.Status == RequestStatus.Received ||
-                        r.Status == RequestStatus.InProgress ||
-                        r.Status == RequestStatus.InReview))
+                         r.Status == RequestStatus.Received ||
+                         r.Status == RequestStatus.InProgress ||
+                         r.Status == RequestStatus.InReview))
                     .ToListAsync();
 
                 var isDuplicate = existingRequests.Any(r =>
                 {
-                    // Vérifier d'abord que le nombre d'échantillons est identique
                     if (r.Samples.Count != dto.Samples.Count) return false;
 
                     var existingSamples = r.Samples
@@ -73,7 +69,6 @@ namespace PouleLabApp.API.Services
                         .OrderBy(s => s.Type)
                         .ToList();
 
-                    // Comparer chaque champ de chaque échantillon
                     return newSamples.Zip(existingSamples, (n, e) =>
                         n.Type == e.Type &&
                         n.Characteristics == e.Characteristics &&
@@ -117,7 +112,6 @@ namespace PouleLabApp.API.Services
                 await _context.SaveChangesAsync();
 
                 // Créer les résultats vides pour chaque type d'analyse demandé
-                // Les valeurs seront remplies plus tard par le laborantin
                 foreach (var analysisTypeId in sampleDto.AnalysisTypeIds)
                 {
                     var analysisType = await _context.AnalysisTypes.FindAsync(analysisTypeId);
@@ -129,14 +123,22 @@ namespace PouleLabApp.API.Services
                         AnalysisTypeId = analysisTypeId,
                         LowerBound = analysisType.ReferenceMin,
                         UpperBound = analysisType.ReferenceMax,
-                        RecordedById = clientId // Sera mis à jour par le laborantin
+                        RecordedById = clientId
                     });
                 }
             }
 
             await _context.SaveChangesAsync();
 
-            // Retourner la demande créée sous forme de DTO
+            // Notifier le client si la demande est soumise directement (pas un brouillon)
+            if (!dto.IsDraft)
+            {
+                var client = await _context.Users.FindAsync(clientId);
+                if (client != null)
+                    await _emailService.SendRequestSubmittedAsync(
+                        client.Email!, client.FirstName, request.Id);
+            }
+
             return await GetByIdAsync(request.Id)
                 ?? throw new Exception("Erreur lors de la récupération de la demande créée.");
         }
@@ -148,12 +150,14 @@ namespace PouleLabApp.API.Services
         {
             var request = await _context.AnalysisRequests
                 .Include(r => r.Samples)
+                .Include(r => r.Client)
                 .FirstOrDefaultAsync(r => r.Id == requestId)
                 ?? throw new KeyNotFoundException("Demande introuvable.");
 
             // Vérifier que la demande appartient bien au client qui la soumet
             if (request.ClientId != clientId)
-                throw new UnauthorizedAccessException("Vous n'êtes pas autorisé à soumettre cette demande.");
+                throw new UnauthorizedAccessException(
+                    "Vous n'êtes pas autorisé à soumettre cette demande.");
 
             // Vérifier que la demande est bien en brouillon
             if (request.Status != RequestStatus.Draft)
@@ -161,7 +165,8 @@ namespace PouleLabApp.API.Services
 
             // Vérifier qu'au moins un échantillon est présent
             if (!request.Samples.Any())
-                throw new ArgumentException("La demande doit contenir au moins un échantillon.");
+                throw new ArgumentException(
+                    "La demande doit contenir au moins un échantillon.");
 
             // Passer en Submitted
             request.Status = RequestStatus.Submitted;
@@ -169,6 +174,10 @@ namespace PouleLabApp.API.Services
             request.SubmittedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
+
+            // Notifier le client que sa demande a été soumise
+            await _emailService.SendRequestSubmittedAsync(
+                request.Client.Email!, request.Client.FirstName, requestId);
 
             return await GetByIdAsync(requestId)
                 ?? throw new Exception("Erreur lors de la récupération de la demande.");
@@ -204,7 +213,6 @@ namespace PouleLabApp.API.Services
                 .Include(r => r.Samples)
                 .AsQueryable();
 
-            // Appliquer le filtre par statut si fourni
             if (!string.IsNullOrEmpty(status) &&
                 Enum.TryParse<RequestStatus>(status, true, out var parsedStatus))
             {
@@ -238,16 +246,23 @@ namespace PouleLabApp.API.Services
         // -------------------------------------------------------
         public async Task<RequestDetailDto> ReceiveAsync(int requestId)
         {
-            var request = await _context.AnalysisRequests.FindAsync(requestId)
+            var request = await _context.AnalysisRequests
+                .Include(r => r.Client)
+                .FirstOrDefaultAsync(r => r.Id == requestId)
                 ?? throw new KeyNotFoundException("Demande introuvable.");
 
             if (request.Status != RequestStatus.Submitted)
-                throw new ArgumentException("Seules les demandes soumises peuvent être réceptionnées.");
+                throw new ArgumentException(
+                    "Seules les demandes soumises peuvent être réceptionnées.");
 
             request.Status = RequestStatus.Received;
             request.ReceivedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
+
+            // Notifier le client que sa demande a été réceptionnée
+            await _emailService.SendRequestReceivedAsync(
+                request.Client.Email!, request.Client.FirstName, requestId);
 
             return await GetByIdAsync(requestId)
                 ?? throw new Exception("Erreur lors de la récupération de la demande.");
@@ -258,16 +273,23 @@ namespace PouleLabApp.API.Services
         // -------------------------------------------------------
         public async Task<RequestDetailDto> AssignAsync(int requestId, string analystId)
         {
-            var request = await _context.AnalysisRequests.FindAsync(requestId)
+            var request = await _context.AnalysisRequests
+                .Include(r => r.Client)
+                .FirstOrDefaultAsync(r => r.Id == requestId)
                 ?? throw new KeyNotFoundException("Demande introuvable.");
 
             if (request.Status != RequestStatus.Received)
-                throw new ArgumentException("Seules les demandes réceptionnées peuvent être assignées.");
+                throw new ArgumentException(
+                    "Seules les demandes réceptionnées peuvent être assignées.");
 
             request.AssignedToId = analystId;
             request.Status = RequestStatus.InProgress;
 
             await _context.SaveChangesAsync();
+
+            // Notifier le client que sa demande a été assignée à un laborantin
+            await _emailService.SendRequestAssignedAsync(
+                request.Client.Email!, request.Client.FirstName, requestId);
 
             return await GetByIdAsync(requestId)
                 ?? throw new Exception("Erreur lors de la récupération de la demande.");
@@ -278,7 +300,9 @@ namespace PouleLabApp.API.Services
         // -------------------------------------------------------
         public async Task<RequestDetailDto> RejectAsync(int requestId, string reason)
         {
-            var request = await _context.AnalysisRequests.FindAsync(requestId)
+            var request = await _context.AnalysisRequests
+                .Include(r => r.Client)
+                .FirstOrDefaultAsync(r => r.Id == requestId)
                 ?? throw new KeyNotFoundException("Demande introuvable.");
 
             request.Status = RequestStatus.Closed;
@@ -287,6 +311,10 @@ namespace PouleLabApp.API.Services
                 : $"{request.Notes} | Refus : {reason}";
 
             await _context.SaveChangesAsync();
+
+            // Notifier le client du refus avec la raison
+            await _emailService.SendRequestRejectedAsync(
+                request.Client.Email!, request.Client.FirstName, requestId, reason);
 
             return await GetByIdAsync(requestId)
                 ?? throw new Exception("Erreur lors de la récupération de la demande.");
@@ -307,32 +335,29 @@ namespace PouleLabApp.API.Services
                 .FirstOrDefaultAsync(r => r.Id == requestId)
                 ?? throw new KeyNotFoundException("Demande introuvable.");
 
-            // Vérifier que la demande est bien assignée à ce laborantin
             if (request.AssignedToId != analystId)
-                throw new UnauthorizedAccessException("Vous n'êtes pas assigné à cette demande.");
+                throw new UnauthorizedAccessException(
+                    "Vous n'êtes pas assigné à cette demande.");
 
-            // Vérifier que la demande est en cours d'analyse
             if (request.Status != RequestStatus.InProgress)
-                throw new ArgumentException("La demande doit être en cours d'analyse pour saisir des résultats.");
+                throw new ArgumentException(
+                    "La demande doit être en cours d'analyse pour saisir des résultats.");
 
-            // Mettre à jour chaque résultat
             foreach (var resultDto in results)
             {
-                // Chercher le résultat dans les échantillons de la demande
                 var result = request.Samples
                     .SelectMany(s => s.Results)
                     .FirstOrDefault(r => r.Id == resultDto.ResultId)
-                    ?? throw new KeyNotFoundException($"Résultat id={resultDto.ResultId} introuvable.");
+                    ?? throw new KeyNotFoundException(
+                        $"Résultat id={resultDto.ResultId} introuvable.");
 
-                // Enregistrer la valeur mesurée
                 result.MeasuredValue = resultDto.MeasuredValue;
                 result.RecordedById = analystId;
                 result.RecordedAt = DateTime.UtcNow;
 
                 // Calcul automatique de l'anomalie
-                // IsAnomaly = true si la valeur est en dehors des bornes de référence
                 result.IsAnomaly = resultDto.MeasuredValue < result.LowerBound ||
-                                resultDto.MeasuredValue > result.UpperBound;
+                                   resultDto.MeasuredValue > result.UpperBound;
             }
 
             await _context.SaveChangesAsync();
@@ -343,9 +368,9 @@ namespace PouleLabApp.API.Services
 
         // -------------------------------------------------------
         // Marquer les analyses comme terminées (Laborantin)
-        // Passe la demande en InReview pour le chef de labo
         // -------------------------------------------------------
-        public async Task<RequestDetailDto> CompleteAnalysisAsync(int requestId, string analystId)
+        public async Task<RequestDetailDto> CompleteAnalysisAsync(
+            int requestId, string analystId)
         {
             var request = await _context.AnalysisRequests
                 .Include(r => r.Samples)
@@ -353,19 +378,19 @@ namespace PouleLabApp.API.Services
                 .FirstOrDefaultAsync(r => r.Id == requestId)
                 ?? throw new KeyNotFoundException("Demande introuvable.");
 
-            // Vérifier que la demande est assignée à ce laborantin
             if (request.AssignedToId != analystId)
-                throw new UnauthorizedAccessException("Vous n'êtes pas assigné à cette demande.");
+                throw new UnauthorizedAccessException(
+                    "Vous n'êtes pas assigné à cette demande.");
 
             if (request.Status != RequestStatus.InProgress)
-                throw new ArgumentException("La demande doit être en cours d'analyse.");
+                throw new ArgumentException(
+                    "La demande doit être en cours d'analyse.");
 
-            // Vérifier que tous les résultats ont été saisis (MeasuredValue != 0)
             var allResults = request.Samples.SelectMany(s => s.Results).ToList();
             if (allResults.Any(r => r.MeasuredValue == 0))
-                throw new ArgumentException("Tous les résultats doivent être saisis avant de terminer.");
+                throw new ArgumentException(
+                    "Tous les résultats doivent être saisis avant de terminer.");
 
-            // Passer en InReview — le chef de labo peut maintenant valider
             request.Status = RequestStatus.InReview;
 
             await _context.SaveChangesAsync();
@@ -376,31 +401,34 @@ namespace PouleLabApp.API.Services
 
         // -------------------------------------------------------
         // Valider les résultats (Chef de laboratoire)
-        // Passe la demande en Validated — résultats disponibles pour le client
         // -------------------------------------------------------
-        public async Task<RequestDetailDto> ValidateAsync(int requestId, string labChiefId)
+        public async Task<RequestDetailDto> ValidateAsync(
+            int requestId, string labChiefId)
         {
             var request = await _context.AnalysisRequests
-                .FindAsync(requestId)
+                .Include(r => r.Client)
+                .FirstOrDefaultAsync(r => r.Id == requestId)
                 ?? throw new KeyNotFoundException("Demande introuvable.");
 
             if (request.Status != RequestStatus.InReview)
-                throw new ArgumentException("Seules les demandes en cours de révision peuvent être validées.");
+                throw new ArgumentException(
+                    "Seules les demandes en cours de révision peuvent être validées.");
 
             var oldStatus = request.Status.ToString();
-
-            // Passer en Validated
             request.Status = RequestStatus.Validated;
+
             await _context.SaveChangesAsync();
 
             // Enregistrer dans l'historique
             await _auditLogService.LogAsync(
-                requestId,
-                labChiefId,
+                requestId, labChiefId,
                 "Validation des résultats",
                 oldStatus,
-                RequestStatus.Validated.ToString()
-            );
+                RequestStatus.Validated.ToString());
+
+            // Notifier le client que ses résultats sont disponibles
+            await _emailService.SendResultsReadyAsync(
+                request.Client.Email!, request.Client.FirstName, requestId);
 
             return await GetByIdAsync(requestId)
                 ?? throw new Exception("Erreur lors de la récupération de la demande.");
@@ -408,23 +436,20 @@ namespace PouleLabApp.API.Services
 
         // -------------------------------------------------------
         // Rejeter et renvoyer à la réception (Chef de laboratoire)
-        // Passe la demande en Rejected — sera renvoyée pour re-analyse
         // -------------------------------------------------------
         public async Task<RequestDetailDto> InvalidateAsync(
-            int requestId,
-            string labChiefId,
-            string reason)
+            int requestId, string labChiefId, string reason)
         {
             var request = await _context.AnalysisRequests
-                .FindAsync(requestId)
+                .Include(r => r.Client)
+                .FirstOrDefaultAsync(r => r.Id == requestId)
                 ?? throw new KeyNotFoundException("Demande introuvable.");
 
             if (request.Status != RequestStatus.InReview)
-                throw new ArgumentException("Seules les demandes en cours de révision peuvent être rejetées.");
+                throw new ArgumentException(
+                    "Seules les demandes en cours de révision peuvent être rejetées.");
 
             var oldStatus = request.Status.ToString();
-
-            // Repasser en Received pour relancer le processus depuis la réception
             request.Status = RequestStatus.Rejected;
             request.Notes = string.IsNullOrEmpty(request.Notes)
                 ? $"Rejet chef de labo : {reason}"
@@ -434,12 +459,10 @@ namespace PouleLabApp.API.Services
 
             // Enregistrer dans l'historique
             await _auditLogService.LogAsync(
-                requestId,
-                labChiefId,
+                requestId, labChiefId,
                 "Rejet des résultats",
                 oldStatus,
-                RequestStatus.Rejected.ToString()
-            );
+                RequestStatus.Rejected.ToString());
 
             return await GetByIdAsync(requestId)
                 ?? throw new Exception("Erreur lors de la récupération de la demande.");
@@ -468,10 +491,73 @@ namespace PouleLabApp.API.Services
         }
 
         // -------------------------------------------------------
+        // Définir les échéances d'une demande
+        // -------------------------------------------------------
+        public async Task<RequestDetailDto> SetDeadlinesAsync(
+            int requestId, List<SetDeadlineDto> deadlines)
+        {
+            var request = await _context.AnalysisRequests
+                .Include(r => r.Deadlines)
+                .FirstOrDefaultAsync(r => r.Id == requestId)
+                ?? throw new KeyNotFoundException("Demande introuvable.");
+
+            foreach (var deadlineDto in deadlines)
+            {
+                if (!Enum.TryParse<DeadlinePhase>(deadlineDto.Phase, true, out var phase))
+                    throw new ArgumentException($"Phase invalide : {deadlineDto.Phase}");
+
+                if (deadlineDto.PlannedDate <= DateTime.UtcNow)
+                    throw new ArgumentException(
+                        $"La date pour la phase {deadlineDto.Phase} doit être dans le futur.");
+
+                var existing = request.Deadlines.FirstOrDefault(d => d.Phase == phase);
+
+                if (existing != null)
+                {
+                    existing.PlannedDate = deadlineDto.PlannedDate;
+                    existing.IsOverdue = false;
+                }
+                else
+                {
+                    _context.Deadlines.Add(new Deadline
+                    {
+                        RequestId = requestId,
+                        Phase = phase,
+                        PlannedDate = deadlineDto.PlannedDate,
+                        IsOverdue = false
+                    });
+                }
+            }
+
+            await _context.SaveChangesAsync();
+
+            return await GetByIdAsync(requestId)
+                ?? throw new Exception("Erreur lors de la récupération de la demande.");
+        }
+
+        // -------------------------------------------------------
+        // Récupérer les échéances d'une demande
+        // -------------------------------------------------------
+        public async Task<List<DeadlineDto>> GetDeadlinesAsync(int requestId)
+        {
+            var deadlines = await _context.Deadlines
+                .Where(d => d.RequestId == requestId)
+                .OrderBy(d => d.Phase)
+                .ToListAsync();
+
+            return deadlines.Select(d => new DeadlineDto
+            {
+                Id = d.Id,
+                Phase = d.Phase.ToString(),
+                PlannedDate = d.PlannedDate,
+                ActualDate = d.ActualDate,
+                IsOverdue = d.IsOverdue
+            }).ToList();
+        }
+
+        // -------------------------------------------------------
         // Méthodes privées de mapping Model → DTO
         // -------------------------------------------------------
-
-        // Convertit une AnalysisRequest en vue allégée pour les listes
         private static RequestListDto MapToListDto(AnalysisRequest r) => new()
         {
             Id = r.Id,
@@ -484,7 +570,6 @@ namespace PouleLabApp.API.Services
             SamplesCount = r.Samples?.Count ?? 0
         };
 
-        // Convertit une AnalysisRequest en vue complète pour le détail
         private static RequestDetailDto MapToDetailDto(AnalysisRequest r) => new()
         {
             Id = r.Id,
@@ -521,76 +606,5 @@ namespace PouleLabApp.API.Services
                 }).ToList() ?? new()
             }).ToList() ?? new()
         };
-
-        // -------------------------------------------------------
-// Définir les échéances d'une demande
-// -------------------------------------------------------
-public async Task<RequestDetailDto> SetDeadlinesAsync(
-    int requestId,
-    List<SetDeadlineDto> deadlines)
-{
-    var request = await _context.AnalysisRequests
-        .Include(r => r.Deadlines)
-        .FirstOrDefaultAsync(r => r.Id == requestId)
-        ?? throw new KeyNotFoundException("Demande introuvable.");
-
-    foreach (var deadlineDto in deadlines)
-    {
-        // Vérifier que la phase est valide
-        if (!Enum.TryParse<DeadlinePhase>(deadlineDto.Phase, true, out var phase))
-            throw new ArgumentException($"Phase invalide : {deadlineDto.Phase}");
-
-        // Vérifier que la date est dans le futur
-        if (deadlineDto.PlannedDate <= DateTime.UtcNow)
-            throw new ArgumentException($"La date pour la phase {deadlineDto.Phase} doit être dans le futur.");
-
-        // Mettre à jour si l'échéance existe déjà, sinon en créer une nouvelle
-        var existing = request.Deadlines
-            .FirstOrDefault(d => d.Phase == phase);
-
-        if (existing != null)
-        {
-            existing.PlannedDate = deadlineDto.PlannedDate;
-            existing.IsOverdue = false;
-        }
-        else
-        {
-            _context.Deadlines.Add(new Deadline
-            {
-                RequestId = requestId,
-                Phase = phase,
-                PlannedDate = deadlineDto.PlannedDate,
-                IsOverdue = false
-            });
-        }
     }
-
-    await _context.SaveChangesAsync();
-
-    return await GetByIdAsync(requestId)
-        ?? throw new Exception("Erreur lors de la récupération de la demande.");
-    }
-
-        // -------------------------------------------------------
-        // Récupérer les échéances d'une demande
-        // -------------------------------------------------------
-        public async Task<List<DeadlineDto>> GetDeadlinesAsync(int requestId)
-        {
-            var deadlines = await _context.Deadlines
-                .Where(d => d.RequestId == requestId)
-                .OrderBy(d => d.Phase)
-                .ToListAsync();
-
-            return deadlines.Select(d => new DeadlineDto
-            {
-                Id = d.Id,
-                Phase = d.Phase.ToString(),
-                PlannedDate = d.PlannedDate,
-                ActualDate = d.ActualDate,
-                IsOverdue = d.IsOverdue
-            }).ToList();
-        }
-    }
-
-    
 }

@@ -111,6 +111,7 @@ builder.Services.AddScoped<IAnalysisRequestService, AnalysisRequestService>();
 builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 // Background service — vérifie les échéances dépassées toutes les heures
 builder.Services.AddHostedService<DeadlineCheckerService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
 // D'autres services seront ajoutés ici au fil des semaines
 
 // ============================================================
