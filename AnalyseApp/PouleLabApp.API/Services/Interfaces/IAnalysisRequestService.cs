@@ -11,7 +11,6 @@ namespace PouleLabApp.API.Services.Interfaces
         Task<List<RequestListDto>> GetByClientAsync(string clientId);
         Task<RequestDetailDto> ReceiveAsync(int requestId);
         Task<RequestDetailDto> AssignAsync(int requestId, string analystId);
-        Task<RequestDetailDto> RejectAsync(int requestId, string reason);
         Task<RequestDetailDto> SaveResultsAsync(int requestId, string analystId, List<SaveResultDto> results);
         Task<RequestDetailDto> CompleteAnalysisAsync(int requestId, string analystId);
 
@@ -31,6 +30,12 @@ namespace PouleLabApp.API.Services.Interfaces
         Task<List<DeadlineDto>> GetDeadlinesAsync(int requestId);
 
         // Modifier une demande existante — uniquement si en brouillon
-Task<RequestDetailDto> UpdateAsync(int requestId, string userId, UpdateRequestDto dto);
+        Task<RequestDetailDto> UpdateAsync(int requestId, string userId, UpdateRequestDto dto);
+    
+        // Laborantin accepte la demande assignée
+        Task<RequestDetailDto> AnalystAcceptAsync(int requestId, string analystId);
+
+        // Laborantin refuse la demande assignée — clôture automatique
+        Task<RequestDetailDto> AnalystRejectAsync(int requestId, string analystId, string reason);
     }
 }

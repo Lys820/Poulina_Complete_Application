@@ -130,18 +130,6 @@ namespace PouleLabApp.API.Controllers
         }
 
         // -------------------------------------------------------
-        // PUT /api/requests/{id}/reject
-        // Refuser — uniquement Receptionist
-        // -------------------------------------------------------
-        [HttpPut("{id}/reject")]
-        [Authorize(Policy = "RequireReceptionistOnly")]
-        public async Task<IActionResult> Reject(int id, [FromBody] string reason)
-        {
-            var result = await _requestService.RejectAsync(id, reason);
-            return Ok(result);
-        }
-
-        // -------------------------------------------------------
         // POST /api/requests/{id}/results
         // Saisir les résultats — uniquement Analyst (pas Admin)
         // -------------------------------------------------------
@@ -292,6 +280,62 @@ namespace PouleLabApp.API.Controllers
                 return StatusCode(403, new { message = "Seul le créateur de la demande peut la modifier." });
 
             var result = await _requestService.UpdateAsync(id, userId, dto);
+            return Ok(result);
+        }
+
+        // -------------------------------------------------------
+        // PUT /api/requests/{id}/analyst-accept
+        // Laborantin accepte la demande — confirme la prise en charge
+        // -------------------------------------------------------
+        [HttpPut("{id}/analyst-accept")]
+        [Authorize(Policy = "RequireAnalystOnly")]
+        public async Task<IActionResult> AnalystAccept(int id)
+        {
+            var analystId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                ?? User.FindFirst("sub")?.Value;
+
+            if (analystId == null)
+                return Unauthorized(new { message = "Utilisateur non identifié." });
+
+            var request = await _requestService.GetByIdAsync(id);
+            if (request == null)
+                return NotFound(new { message = "Demande introuvable." });
+
+            if (request.AssignedToId != analystId)
+                return StatusCode(403, new { message = "Cette demande ne vous est pas assignée." });
+
+            if (request.Status != "InProgress")
+                return BadRequest(new { message = "Seules les demandes assignées peuvent être acceptées." });
+
+            var result = await _requestService.AnalystAcceptAsync(id, analystId);
+            return Ok(result);
+        }
+
+        // -------------------------------------------------------
+        // PUT /api/requests/{id}/analyst-reject
+        // Laborantin refuse la demande — clôture automatique
+        // -------------------------------------------------------
+        [HttpPut("{id}/analyst-reject")]
+        [Authorize(Policy = "RequireAnalystOnly")]
+        public async Task<IActionResult> AnalystReject(int id, [FromBody] string reason)
+        {
+            var analystId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                ?? User.FindFirst("sub")?.Value;
+
+            if (analystId == null)
+                return Unauthorized(new { message = "Utilisateur non identifié." });
+
+            var request = await _requestService.GetByIdAsync(id);
+            if (request == null)
+                return NotFound(new { message = "Demande introuvable." });
+
+            if (request.AssignedToId != analystId)
+                return StatusCode(403, new { message = "Cette demande ne vous est pas assignée." });
+
+            if (request.Status != "InProgress")
+                return BadRequest(new { message = "Seules les demandes assignées peuvent être refusées." });
+
+            var result = await _requestService.AnalystRejectAsync(id, analystId, reason);
             return Ok(result);
         }
     }

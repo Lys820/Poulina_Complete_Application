@@ -295,30 +295,6 @@ namespace PouleLabApp.API.Services
                 ?? throw new Exception("Erreur lors de la récupération de la demande.");
         }
 
-        // -------------------------------------------------------
-        // Refuser une demande
-        // -------------------------------------------------------
-        public async Task<RequestDetailDto> RejectAsync(int requestId, string reason)
-        {
-            var request = await _context.AnalysisRequests
-                .Include(r => r.Client)
-                .FirstOrDefaultAsync(r => r.Id == requestId)
-                ?? throw new KeyNotFoundException("Demande introuvable.");
-
-            request.Status = RequestStatus.Closed;
-            request.Notes = string.IsNullOrEmpty(request.Notes)
-                ? $"Refus : {reason}"
-                : $"{request.Notes} | Refus : {reason}";
-
-            await _context.SaveChangesAsync();
-
-            // Notifier le client du refus avec la raison
-            await _emailService.SendRequestRejectedAsync(
-                request.Client.Email!, request.Client.FirstName, requestId, reason);
-
-            return await GetByIdAsync(requestId)
-                ?? throw new Exception("Erreur lors de la récupération de la demande.");
-        }
 
         // -------------------------------------------------------
         // Saisir les résultats d'analyse (Laborantin)
@@ -583,6 +559,7 @@ namespace PouleLabApp.API.Services
             ClientId = r.ClientId,
             ClientName = $"{r.Client?.FirstName} {r.Client?.LastName}",
             ClientEmail = r.Client?.Email ?? "",
+            AssignedToId = r.AssignedToId,
             AssignedToName = r.AssignedTo != null
                 ? $"{r.AssignedTo.FirstName} {r.AssignedTo.LastName}"
                 : null,
@@ -683,6 +660,89 @@ namespace PouleLabApp.API.Services
             }
 
             await _context.SaveChangesAsync();
+
+            return await GetByIdAsync(requestId)
+                ?? throw new Exception("Erreur lors de la récupération de la demande.");
+        }
+
+        // -------------------------------------------------------
+        // Laborantin accepte la demande assignée
+        // La demande passe en InProgress — analyses en cours
+        // -------------------------------------------------------
+        public async Task<RequestDetailDto> AnalystAcceptAsync(
+            int requestId, string analystId)
+        {
+            var request = await _context.AnalysisRequests
+                .Include(r => r.Client)
+                .FirstOrDefaultAsync(r => r.Id == requestId)
+                ?? throw new KeyNotFoundException("Demande introuvable.");
+
+            // Vérifier que la demande est bien assignée à ce laborantin
+            if (request.AssignedToId != analystId)
+                throw new UnauthorizedAccessException(
+                    "Cette demande ne vous est pas assignée.");
+
+            // Vérifier que la demande est en attente d'acceptation
+            if (request.Status != RequestStatus.InProgress)
+                throw new ArgumentException(
+                    "Seules les demandes assignées peuvent être acceptées.");
+
+            // Enregistrer l'acceptation dans l'historique
+            await _auditLogService.LogAsync(
+                requestId, analystId,
+                "Acceptation par le laborantin",
+                RequestStatus.InProgress.ToString(),
+                RequestStatus.InProgress.ToString());
+
+            return await GetByIdAsync(requestId)
+                ?? throw new Exception("Erreur lors de la récupération de la demande.");
+        }
+
+        // -------------------------------------------------------
+        // Laborantin refuse la demande assignée
+        // La demande est automatiquement clôturée selon le workflow
+        // -------------------------------------------------------
+        public async Task<RequestDetailDto> AnalystRejectAsync(
+            int requestId, string analystId, string reason)
+        {
+            var request = await _context.AnalysisRequests
+                .Include(r => r.Client)
+                .FirstOrDefaultAsync(r => r.Id == requestId)
+                ?? throw new KeyNotFoundException("Demande introuvable.");
+
+            // Vérifier que la demande est bien assignée à ce laborantin
+            if (request.AssignedToId != analystId)
+                throw new UnauthorizedAccessException(
+                    "Cette demande ne vous est pas assignée.");
+
+            // Vérifier que la demande est en cours (assignée)
+            if (request.Status != RequestStatus.InProgress)
+                throw new ArgumentException(
+                    "Seules les demandes assignées peuvent être refusées.");
+
+            var oldStatus = request.Status.ToString();
+
+            // Clôturer automatiquement la demande
+            request.Status = RequestStatus.Closed;
+            request.Notes = string.IsNullOrEmpty(request.Notes)
+                ? $"Refus laborantin : {reason}"
+                : $"{request.Notes} | Refus laborantin : {reason}";
+
+            await _context.SaveChangesAsync();
+
+            // Enregistrer dans l'historique
+            await _auditLogService.LogAsync(
+                requestId, analystId,
+                "Refus par le laborantin",
+                oldStatus,
+                RequestStatus.Closed.ToString());
+
+            // Notifier le client du refus
+            await _emailService.SendRequestRejectedAsync(
+                request.Client.Email!,
+                request.Client.FirstName,
+                requestId,
+                reason);
 
             return await GetByIdAsync(requestId)
                 ?? throw new Exception("Erreur lors de la récupération de la demande.");

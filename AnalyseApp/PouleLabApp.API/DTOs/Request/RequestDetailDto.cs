@@ -14,6 +14,7 @@ namespace PouleLabApp.API.DTOs.Request
         public string ClientId { get; set; } = string.Empty;
         public string ClientName { get; set; } = string.Empty;     // Prénom + Nom
         public string ClientEmail { get; set; } = string.Empty;
+        public string? AssignedToId { get; set; }
         public string? AssignedToName { get; set; }                // Laborantin assigné (peut être null)
         public List<SampleDetailDto> Samples { get; set; } = new();
     }
