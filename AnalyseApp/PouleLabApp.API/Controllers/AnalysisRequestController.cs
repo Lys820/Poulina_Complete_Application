@@ -143,6 +143,13 @@ namespace PouleLabApp.API.Controllers
             if (analystId == null)
                 return Unauthorized(new { message = "Utilisateur non identifié." });
 
+            var request = await _requestService.GetByIdAsync(id);
+            if (request == null)
+                return NotFound(new { message = "Demande introuvable." });
+
+            if (request.Status != "InProgress")
+                return BadRequest(new { message = "La demande doit être acceptée avant de saisir les résultats." });
+
             var result = await _requestService.SaveResultsAsync(id, analystId, results);
             return Ok(result);
         }
@@ -160,6 +167,13 @@ namespace PouleLabApp.API.Controllers
 
             if (analystId == null)
                 return Unauthorized(new { message = "Utilisateur non identifié." });
+
+            var request = await _requestService.GetByIdAsync(id);
+            if (request == null)
+                return NotFound(new { message = "Demande introuvable." });
+
+            if (request.Status != "InProgress")
+                return BadRequest(new { message = "La demande doit être en cours d'analyse." });
 
             var result = await _requestService.CompleteAnalysisAsync(id, analystId);
             return Ok(result);
@@ -196,6 +210,13 @@ namespace PouleLabApp.API.Controllers
 
             if (labChiefId == null)
                 return Unauthorized(new { message = "Utilisateur non identifié." });
+
+            var request = await _requestService.GetByIdAsync(id);
+            if (request == null)
+                return NotFound(new { message = "Demande introuvable." });
+
+            if (request.Status != "InReview")
+                return BadRequest(new { message = "Seules les demandes en cours de révision peuvent être rejetées." });
 
             var result = await _requestService.InvalidateAsync(id, labChiefId, reason);
             return Ok(result);
@@ -304,7 +325,7 @@ namespace PouleLabApp.API.Controllers
             if (request.AssignedToId != analystId)
                 return StatusCode(403, new { message = "Cette demande ne vous est pas assignée." });
 
-            if (request.Status != "InProgress")
+            if (request.Status != "Assigned")
                 return BadRequest(new { message = "Seules les demandes assignées peuvent être acceptées." });
 
             var result = await _requestService.AnalystAcceptAsync(id, analystId);
@@ -332,8 +353,8 @@ namespace PouleLabApp.API.Controllers
             if (request.AssignedToId != analystId)
                 return StatusCode(403, new { message = "Cette demande ne vous est pas assignée." });
 
-            if (request.Status != "InProgress")
-                return BadRequest(new { message = "Seules les demandes assignées peuvent être refusées." });
+            if (request.Status != "Assigned")
+                return BadRequest(new { message = "Impossible de refuser une demande déjà acceptée." });
 
             var result = await _requestService.AnalystRejectAsync(id, analystId, reason);
             return Ok(result);

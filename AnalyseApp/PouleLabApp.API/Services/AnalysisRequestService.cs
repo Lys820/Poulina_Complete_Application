@@ -283,7 +283,7 @@ namespace PouleLabApp.API.Services
                     "Seules les demandes réceptionnées peuvent être assignées.");
 
             request.AssignedToId = analystId;
-            request.Status = RequestStatus.InProgress;
+            request.Status = RequestStatus.Assigned;
 
             await _context.SaveChangesAsync();
 
@@ -411,13 +411,18 @@ namespace PouleLabApp.API.Services
         }
 
         // -------------------------------------------------------
-        // Rejeter et renvoyer à la réception (Chef de laboratoire)
+        // Rejeter et renvoyer au laborantin (Chef de laboratoire)
+        // La demande repasse en InProgress pour que le laborantin
+        // corrige et resaisisse les résultats avant de renvoyer
+        // à la validation
         // -------------------------------------------------------
         public async Task<RequestDetailDto> InvalidateAsync(
             int requestId, string labChiefId, string reason)
         {
             var request = await _context.AnalysisRequests
                 .Include(r => r.Client)
+                .Include(r => r.Samples)
+                    .ThenInclude(s => s.Results)
                 .FirstOrDefaultAsync(r => r.Id == requestId)
                 ?? throw new KeyNotFoundException("Demande introuvable.");
 
@@ -426,19 +431,33 @@ namespace PouleLabApp.API.Services
                     "Seules les demandes en cours de révision peuvent être rejetées.");
 
             var oldStatus = request.Status.ToString();
-            request.Status = RequestStatus.Rejected;
+
+            // Repasser en InProgress — le même laborantin doit refaire l'analyse
+            request.Status = RequestStatus.InProgress;
             request.Notes = string.IsNullOrEmpty(request.Notes)
                 ? $"Rejet chef de labo : {reason}"
                 : $"{request.Notes} | Rejet chef de labo : {reason}";
+
+            // Remettre toutes les valeurs mesurées à 0
+            // pour forcer le laborantin à tout resaisir
+            foreach (var sample in request.Samples)
+            {
+                foreach (var result in sample.Results)
+                {
+                    result.MeasuredValue = 0;
+                    result.IsAnomaly = false;
+                    result.RecordedAt = DateTime.UtcNow;
+                }
+            }
 
             await _context.SaveChangesAsync();
 
             // Enregistrer dans l'historique
             await _auditLogService.LogAsync(
                 requestId, labChiefId,
-                "Rejet des résultats",
+                "Rejet des résultats — renvoi au laborantin",
                 oldStatus,
-                RequestStatus.Rejected.ToString());
+                RequestStatus.InProgress.ToString());
 
             return await GetByIdAsync(requestId)
                 ?? throw new Exception("Erreur lors de la récupération de la demande.");
@@ -683,15 +702,20 @@ namespace PouleLabApp.API.Services
                     "Cette demande ne vous est pas assignée.");
 
             // Vérifier que la demande est en attente d'acceptation
-            if (request.Status != RequestStatus.InProgress)
+            if (request.Status != RequestStatus.Assigned)
                 throw new ArgumentException(
                     "Seules les demandes assignées peuvent être acceptées.");
+
+            // passe en InProgress après acceptation de la demande par le laborantin
+            request.Status = RequestStatus.InProgress;
+
+            await _context.SaveChangesAsync();
 
             // Enregistrer l'acceptation dans l'historique
             await _auditLogService.LogAsync(
                 requestId, analystId,
                 "Acceptation par le laborantin",
-                RequestStatus.InProgress.ToString(),
+                RequestStatus.Assigned.ToString(),
                 RequestStatus.InProgress.ToString());
 
             return await GetByIdAsync(requestId)
@@ -716,7 +740,7 @@ namespace PouleLabApp.API.Services
                     "Cette demande ne vous est pas assignée.");
 
             // Vérifier que la demande est en cours (assignée)
-            if (request.Status != RequestStatus.InProgress)
+            if (request.Status != RequestStatus.Assigned)
                 throw new ArgumentException(
                     "Seules les demandes assignées peuvent être refusées.");
 
