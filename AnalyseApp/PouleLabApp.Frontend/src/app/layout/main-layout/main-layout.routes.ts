@@ -46,6 +46,13 @@ export const LAYOUT_ROUTES: Routes = [
             (m) => m.RequestResultsComponent,
           ),
       },
+      {
+        path: 'notifications',
+        loadComponent: () =>
+          import('../../pages/notifications/notifications.component').then(
+            (m) => m.NotificationsComponent,
+          ),
+      },
     ],
   },
 ];
