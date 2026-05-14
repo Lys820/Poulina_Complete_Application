@@ -280,14 +280,7 @@
 
     <div class="d-flex gap-2">
       @if (currentStep() < totalSteps) {
-        <button
-          type="button"
-          class="btn btn-primary"
-          (click)="nextStep()"
-          [disabled]="!canGoNext()"
-        >
-          Suivant →
-        </button>
+        <button type="button" class="btn btn-primary" (click)="nextStep()">Suivant →</button>
       } @else {
         <button type="button" class="btn btn-light" (click)="submit(true)" [disabled]="isLoading()">
           Enregistrer comme brouillon
@@ -297,6 +290,7 @@
           class="btn btn-primary"
           (click)="submit(false)"
           [disabled]="isLoading()"
+          [title]="!isFormCompleteForSubmit() ? 'Complétez tous les champs pour soumettre' : ''"
         >
           @if (isLoading()) {
             <span class="spinner-border spinner-border-sm me-2"></span>

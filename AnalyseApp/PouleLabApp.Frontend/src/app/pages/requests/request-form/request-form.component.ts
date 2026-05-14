@@ -1,7 +1,7 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule } from '@angular/forms';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { FormBuilder, FormGroup, FormArray, ReactiveFormsModule } from '@angular/forms';
+import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { LaboratoryService } from '../../../core/services/laboratory.service';
 import { RequestService } from '../../../core/services/request.service';
 import { Laboratory, AnalysisType } from '../../../core/models/laboratory.model';
@@ -21,6 +21,8 @@ export class RequestFormComponent implements OnInit {
   errorMessage = signal('');
   currentStep = signal(1);
   totalSteps = 3;
+  isEditMode = signal(false);
+  requestId = signal<number | null>(null);
 
   constructor(
     private fb: FormBuilder,
@@ -30,52 +32,80 @@ export class RequestFormComponent implements OnInit {
     private requestService: RequestService,
   ) {}
 
-  requestId = signal<number | null>(null);
-  isEditMode = signal(false);
-
   ngOnInit(): void {
+    this.buildForm();
+    this.loadData();
+
+    // Détecter le mode édition
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
       this.requestId.set(Number(id));
       this.isEditMode.set(true);
-      this.loadExistingRequest(Number(id));
     }
-    this.buildForm();
-    this.loadData();
-  }
-
-  loadExistingRequest(id: number): void {
-    this.requestService.getById(id).subscribe({
-      next: (req) => {
-        this.form.patchValue({
-          laboratoryId: req.laboratoryName,
-          notes: req.notes,
-          isDraft: req.isDraft,
-        });
-      },
-    });
   }
 
   buildForm(): void {
     this.form = this.fb.group({
-      laboratoryId: [null, Validators.required],
+      laboratoryId: [null], // ← pas de Validators.required
       notes: [''],
-      isDraft: [false],
+      isDraft: [true],
       samples: this.fb.array([this.createSample()]),
     });
   }
 
   loadData(): void {
     this.labService.getLaboratories().subscribe({
-      next: (labs) => this.laboratories.set(labs),
+      next: (labs) => {
+        this.laboratories.set(labs);
+        // Charger la demande existante APRÈS avoir les données
+        if (this.isEditMode() && this.requestId()) {
+          this.loadExistingRequest(this.requestId()!);
+        }
+      },
     });
     this.labService.getAnalysisTypes().subscribe({
       next: (types) => this.analysisTypes.set(types),
     });
   }
 
+  loadExistingRequest(id: number): void {
+    this.requestService.getById(id).subscribe({
+      next: (req) => {
+        // Vider les échantillons existants
+        while (this.samples.length) {
+          this.samples.removeAt(0);
+        }
+
+        // Pré-remplir les infos de base
+        this.form.patchValue({
+          laboratoryId: req.laboratoryId,
+          notes: req.notes,
+          isDraft: req.isDraft,
+        });
+
+        // Recréer les échantillons avec leurs valeurs
+        req.samples.forEach((sample) => {
+          const sampleGroup = this.createSample();
+          sampleGroup.patchValue({
+            type: sample.type,
+            characteristics: sample.characteristics,
+            quantity: sample.quantity,
+            unit: sample.unit,
+            analysisTypeIds: sample.results.map((r) => r.analysisTypeId),
+          });
+          this.samples.push(sampleGroup);
+        });
+
+        // Si aucun échantillon, en ajouter un vide
+        if (this.samples.length === 0) {
+          this.samples.push(this.createSample());
+        }
+      },
+    });
+  }
+
   // -------------------------------------------------------
-  // Gestion des échantillons
+  // Gestion des échantillons — sans validators obligatoires
   // -------------------------------------------------------
   get samples(): FormArray {
     return this.form.get('samples') as FormArray;
@@ -83,11 +113,11 @@ export class RequestFormComponent implements OnInit {
 
   createSample(): FormGroup {
     return this.fb.group({
-      type: ['', Validators.required],
-      characteristics: ['', Validators.required],
-      quantity: [null, [Validators.required, Validators.min(0.01)]],
-      unit: ['', Validators.required],
-      analysisTypeIds: [[], Validators.required],
+      type: [''], // ← pas de Validators.required
+      characteristics: [''],
+      quantity: [null],
+      unit: [''],
+      analysisTypeIds: [[]],
     });
   }
 
@@ -101,14 +131,10 @@ export class RequestFormComponent implements OnInit {
     }
   }
 
-  // -------------------------------------------------------
-  // Gestion des types d'analyses par échantillon
-  // -------------------------------------------------------
   toggleAnalysisType(sampleIndex: number, typeId: number): void {
     const control = this.samples.at(sampleIndex).get('analysisTypeIds')!;
     const current: number[] = control.value;
     const idx = current.indexOf(typeId);
-
     if (idx === -1) {
       control.setValue([...current, typeId]);
     } else {
@@ -117,12 +143,17 @@ export class RequestFormComponent implements OnInit {
   }
 
   isTypeSelected(sampleIndex: number, typeId: number): boolean {
-    const current: number[] = this.samples.at(sampleIndex).get('analysisTypeIds')!.value;
-    return current.includes(typeId);
+    return (this.samples.at(sampleIndex).get('analysisTypeIds')!.value as number[]).includes(
+      typeId,
+    );
+  }
+
+  hasNoAnalysisTypes(sampleIndex: number): boolean {
+    return (this.samples.at(sampleIndex).get('analysisTypeIds')!.value as number[]).length === 0;
   }
 
   // -------------------------------------------------------
-  // Navigation entre étapes
+  // Navigation libre entre étapes
   // -------------------------------------------------------
   nextStep(): void {
     if (this.currentStep() < this.totalSteps) {
@@ -136,71 +167,75 @@ export class RequestFormComponent implements OnInit {
     }
   }
 
+  // Plus de blocage sur la navigation
   canGoNext(): boolean {
-    if (this.currentStep() === 1) {
-      return this.form.get('laboratoryId')!.valid;
-    }
-    if (this.currentStep() === 2) {
-      return this.samples.controls.every(
-        (s) =>
-          s.get('type')!.valid &&
-          s.get('characteristics')!.valid &&
-          s.get('quantity')!.valid &&
-          s.get('unit')!.valid,
-      );
-    }
     return true;
+  }
+
+  // -------------------------------------------------------
+  // Validation avant soumission
+  // -------------------------------------------------------
+  isFormCompleteForSubmit(): boolean {
+    // Labo obligatoire
+    if (!this.form.get('laboratoryId')!.value) return false;
+
+    // Chaque échantillon doit être complet
+    return this.samples.controls.every(
+      (s) =>
+        s.get('type')!.value?.trim() &&
+        s.get('characteristics')!.value?.trim() &&
+        s.get('quantity')!.value > 0 &&
+        s.get('unit')!.value?.trim() &&
+        (s.get('analysisTypeIds')!.value as number[]).length > 0,
+    );
   }
 
   // -------------------------------------------------------
   // Soumission
   // -------------------------------------------------------
   submit(isDraft: boolean): void {
-    this.form.patchValue({ isDraft });
-
-    // Vérifier qu'au moins un type d'analyse est sélectionné par échantillon
-    const hasAnalysisTypes = this.samples.controls.every(
-      (s) => (s.get('analysisTypeIds')!.value as number[]).length > 0,
-    );
-
-    if (!isDraft && !hasAnalysisTypes) {
-      this.errorMessage.set("Sélectionnez au moins un type d'analyse par échantillon.");
+    // Pour soumettre, valider que tout est rempli
+    if (!isDraft && !this.isFormCompleteForSubmit()) {
+      this.errorMessage.set(
+        'Pour soumettre, remplissez tous les champs et sélectionnez au moins une analyse par échantillon.',
+      );
       return;
     }
+
+    const formValue = {
+      ...this.form.value,
+      isDraft,
+      laboratoryId: this.form.value.laboratoryId ?? 0,
+      samples: isDraft
+        ? this.form.value.samples
+            .filter((s: any) => s.type?.trim())
+            .map((s: any) => ({
+              ...s,
+              quantity: s.quantity ?? 0, // ← null devient 0
+            }))
+        : this.form.value.samples.map((s: any) => ({
+            ...s,
+            quantity: s.quantity ?? 0, // ← null devient 0 aussi pour la soumission
+          })),
+    };
 
     this.isLoading.set(true);
     this.errorMessage.set('');
 
-    // Mode édition — PUT
-    if (this.isEditMode() && this.requestId()) {
-      this.requestService.update(this.requestId()!, this.form.value).subscribe({
-        next: (result) => {
-          this.isLoading.set(false);
-          this.router.navigate(['/app/requests', result.id]);
-        },
-        error: (err) => {
-          this.isLoading.set(false);
-          this.errorMessage.set(err.error?.detail ?? 'Erreur lors de la modification.');
-        },
-      });
-    } else {
-      // Mode création — POST
-      this.requestService.create(this.form.value).subscribe({
-        next: (result) => {
-          this.isLoading.set(false);
-          this.router.navigate(['/app/requests', result.id]);
-        },
-        error: (err) => {
-          this.isLoading.set(false);
-          this.errorMessage.set(err.error?.detail ?? 'Erreur lors de la création.');
-        },
-      });
-    }
-  }
+    const action =
+      this.isEditMode() && this.requestId()
+        ? this.requestService.update(this.requestId()!, formValue)
+        : this.requestService.create(formValue);
 
-  // Vérifie si aucun type d'analyse n'est sélectionné pour un échantillon
-  hasNoAnalysisTypes(sampleIndex: number): boolean {
-    const value = this.samples.at(sampleIndex).get('analysisTypeIds')!.value;
-    return (value as number[]).length === 0;
+    action.subscribe({
+      next: (result) => {
+        this.isLoading.set(false);
+        this.router.navigate(['/app/requests', result.id]);
+      },
+      error: (err) => {
+        this.isLoading.set(false);
+        this.errorMessage.set(err.error?.detail ?? "Erreur lors de l'enregistrement.");
+      },
+    });
   }
 }

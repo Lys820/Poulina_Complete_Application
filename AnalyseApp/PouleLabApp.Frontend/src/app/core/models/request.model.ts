@@ -17,6 +17,7 @@ export interface RequestDetailDto {
   createdAt: Date;
   receivedAt?: Date;
   submittedAt: Date;
+  laboratoryId: number;
   laboratoryName: string;
   clientId: string;
   clientName: string;
@@ -37,6 +38,7 @@ export interface SampleDetailDto {
 
 export interface AnalysisResultDetailDto {
   id: number;
+  analysisTypeId: number;
   analysisTypeName: string;
   measuredValue: number;
   lowerBound: number;
