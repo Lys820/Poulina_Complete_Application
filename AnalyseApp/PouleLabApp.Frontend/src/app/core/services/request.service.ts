@@ -89,4 +89,12 @@ export class RequestService {
   downloadBulletin(id: number): Observable<Blob> {
     return this.http.get(`${this.url}/${id}/bulletin`, { responseType: 'blob' });
   }
+
+  update(id: number, dto: any): Observable<RequestDetailDto> {
+    return this.http.put<RequestDetailDto>(`${this.url}/${id}`, dto);
+  }
+
+  delete(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.url}/${id}`);
+  }
 }

@@ -53,12 +53,10 @@ export class RequestDetailComponent implements OnInit {
       error: () => this.isLoading.set(false),
     });
 
-    // Charger l'historique si Admin ou LabChief
-    if (this.authService.hasAnyRole(['Administrator', 'LabChief'])) {
-      this.requestService.getHistory(this.requestId).subscribe({
-        next: (data) => this.history.set(data),
-      });
-    }
+    // Charger l'historique pour tous les rôles
+    this.requestService.getHistory(this.requestId).subscribe({
+      next: (data) => this.history.set(data),
+    });
   }
 
   // -------------------------------------------------------
@@ -253,5 +251,36 @@ export class RequestDetailComponent implements OnInit {
   private showError(msg: string): void {
     this.errorMessage.set(msg ?? 'Une erreur est survenue.');
     setTimeout(() => this.errorMessage.set(''), 4000);
+  }
+
+  // Naviguer vers la page de modification
+  editRequest(): void {
+    this.router.navigate(['/app/requests', this.requestId, 'edit']);
+  }
+
+  // Soumettre un brouillon
+  submitDraft(): void {
+    this.actionLoading.set(true);
+    this.requestService.submit(this.requestId).subscribe({
+      next: (data) => {
+        this.request.set(data);
+        this.showSuccess('Demande soumise avec succès.');
+        this.actionLoading.set(false);
+      },
+      error: (err) => {
+        this.showError(err.error?.message);
+        this.actionLoading.set(false);
+      },
+    });
+  }
+
+  // Supprimer un brouillon
+  deleteRequest(): void {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer cette demande ?')) return;
+
+    this.requestService.delete(this.requestId).subscribe({
+      next: () => this.router.navigate(['/app/requests']),
+      error: (err) => this.showError(err.error?.message),
+    });
   }
 }

@@ -32,6 +32,13 @@ export const LAYOUT_ROUTES: Routes = [
           ),
       },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+      {
+        path: 'requests/:id/edit',
+        loadComponent: () =>
+          import('../../pages/requests/request-form/request-form.component').then(
+            (m) => m.RequestFormComponent,
+          ),
+      },
     ],
   },
 ];

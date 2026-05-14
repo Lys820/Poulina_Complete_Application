@@ -1,0 +1,309 @@
+<div class="request-form">
+  <!-- Retour -->
+  <div class="mb-3">
+    <a routerLink="/app/requests" class="back-link">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <line x1="19" y1="12" x2="5" y2="12" />
+        <polyline points="12 19 5 12 12 5" />
+      </svg>
+      Retour à la liste
+    </a>
+  </div>
+
+  <!-- Titre -->
+  <div class="page-header mb-4">
+    <div>
+      <h4>Nouvelle demande d'analyse</h4>
+      <p class="text-muted mb-0">Étape {{ currentStep() }} sur {{ totalSteps }}</p>
+    </div>
+  </div>
+
+  <!-- Stepper -->
+  <div class="stepper mb-4">
+    <div class="step" [class.active]="currentStep() >= 1" [class.done]="currentStep() > 1">
+      <div class="step-circle">1</div>
+      <span>Laboratoire</span>
+    </div>
+    <div class="step-line" [class.done]="currentStep() > 1"></div>
+    <div class="step" [class.active]="currentStep() >= 2" [class.done]="currentStep() > 2">
+      <div class="step-circle">2</div>
+      <span>Échantillons</span>
+    </div>
+    <div class="step-line" [class.done]="currentStep() > 2"></div>
+    <div class="step" [class.active]="currentStep() >= 3">
+      <div class="step-circle">3</div>
+      <span>Analyses</span>
+    </div>
+  </div>
+
+  <!-- Erreur -->
+  @if (errorMessage()) {
+    <div class="alert alert-danger mb-3">{{ errorMessage() }}</div>
+  }
+
+  <form [formGroup]="form">
+    <!-- ÉTAPE 1 — Laboratoire -->
+    @if (currentStep() === 1) {
+      <div class="card">
+        <div class="card-header">Sélection du laboratoire</div>
+        <div class="card-body">
+          <div class="mb-3">
+            <label class="form-label">Laboratoire destinataire *</label>
+            <select
+              class="form-control"
+              formControlName="laboratoryId"
+              aria-label="Sélectionner un laboratoire"
+              [class.is-invalid]="
+                form.get('laboratoryId')!.touched && form.get('laboratoryId')!.invalid
+              "
+            >
+              <option [value]="null">Sélectionner un laboratoire</option>
+              @for (lab of laboratories(); track lab.id) {
+                <option [value]="lab.id">{{ lab.name }} — {{ lab.description }}</option>
+              }
+            </select>
+            @if (form.get('laboratoryId')!.touched && form.get('laboratoryId')!.invalid) {
+              <div class="invalid-feedback">Veuillez sélectionner un laboratoire.</div>
+            }
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Notes / Observations</label>
+            <textarea
+              class="form-control"
+              rows="3"
+              formControlName="notes"
+              placeholder="Informations complémentaires..."
+            >
+            </textarea>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- ÉTAPE 2 — Échantillons -->
+    @if (currentStep() === 2) {
+      <div formArrayName="samples">
+        @for (sample of samples.controls; track $index; let i = $index) {
+          <div class="card mb-3" [formGroupName]="i">
+            <div class="card-header d-flex align-items-center justify-content-between">
+              <span>Échantillon {{ i + 1 }}</span>
+              @if (samples.length > 1) {
+                <button
+                  type="button"
+                  class="btn btn-icon btn-danger btn-sm"
+                  (click)="removeSample(i)"
+                  title="Supprimer"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              }
+            </div>
+            <div class="card-body">
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label">Type d'échantillon *</label>
+                  <input
+                    type="text"
+                    class="form-control"
+                    formControlName="type"
+                    placeholder="Ex: Huile moteur, Eau industrielle..."
+                    [class.is-invalid]="sample.get('type')!.touched && sample.get('type')!.invalid"
+                  />
+                  @if (sample.get('type')!.touched && sample.get('type')!.invalid) {
+                    <div class="invalid-feedback">Champ obligatoire.</div>
+                  }
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Caractéristiques *</label>
+                  <input
+                    type="text"
+                    class="form-control"
+                    formControlName="characteristics"
+                    placeholder="Ex: Huile usagée après 10 000 km"
+                    [class.is-invalid]="
+                      sample.get('characteristics')!.touched &&
+                      sample.get('characteristics')!.invalid
+                    "
+                  />
+                  @if (
+                    sample.get('characteristics')!.touched && sample.get('characteristics')!.invalid
+                  ) {
+                    <div class="invalid-feedback">Champ obligatoire.</div>
+                  }
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Quantité *</label>
+                  <input
+                    type="number"
+                    class="form-control"
+                    formControlName="quantity"
+                    placeholder="Ex: 500"
+                    [class.is-invalid]="
+                      sample.get('quantity')!.touched && sample.get('quantity')!.invalid
+                    "
+                  />
+                  @if (sample.get('quantity')!.touched && sample.get('quantity')!.invalid) {
+                    <div class="invalid-feedback">Quantité invalide.</div>
+                  }
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Unité *</label>
+                  <input
+                    type="text"
+                    class="form-control"
+                    formControlName="unit"
+                    placeholder="Ex: ml, g, L"
+                    [class.is-invalid]="sample.get('unit')!.touched && sample.get('unit')!.invalid"
+                  />
+                  @if (sample.get('unit')!.touched && sample.get('unit')!.invalid) {
+                    <div class="invalid-feedback">Champ obligatoire.</div>
+                  }
+                </div>
+              </div>
+            </div>
+          </div>
+        }
+
+        <button type="button" class="btn btn-light w-100 add-sample-btn" (click)="addSample()">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="me-2"
+          >
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+          Ajouter un échantillon
+        </button>
+      </div>
+    }
+
+    <!-- ÉTAPE 3 — Types d'analyses -->
+    @if (currentStep() === 3) {
+      <div formArrayName="samples">
+        @for (sample of samples.controls; track $index; let i = $index) {
+          <div class="card mb-3">
+            <div class="card-header">
+              Analyses pour : {{ sample.get('type')!.value || 'Échantillon ' + (i + 1) }}
+            </div>
+            <div class="card-body">
+              <p class="text-muted small mb-3">
+                Sélectionnez les analyses à effectuer pour cet échantillon :
+              </p>
+              <div class="analysis-grid">
+                @for (type of analysisTypes(); track type.id) {
+                  <div
+                    class="analysis-card"
+                    [class.selected]="isTypeSelected(i, type.id)"
+                    (click)="toggleAnalysisType(i, type.id)"
+                    (keydown.enter)="toggleAnalysisType(i, type.id)"
+                    (keydown.space)="toggleAnalysisType(i, type.id)"
+                    tabindex="0"
+                    role="button"
+                    [attr.aria-checked]="isTypeSelected(i, type.id) ? 'true' : 'false'"
+                  >
+                    <div class="analysis-check">
+                      @if (isTypeSelected(i, type.id)) {
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="white"
+                          stroke-width="3"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        >
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      }
+                    </div>
+                    <div class="analysis-info">
+                      <strong>{{ type.name }}</strong>
+                      <small
+                        >{{ type.referenceMin }} — {{ type.referenceMax }} {{ type.unit }}</small
+                      >
+                    </div>
+                  </div>
+                }
+              </div>
+
+              @if (hasNoAnalysisTypes(i)) {
+                <p class="text-danger small mt-2">Sélectionnez au moins un type d'analyse.</p>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    }
+  </form>
+
+  <!-- Navigation -->
+  <div class="form-navigation">
+    @if (currentStep() > 1) {
+      <button type="button" class="btn btn-light" (click)="prevStep()">← Précédent</button>
+    } @else {
+      <div></div>
+    }
+
+    <div class="d-flex gap-2">
+      @if (currentStep() < totalSteps) {
+        <button
+          type="button"
+          class="btn btn-primary"
+          (click)="nextStep()"
+          [disabled]="!canGoNext()"
+        >
+          Suivant →
+        </button>
+      } @else {
+        <button type="button" class="btn btn-light" (click)="submit(true)" [disabled]="isLoading()">
+          Enregistrer comme brouillon
+        </button>
+        <button
+          type="button"
+          class="btn btn-primary"
+          (click)="submit(false)"
+          [disabled]="isLoading()"
+        >
+          @if (isLoading()) {
+            <span class="spinner-border spinner-border-sm me-2"></span>
+          }
+          Soumettre la demande
+        </button>
+      }
+    </div>
+  </div>
+</div>

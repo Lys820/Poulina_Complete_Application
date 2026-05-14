@@ -213,6 +213,25 @@
               }
             }
 
+            <!-- Client / Admin — Brouillon -->
+            @if (authService.hasAnyRole(['Administrator', 'Manager', 'Client'])) {
+              @if (request()!.status === 'Draft') {
+                <button
+                  class="btn btn-primary w-100 mb-2"
+                  (click)="submitDraft()"
+                  [disabled]="actionLoading()"
+                >
+                  ✓ Soumettre la demande
+                </button>
+                <button class="btn btn-light w-100 mb-2" (click)="editRequest()">
+                  ✏️ Modifier la demande
+                </button>
+                <button class="btn btn-danger w-100 mb-2" (click)="deleteRequest()">
+                  🗑 Supprimer le brouillon
+                </button>
+              }
+            }
+
             <!-- Laborantin -->
             @if (authService.hasRole('Analyst') && isCurrentAnalyst()) {
               @if (request()!.status === 'Assigned') {
@@ -264,7 +283,7 @@
             @if (
               request()!.status === 'Validated' ||
               request()!.status === 'Closed' ||
-              request()!.status === 'Draft'
+              request()!.status === 'Submitted'
             ) {
               <p class="text-muted small text-center mb-0">
                 Aucune action disponible pour ce statut.
@@ -274,9 +293,9 @@
         </div>
 
         <!-- Historique -->
-        @if (authService.hasAnyRole(['Administrator', 'LabChief']) && history().length > 0) {
+        @if (history().length > 0) {
           <div class="card">
-            <div class="card-header">Historique</div>
+            <div class="card-header">Historique de la demande</div>
             <div class="card-body p-0">
               @for (log of history(); track log.id) {
                 <div class="history-item">
