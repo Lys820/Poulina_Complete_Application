@@ -37,5 +37,8 @@ namespace PouleLabApp.API.Services.Interfaces
 
         // Laborantin refuse la demande assignée — clôture automatique
         Task<RequestDetailDto> AnalystRejectAsync(int requestId, string analystId, string reason);
+
+        //Supression d'une demande — uniquement si en brouillon
+        Task DeleteAsync(int requestId);
     }
 }

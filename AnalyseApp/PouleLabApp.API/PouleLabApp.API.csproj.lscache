@@ -57,7 +57,9 @@ TemporaryDependencyNodeTargetIdentifier=net10.0
 [sourceFiles]
 Controllers/
  AnalysisRequestController.cs
+ AnalysisTypeController.cs
  AuthController.cs
+ LaboratoryController.cs
  NotificationController.cs
  PdfController.cs
  RoleController.cs

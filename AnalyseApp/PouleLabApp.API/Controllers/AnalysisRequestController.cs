@@ -227,7 +227,7 @@ namespace PouleLabApp.API.Controllers
         // Historique — uniquement Admin et LabChief
         // -------------------------------------------------------
         [HttpGet("{id}/history")]
-        [Authorize(Policy = "RequireAdminOrLabChief")]
+        [Authorize]
         public async Task<IActionResult> GetHistory(int id)
         {
             var history = await _requestService.GetHistoryAsync(id);
@@ -358,6 +358,32 @@ namespace PouleLabApp.API.Controllers
 
             var result = await _requestService.AnalystRejectAsync(id, analystId, reason);
             return Ok(result);
+        }
+
+        // -------------------------------------------------------
+        // DELETE /api/requests/{id}
+        // Supprimer une demande en brouillon
+        // Uniquement si statut = Draft et créateur = utilisateur connecté
+        // -------------------------------------------------------
+        [HttpDelete("{id}")]
+        [Authorize(Policy = "RequireClientRole")]
+        public async Task<IActionResult> Delete(int id)
+        {
+            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                ?? User.FindFirst("sub")?.Value;
+
+            var request = await _requestService.GetByIdAsync(id);
+            if (request == null)
+                return NotFound(new { message = "Demande introuvable." });
+
+            if (request.Status != "Draft")
+                return BadRequest(new { message = "Seules les demandes en brouillon peuvent être supprimées." });
+
+            if (request.ClientId != userId && !User.IsInRole("Administrator"))
+                return StatusCode(403, new { message = "Vous n'êtes pas autorisé à supprimer cette demande." });
+
+            await _requestService.DeleteAsync(id);
+            return Ok(new { message = "Demande supprimée avec succès." });
         }
     }
 

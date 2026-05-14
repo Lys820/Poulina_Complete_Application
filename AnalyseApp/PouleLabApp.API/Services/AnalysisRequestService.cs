@@ -130,6 +130,12 @@ namespace PouleLabApp.API.Services
 
             await _context.SaveChangesAsync();
 
+            await _auditLogService.LogAsync(
+                request.Id, clientId,
+                dto.IsDraft ? "Création du brouillon" : "Création et soumission",
+                null,
+                request.Status.ToString());
+
             // Notifier le client si la demande est soumise directement (pas un brouillon)
             if (!dto.IsDraft)
             {
@@ -174,6 +180,12 @@ namespace PouleLabApp.API.Services
             request.SubmittedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
+
+            await _auditLogService.LogAsync(
+                requestId, clientId,
+                "Soumission de la demande",
+                RequestStatus.Draft.ToString(),
+                RequestStatus.Submitted.ToString());
 
             // Notifier le client que sa demande a été soumise
             await _emailService.SendRequestSubmittedAsync(
@@ -259,6 +271,12 @@ namespace PouleLabApp.API.Services
             request.ReceivedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
+            
+            await _auditLogService.LogAsync(
+                requestId, "system",
+                "Réception de la demande",
+                RequestStatus.Submitted.ToString(),
+                RequestStatus.Received.ToString());
 
             // Notifier le client que sa demande a été réceptionnée
             await _emailService.SendRequestReceivedAsync(
@@ -286,6 +304,12 @@ namespace PouleLabApp.API.Services
             request.Status = RequestStatus.Assigned;
 
             await _context.SaveChangesAsync();
+
+            await _auditLogService.LogAsync(
+                requestId, "system",
+                "Assignation de la demande",
+                RequestStatus.Received.ToString(),
+                RequestStatus.Assigned.ToString());
 
             // Notifier le client que sa demande a été assignée à un laborantin
             await _emailService.SendRequestAssignedAsync(
@@ -370,6 +394,12 @@ namespace PouleLabApp.API.Services
             request.Status = RequestStatus.InReview;
 
             await _context.SaveChangesAsync();
+
+            await _auditLogService.LogAsync(
+                requestId, analystId,
+                "Analyses terminées — envoi au chef de labo",
+                RequestStatus.InProgress.ToString(),
+                RequestStatus.InReview.ToString());
 
             return await GetByIdAsync(requestId)
                 ?? throw new Exception("Erreur lors de la récupération de la demande.");
@@ -770,6 +800,32 @@ namespace PouleLabApp.API.Services
 
             return await GetByIdAsync(requestId)
                 ?? throw new Exception("Erreur lors de la récupération de la demande.");
+        }
+
+        // -------------------------------------------------------
+        // Supprimer une demande en brouillon
+        // -------------------------------------------------------
+        public async Task DeleteAsync(int requestId)
+        {
+            var request = await _context.AnalysisRequests
+                .Include(r => r.Samples)
+                    .ThenInclude(s => s.Results)
+                .Include(r => r.Deadlines)
+                .Include(r => r.AuditLogs)
+                .Include(r => r.Notifications)
+                .FirstOrDefaultAsync(r => r.Id == requestId)
+                ?? throw new KeyNotFoundException("Demande introuvable.");
+
+            // Supprimer les entités liées dans l'ordre
+            _context.AnalysisResults.RemoveRange(
+                request.Samples.SelectMany(s => s.Results));
+            _context.Samples.RemoveRange(request.Samples);
+            _context.Deadlines.RemoveRange(request.Deadlines);
+            _context.AuditLogs.RemoveRange(request.AuditLogs);
+            _context.Notifications.RemoveRange(request.Notifications);
+            _context.AnalysisRequests.Remove(request);
+
+            await _context.SaveChangesAsync();
         }
     }
 }
