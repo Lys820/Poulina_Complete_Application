@@ -1,0 +1,384 @@
+<div class="request-detail">
+  <!-- Retour -->
+  <div class="mb-3">
+    <a routerLink="/app/requests" class="back-link">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <line x1="19" y1="12" x2="5" y2="12" />
+        <polyline points="12 19 5 12 12 5" />
+      </svg>
+      Retour à la liste
+    </a>
+  </div>
+
+  @if (isLoading()) {
+    <div class="text-center py-5">
+      <div class="spinner-border text-primary"></div>
+    </div>
+  } @else if (request()) {
+    <!-- Messages -->
+    @if (successMessage()) {
+      <div class="alert alert-success mb-3">{{ successMessage() }}</div>
+    }
+    @if (errorMessage()) {
+      <div class="alert alert-danger mb-3">{{ errorMessage() }}</div>
+    }
+
+    <!-- En-tête -->
+    <div class="detail-header">
+      <div>
+        <h4>Demande #{{ request()!.id }}</h4>
+        <span class="badge" [ngClass]="getStatusBadge(request()!.status)">
+          {{ getStatusLabel(request()!.status) }}
+        </span>
+      </div>
+
+      <!-- Actions PDF -->
+      <div class="pdf-actions">
+        <button class="btn btn-light btn-sm" (click)="downloadPdf()">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="me-1"
+          >
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+          Formulaire PDF
+        </button>
+
+        @if (request()!.status === 'Validated') {
+          <button class="btn btn-success btn-sm" (click)="downloadBulletin()">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              class="me-1"
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            Bulletin d'analyses
+          </button>
+        }
+      </div>
+    </div>
+
+    <div class="row g-4">
+      <!-- Colonne gauche -->
+      <div class="col-lg-8">
+        <!-- Infos client -->
+        <div class="card mb-4">
+          <div class="card-header">Informations client</div>
+          <div class="card-body">
+            <div class="info-grid">
+              <div class="info-item">
+                <span class="info-label">Nom complet</span>
+                <span class="info-value">{{ request()!.clientName }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Email</span>
+                <span class="info-value">{{ request()!.clientEmail }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Laboratoire</span>
+                <span class="info-value lab-badge">{{ request()!.laboratoryName }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Laborantin assigné</span>
+                <span class="info-value">
+                  {{ request()!.assignedToName ?? 'Non assigné' }}
+                </span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Date de soumission</span>
+                <span class="info-value">
+                  {{ request()!.submittedAt | date: 'dd/MM/yyyy HH:mm' }}
+                </span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Date de réception</span>
+                <span class="info-value">
+                  {{
+                    request()!.receivedAt ? (request()!.receivedAt | date: 'dd/MM/yyyy HH:mm') : '—'
+                  }}
+                </span>
+              </div>
+            </div>
+
+            @if (request()!.notes) {
+              <div class="notes-box"><strong>Notes :</strong> {{ request()!.notes }}</div>
+            }
+          </div>
+        </div>
+
+        <!-- Échantillons et résultats -->
+        @for (sample of request()!.samples; track sample.id) {
+          <div class="card mb-3">
+            <div class="card-header">
+              Échantillon — {{ sample.type }}
+              <small class="text-muted ms-2">
+                {{ sample.quantity }} {{ sample.unit }} — {{ sample.characteristics }}
+              </small>
+            </div>
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="table mb-0">
+                  <thead>
+                    <tr>
+                      <th>Analyse</th>
+                      <th>Valeur mesurée</th>
+                      <th>Min référence</th>
+                      <th>Max référence</th>
+                      <th>Unité</th>
+                      <th>Statut</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (result of sample.results; track result.id) {
+                      <tr [class.anomaly-row]="result.isAnomaly">
+                        <td>{{ result.analysisTypeName }}</td>
+                        <td>
+                          <strong [class.text-danger]="result.isAnomaly">
+                            {{ result.measuredValue || '—' }}
+                          </strong>
+                        </td>
+                        <td>{{ result.lowerBound }}</td>
+                        <td>{{ result.upperBound }}</td>
+                        <td>{{ result.unit }}</td>
+                        <td>
+                          @if (result.measuredValue === 0) {
+                            <span class="badge badge-draft">Non saisi</span>
+                          } @else if (result.isAnomaly) {
+                            <span class="badge badge-rejected">⚠ Anomalie</span>
+                          } @else {
+                            <span class="badge badge-validated">✓ Normal</span>
+                          }
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- Colonne droite — Actions -->
+      <div class="col-lg-4">
+        <!-- Actions selon rôle et statut -->
+        <div class="card mb-4">
+          <div class="card-header">Actions disponibles</div>
+          <div class="card-body actions-panel">
+            <!-- Réceptionniste -->
+            @if (authService.hasRole('Receptionist')) {
+              @if (request()!.status === 'Submitted') {
+                <button
+                  class="btn btn-primary w-100 mb-2"
+                  (click)="receive()"
+                  [disabled]="actionLoading()"
+                >
+                  Réceptionner la demande
+                </button>
+              }
+              @if (request()!.status === 'Received') {
+                <button class="btn btn-primary w-100 mb-2" (click)="showAssignModal.set(true)">
+                  Assigner à un laborantin
+                </button>
+              }
+            }
+
+            <!-- Laborantin -->
+            @if (authService.hasRole('Analyst') && isCurrentAnalyst()) {
+              @if (request()!.status === 'Assigned') {
+                <button
+                  class="btn btn-success w-100 mb-2"
+                  (click)="analystAccept()"
+                  [disabled]="actionLoading()"
+                >
+                  ✓ Accepter la demande
+                </button>
+                <button class="btn btn-danger w-100 mb-2" (click)="showRejectModal.set(true)">
+                  ✗ Refuser la demande
+                </button>
+              }
+              @if (request()!.status === 'InProgress') {
+                <a
+                  [routerLink]="'/app/requests/' + request()!.id + '/results'"
+                  class="btn btn-primary w-100 mb-2"
+                >
+                  Saisir les résultats
+                </a>
+                <button
+                  class="btn btn-warning w-100 mb-2"
+                  (click)="completeAnalysis()"
+                  [disabled]="actionLoading()"
+                >
+                  Terminer les analyses
+                </button>
+              }
+            }
+
+            <!-- Chef de labo -->
+            @if (authService.hasRole('LabChief')) {
+              @if (request()!.status === 'InReview') {
+                <button
+                  class="btn btn-success w-100 mb-2"
+                  (click)="validate()"
+                  [disabled]="actionLoading()"
+                >
+                  ✓ Valider les résultats
+                </button>
+                <button class="btn btn-danger w-100 mb-2" (click)="showInvalidateModal.set(true)">
+                  ✗ Rejeter et renvoyer
+                </button>
+              }
+            }
+
+            <!-- Aucune action disponible -->
+            @if (
+              request()!.status === 'Validated' ||
+              request()!.status === 'Closed' ||
+              request()!.status === 'Draft'
+            ) {
+              <p class="text-muted small text-center mb-0">
+                Aucune action disponible pour ce statut.
+              </p>
+            }
+          </div>
+        </div>
+
+        <!-- Historique -->
+        @if (authService.hasAnyRole(['Administrator', 'LabChief']) && history().length > 0) {
+          <div class="card">
+            <div class="card-header">Historique</div>
+            <div class="card-body p-0">
+              @for (log of history(); track log.id) {
+                <div class="history-item">
+                  <div class="history-action">{{ log.action }}</div>
+                  <div class="history-meta">
+                    {{ log.performedBy }} — {{ log.performedAt | date: 'dd/MM/yyyy HH:mm' }}
+                  </div>
+                  @if (log.oldValue && log.newValue) {
+                    <div class="history-change">{{ log.oldValue }} → {{ log.newValue }}</div>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Modal Refus laborantin -->
+    @if (showRejectModal()) {
+      <div class="modal-overlay">
+        <div class="modal-box">
+          <h5>Refuser la demande</h5>
+          <p class="text-muted small">La demande sera clôturée et le client sera notifié.</p>
+          <textarea
+            class="form-control mb-3"
+            rows="3"
+            placeholder="Raison du refus (obligatoire)"
+            [(ngModel)]="rejectReason"
+            aria-label="Raison du refus"
+          ></textarea>
+          <div class="d-flex gap-2">
+            <button
+              class="btn btn-danger flex-fill"
+              (click)="analystReject()"
+              [disabled]="!rejectReason() || actionLoading()"
+            >
+              Confirmer le refus
+            </button>
+            <button class="btn btn-light flex-fill" (click)="showRejectModal.set(false)">
+              Annuler
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Modal Rejet chef de labo -->
+    @if (showInvalidateModal()) {
+      <div class="modal-overlay">
+        <div class="modal-box">
+          <h5>Rejeter les résultats</h5>
+          <p class="text-muted small">La demande sera renvoyée au laborantin pour correction.</p>
+          <textarea
+            class="form-control mb-3"
+            rows="3"
+            placeholder="Raison du rejet (obligatoire)"
+            [(ngModel)]="invalidateReason"
+            aria-label="Raison du rejet"
+          ></textarea>
+          <div class="d-flex gap-2">
+            <button
+              class="btn btn-danger flex-fill"
+              (click)="invalidate()"
+              [disabled]="!invalidateReason() || actionLoading()"
+            >
+              Confirmer le rejet
+            </button>
+            <button class="btn btn-light flex-fill" (click)="showInvalidateModal.set(false)">
+              Annuler
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Modal Assignation -->
+    @if (showAssignModal()) {
+      <div class="modal-overlay">
+        <div class="modal-box">
+          <h5>Assigner à un laborantin</h5>
+          <input
+            type="text"
+            class="form-control mb-3"
+            placeholder="ID du laborantin"
+            [(ngModel)]="assignAnalystId"
+            aria-label="ID du laborantin"
+          />
+          <div class="d-flex gap-2">
+            <button
+              class="btn btn-primary flex-fill"
+              (click)="assign()"
+              [disabled]="!assignAnalystId() || actionLoading()"
+            >
+              Assigner
+            </button>
+            <button class="btn btn-light flex-fill" (click)="showAssignModal.set(false)">
+              Annuler
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+  }
+</div>

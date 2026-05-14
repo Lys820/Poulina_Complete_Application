@@ -1,0 +1,49 @@
+.request-list {
+  .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    h4 {
+      margin: 0 0 4px;
+    }
+  }
+}
+
+.filters-bar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+
+  .filter-select {
+    width: 220px;
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+}
+
+.lab-badge {
+  padding: 3px 8px;
+  background: var(--light);
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.actions {
+  display: flex;
+  gap: 6px;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 48px 24px;
+  svg {
+    margin-bottom: 12px;
+  }
+  p {
+    color: var(--text-muted);
+    margin: 0;
+  }
+}

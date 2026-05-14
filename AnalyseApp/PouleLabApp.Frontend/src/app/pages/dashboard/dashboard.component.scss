@@ -1,0 +1,60 @@
+.dashboard {
+  .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+
+    h4 {
+      font-size: 22px;
+      margin: 0 0 4px;
+    }
+  }
+}
+
+// =============================================
+// STAT CARDS — couleurs par type
+// =============================================
+.stat-card {
+  &-primary {
+    background: linear-gradient(135deg, #7366ff, #9e95ff);
+  }
+  &-warning {
+    background: linear-gradient(135deg, #ffaa05, #ffd166);
+  }
+  &-info {
+    background: linear-gradient(135deg, #16c7f9, #6edcff);
+  }
+  &-success {
+    background: linear-gradient(135deg, #54ba4a, #7fd973);
+  }
+}
+
+// =============================================
+// BADGE LABORATOIRE
+// =============================================
+.lab-badge {
+  padding: 3px 8px;
+  background: var(--light);
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+// =============================================
+// ÉTAT VIDE
+// =============================================
+.empty-state {
+  text-align: center;
+  padding: 48px 24px;
+
+  svg {
+    margin-bottom: 12px;
+  }
+
+  p {
+    color: var(--text-muted);
+    margin-bottom: 16px;
+  }
+}

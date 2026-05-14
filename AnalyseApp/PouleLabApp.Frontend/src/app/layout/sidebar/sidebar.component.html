@@ -1,0 +1,43 @@
+<div class="sidebar" [class.collapsed]="isCollapsed()">
+  <!-- Logo -->
+  <div class="sidebar-logo">
+    <h3><span>Poulina</span>Lab</h3>
+    <p>Laboratoire d'analyses</p>
+  </div>
+
+  <!-- Navigation -->
+  <nav class="sidebar-nav">
+    <span class="nav-section">Menu principal</span>
+
+    @for (item of filteredNavItems; track item.route) {
+      <div class="nav-item">
+        <a
+          [routerLink]="item.route"
+          routerLinkActive="active"
+          [routerLinkActiveOptions]="{ exact: true }"
+        >
+          <span [innerHTML]="getIcon(item.icon)"></span>
+          <span class="nav-label">{{ item.label }}</span>
+        </a>
+      </div>
+    }
+
+    <span class="nav-section nav-section-account">Compte</span>
+
+    <div class="nav-item">
+      <a class="logout-link" (click)="logout()">
+        <span [innerHTML]="getIcon('log-out')"></span>
+        <span class="nav-label">Déconnexion</span>
+      </a>
+    </div>
+  </nav>
+
+  <!-- Profil utilisateur -->
+  <div class="sidebar-profile">
+    <div class="avatar">{{ userInitials }}</div>
+    <div class="profile-info">
+      <span class="profile-name">{{ userName }}</span>
+      <span class="profile-role">{{ userRole }}</span>
+    </div>
+  </div>
+</div>
