@@ -16,7 +16,7 @@
           routerLinkActive="active"
           [routerLinkActiveOptions]="{ exact: true }"
         >
-          <span [innerHTML]="getIcon(item.icon)"></span>
+          <span [innerHTML]="getIcon(item.icon) | safeHtml"></span>
           <span class="nav-label">{{ item.label }}</span>
         </a>
       </div>
@@ -26,7 +26,7 @@
 
     <div class="nav-item">
       <a class="logout-link" (click)="logout()">
-        <span [innerHTML]="getIcon('log-out')"></span>
+        <span [innerHTML]="getIcon('log-out') | safeHtml"></span>
         <span class="nav-label">Déconnexion</span>
       </a>
     </div>

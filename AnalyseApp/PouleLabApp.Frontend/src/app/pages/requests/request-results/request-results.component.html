@@ -1,0 +1,154 @@
+<div class="results-page">
+  <!-- Retour -->
+  <div class="mb-3">
+    <a [routerLink]="'/app/requests/' + requestId" class="back-link">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <line x1="19" y1="12" x2="5" y2="12" />
+        <polyline points="12 19 5 12 12 5" />
+      </svg>
+      Retour à la demande
+    </a>
+  </div>
+
+  @if (isLoading()) {
+    <div class="text-center py-5">
+      <div class="spinner-border text-primary"></div>
+    </div>
+  } @else if (request()) {
+    <!-- En-tête -->
+    <div class="page-header mb-4">
+      <div>
+        <h4>Saisie des résultats</h4>
+        <p class="text-muted mb-0">
+          Demande #{{ request()!.id }} — {{ request()!.clientName }} —
+          {{ request()!.laboratoryName }}
+        </p>
+      </div>
+    </div>
+
+    <!-- Messages -->
+    @if (successMsg()) {
+      <div class="alert alert-success mb-3">{{ successMsg() }}</div>
+    }
+    @if (errorMsg()) {
+      <div class="alert alert-danger mb-3">{{ errorMsg() }}</div>
+    }
+
+    <!-- Formulaire -->
+    @if (form) {
+      <form [formGroup]="form">
+        @for (sample of request()!.samples; track sample.id) {
+          <div class="card mb-4">
+            <!-- En-tête échantillon -->
+            <div class="card-header">
+              <div class="sample-header">
+                <div>
+                  <strong>{{ sample.type }}</strong>
+                  <span class="text-muted ms-2"> {{ sample.quantity }} {{ sample.unit }} </span>
+                </div>
+                <small class="text-muted">{{ sample.characteristics }}</small>
+              </div>
+            </div>
+
+            <!-- Tableau de saisie -->
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="table mb-0">
+                  <thead>
+                    <tr>
+                      <th>Type d'analyse</th>
+                      <th>Min référence</th>
+                      <th>Max référence</th>
+                      <th>Unité</th>
+                      <th>Valeur mesurée</th>
+                      <th>Statut</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (result of sample.results; track result.id) {
+                      <tr
+                        [class.anomaly-row]="
+                          results.at(getResultIndex(sample.id, result.id)).get('isAnomaly')!.value
+                        "
+                      >
+                        <td>
+                          <strong>{{ result.analysisTypeName }}</strong>
+                        </td>
+                        <td class="text-muted">{{ result.lowerBound }}</td>
+                        <td class="text-muted">{{ result.upperBound }}</td>
+                        <td class="text-muted">{{ result.unit }}</td>
+                        <td>
+                          <input
+                            type="number"
+                            class="form-control result-input"
+                            [class.is-anomaly]="
+                              results.at(getResultIndex(sample.id, result.id)).get('isAnomaly')!
+                                .value
+                            "
+                            [formControl]="
+                              $any(
+                                results
+                                  .at(getResultIndex(sample.id, result.id))
+                                  .get('measuredValue')
+                              )
+                            "
+                            placeholder="Saisir..."
+                            step="0.01"
+                            aria-label="Valeur mesurée"
+                          />
+                        </td>
+                        <td>
+                          @if (
+                            results.at(getResultIndex(sample.id, result.id)).get('measuredValue')!
+                              .value === null
+                          ) {
+                            <span class="badge badge-draft">Non saisi</span>
+                          } @else if (
+                            results.at(getResultIndex(sample.id, result.id)).get('isAnomaly')!.value
+                          ) {
+                            <span class="badge badge-rejected">⚠ Anomalie</span>
+                          } @else {
+                            <span class="badge badge-validated">✓ Normal</span>
+                          }
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        }
+      </form>
+    }
+
+    <!-- Actions -->
+    <div class="results-actions">
+      <a [routerLink]="'/app/requests/' + requestId" class="btn btn-light"> Annuler </a>
+      <div class="d-flex gap-2">
+        <button class="btn btn-light" (click)="saveResults()" [disabled]="isSaving()">
+          @if (isSaving()) {
+            <span class="spinner-border spinner-border-sm me-2"></span>
+          }
+          Sauvegarder
+        </button>
+        <button class="btn btn-primary" (click)="completeAnalysis()" [disabled]="isSaving()">
+          @if (isSaving()) {
+            <span class="spinner-border spinner-border-sm me-2"></span>
+          }
+          Terminer et envoyer au chef de labo
+        </button>
+      </div>
+    </div>
+  }
+</div>

@@ -2,6 +2,8 @@ import { Component, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../core/services/auth.service';
+import { DomSanitizer } from '@angular/platform-browser';
+import { SafeHtmlPipe } from '../../shared/pipes/safe-html.pipe';
 
 interface NavItem {
   label: string;
@@ -13,7 +15,7 @@ interface NavItem {
 @Component({
   selector: 'app-sidebar',
   standalone: true,
-  imports: [CommonModule, RouterLink, RouterLinkActive],
+  imports: [CommonModule, RouterLink, RouterLinkActive, SafeHtmlPipe],
   templateUrl: './sidebar.component.html',
   styleUrls: ['./sidebar.component.scss'],
 })
@@ -60,7 +62,10 @@ export class SidebarComponent {
     },
   ];
 
-  constructor(public authService: AuthService) {}
+  constructor(
+    public authService: AuthService,
+    private sanitizer: DomSanitizer,
+  ) {}
 
   // Filtrer les liens selon le rôle connecté
   get filteredNavItems(): NavItem[] {

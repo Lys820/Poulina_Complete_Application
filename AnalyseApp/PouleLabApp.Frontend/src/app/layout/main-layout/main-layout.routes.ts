@@ -39,6 +39,13 @@ export const LAYOUT_ROUTES: Routes = [
             (m) => m.RequestFormComponent,
           ),
       },
+      {
+        path: 'requests/:id/results',
+        loadComponent: () =>
+          import('../../pages/requests/request-results/request-results.component').then(
+            (m) => m.RequestResultsComponent,
+          ),
+      },
     ],
   },
 ];
