@@ -262,7 +262,7 @@ namespace PouleLabApp.API.Services
         // -------------------------------------------------------
         // Réceptionner une demande (Réceptionniste)
         // -------------------------------------------------------
-        public async Task<RequestDetailDto> ReceiveAsync(int requestId)
+        public async Task<RequestDetailDto> ReceiveAsync(int requestId, string receptionistId)
         {
             var request = await _context.AnalysisRequests
                 .Include(r => r.Client)
@@ -279,7 +279,7 @@ namespace PouleLabApp.API.Services
             await _context.SaveChangesAsync();
             
             await _auditLogService.LogAsync(
-                requestId, "system",
+                requestId, receptionistId,
                 "Réception de la demande",
                 RequestStatus.Submitted.ToString(),
                 RequestStatus.Received.ToString());

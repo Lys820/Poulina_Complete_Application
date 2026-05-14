@@ -103,7 +103,17 @@ namespace PouleLabApp.API.Controllers
         [Authorize(Policy = "RequireReceptionistOnly")]
         public async Task<IActionResult> Receive(int id)
         {
-            var result = await _requestService.ReceiveAsync(id);
+            var receptionistId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                ?? User.FindFirst("sub")?.Value;
+
+            var request = await _requestService.GetByIdAsync(id);
+            if (request == null)
+                return NotFound(new { message = "Demande introuvable." });
+
+            if (request.Status != "Submitted")
+                return BadRequest(new { message = "Seules les demandes soumises peuvent être réceptionnées." });
+
+            var result = await _requestService.ReceiveAsync(id, receptionistId!);
             return Ok(result);
         }
 
