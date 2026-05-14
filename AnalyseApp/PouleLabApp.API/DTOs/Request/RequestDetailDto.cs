@@ -10,6 +10,7 @@ namespace PouleLabApp.API.DTOs.Request
         public DateTime CreatedAt { get; set; }
         public DateTime? ReceivedAt { get; set; }
         public DateTime SubmittedAt { get; set; }
+        public int LaboratoryId { get; set; }
         public string LaboratoryName { get; set; } = string.Empty;
         public string ClientId { get; set; } = string.Empty;
         public string ClientName { get; set; } = string.Empty;     // Prénom + Nom
@@ -34,6 +35,7 @@ namespace PouleLabApp.API.DTOs.Request
     public class AnalysisResultDetailDto
     {
         public int Id { get; set; }
+        public int AnalysisTypeId { get; set; }
         public string AnalysisTypeName { get; set; } = string.Empty;
         public double MeasuredValue { get; set; }
         public double LowerBound { get; set; }

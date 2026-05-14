@@ -29,11 +29,14 @@ namespace PouleLabApp.API.Services
         public async Task<RequestDetailDto> CreateAsync(string clientId, CreateRequestDto dto)
         {
             // Vérifier que le laboratoire existe
-            var lab = await _context.Laboratories.FindAsync(dto.LaboratoryId)
-                ?? throw new KeyNotFoundException("Laboratoire introuvable.");
+            if (!dto.IsDraft && dto.LaboratoryId > 0)
+            {
+                var lab = await _context.Laboratories.FindAsync(dto.LaboratoryId)
+                    ?? throw new KeyNotFoundException("Laboratoire introuvable.");
+            }
 
             // Vérification des doublons — même labo + mêmes échantillons + statut actif
-            if (!dto.IsDraft)
+            if (!dto.IsDraft && dto.LaboratoryId > 0 && dto.Samples.Any())
             {
                 var newSamples = dto.Samples
                     .Select(s => new {
@@ -86,7 +89,7 @@ namespace PouleLabApp.API.Services
             var request = new AnalysisRequest
             {
                 ClientId = clientId,
-                LaboratoryId = dto.LaboratoryId,
+                LaboratoryId = dto.LaboratoryId > 0 ? dto.LaboratoryId : 1, // valeur par défaut
                 Notes = dto.Notes,
                 IsDraft = dto.IsDraft,
                 Status = dto.IsDraft ? RequestStatus.Draft : RequestStatus.Submitted,
@@ -100,6 +103,9 @@ namespace PouleLabApp.API.Services
             // Créer et lier les échantillons à la demande
             foreach (var sampleDto in dto.Samples)
             {
+                // Ignorer les échantillons vides pour les brouillons
+                if (dto.IsDraft && string.IsNullOrEmpty(sampleDto.Type)) continue;
+                
                 var sample = new Sample
                 {
                     RequestId = request.Id,
@@ -130,12 +136,6 @@ namespace PouleLabApp.API.Services
 
             await _context.SaveChangesAsync();
 
-            await _auditLogService.LogAsync(
-                request.Id, clientId,
-                dto.IsDraft ? "Création du brouillon" : "Création et soumission",
-                null,
-                request.Status.ToString());
-
             // Notifier le client si la demande est soumise directement (pas un brouillon)
             if (!dto.IsDraft)
             {
@@ -144,6 +144,12 @@ namespace PouleLabApp.API.Services
                     await _emailService.SendRequestSubmittedAsync(
                         client.Email!, client.FirstName, request.Id);
             }
+
+            await _auditLogService.LogAsync(
+                request.Id, clientId,
+                dto.IsDraft ? "Création du brouillon" : "Création et soumission",
+                null,
+                request.Status.ToString());
 
             return await GetByIdAsync(request.Id)
                 ?? throw new Exception("Erreur lors de la récupération de la demande créée.");
@@ -604,6 +610,7 @@ namespace PouleLabApp.API.Services
             CreatedAt = r.CreatedAt,
             ReceivedAt = r.ReceivedAt,
             SubmittedAt = r.SubmittedAt,
+            LaboratoryId   = r.LaboratoryId,
             LaboratoryName = r.Laboratory?.Name ?? "",
             ClientId = r.ClientId,
             ClientName = $"{r.Client?.FirstName} {r.Client?.LastName}",
@@ -622,6 +629,7 @@ namespace PouleLabApp.API.Services
                 Results = s.Results?.Select(res => new AnalysisResultDetailDto
                 {
                     Id = res.Id,
+                    AnalysisTypeId   = res.AnalysisTypeId,
                     AnalysisTypeName = res.AnalysisType?.Name ?? "",
                     MeasuredValue = res.MeasuredValue,
                     LowerBound = res.LowerBound,
@@ -656,11 +664,14 @@ namespace PouleLabApp.API.Services
                     "Seules les demandes en brouillon peuvent être modifiées.");
 
             // Vérifier que le laboratoire existe
-            var lab = await _context.Laboratories.FindAsync(dto.LaboratoryId)
-                ?? throw new KeyNotFoundException("Laboratoire introuvable.");
+            if (dto.LaboratoryId > 0)
+            {
+                var lab = await _context.Laboratories.FindAsync(dto.LaboratoryId)
+                    ?? throw new KeyNotFoundException("Laboratoire introuvable.");
+                request.LaboratoryId = dto.LaboratoryId;
+            }
 
             // Mettre à jour les infos de base
-            request.LaboratoryId = dto.LaboratoryId;
             request.Notes = dto.Notes;
             request.IsDraft = dto.IsDraft;
             request.Status = dto.IsDraft
@@ -680,6 +691,8 @@ namespace PouleLabApp.API.Services
             // Recréer les nouveaux échantillons
             foreach (var sampleDto in dto.Samples)
             {
+                if (dto.IsDraft && string.IsNullOrEmpty(sampleDto.Type)) continue;
+                
                 var sample = new Sample
                 {
                     RequestId = requestId,
