@@ -8,6 +8,8 @@ namespace PouleLabApp.API.DTOs.Request
         public DateTime PlannedDate { get; set; }              // Date limite prévue
         public DateTime? ActualDate { get; set; }              // Date réelle de complétion
         public bool IsOverdue { get; set; }                    // true si délai dépassé
+        public int? SampleId { get; set; }
+        public string SampleType { get; set; } = string.Empty;
     }
 
     // Données envoyées pour définir une échéance
@@ -15,5 +17,6 @@ namespace PouleLabApp.API.DTOs.Request
     {
         public string Phase { get; set; } = string.Empty;      // Phase concernée
         public DateTime PlannedDate { get; set; }              // Date limite à respecter
+        public int? SampleId { get; set; }
     }
 }

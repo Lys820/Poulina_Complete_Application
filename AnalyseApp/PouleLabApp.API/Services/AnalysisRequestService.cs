@@ -532,6 +532,22 @@ namespace PouleLabApp.API.Services
                 .FirstOrDefaultAsync(r => r.Id == requestId)
                 ?? throw new KeyNotFoundException("Demande introuvable.");
 
+            // Valider l'ordre chronologique par échantillon
+                var bySample = deadlines.GroupBy(d => d.SampleId);
+                foreach (var group in bySample)
+                {
+                    var ordered = group.OrderBy(d => GetPhaseOrder(d.Phase)).ToList();
+                    for (int i = 1; i < ordered.Count; i++)
+                    {
+                        if (ordered[i].PlannedDate <= ordered[i - 1].PlannedDate)
+                        {
+                            throw new ArgumentException(
+                                $"L'échéance '{ordered[i].Phase}' doit être postérieure " +
+                                $"à '{ordered[i - 1].Phase}'.");
+                        }
+                    }
+                }
+
             foreach (var deadlineDto in deadlines)
             {
                 if (!Enum.TryParse<DeadlinePhase>(deadlineDto.Phase, true, out var phase))
@@ -541,7 +557,10 @@ namespace PouleLabApp.API.Services
                     throw new ArgumentException(
                         $"La date pour la phase {deadlineDto.Phase} doit être dans le futur.");
 
-                var existing = request.Deadlines.FirstOrDefault(d => d.Phase == phase);
+                // Chercher une échéance existante pour cette phase + cet échantillon
+                var existing = request.Deadlines
+                    .FirstOrDefault(d => d.Phase == phase &&
+                                        d.SampleId == deadlineDto.SampleId);
 
                 if (existing != null)
                 {
@@ -553,6 +572,7 @@ namespace PouleLabApp.API.Services
                     _context.Deadlines.Add(new Deadline
                     {
                         RequestId = requestId,
+                        SampleId    = deadlineDto.SampleId,
                         Phase = phase,
                         PlannedDate = deadlineDto.PlannedDate,
                         IsOverdue = false
@@ -572,8 +592,10 @@ namespace PouleLabApp.API.Services
         public async Task<List<DeadlineDto>> GetDeadlinesAsync(int requestId)
         {
             var deadlines = await _context.Deadlines
+                .Include(d => d.Sample)
                 .Where(d => d.RequestId == requestId)
-                .OrderBy(d => d.Phase)
+                .OrderBy(d => d.SampleId)
+                .ThenBy(d => d.Phase)
                 .ToListAsync();
 
             return deadlines.Select(d => new DeadlineDto
@@ -582,7 +604,9 @@ namespace PouleLabApp.API.Services
                 Phase = d.Phase.ToString(),
                 PlannedDate = d.PlannedDate,
                 ActualDate = d.ActualDate,
-                IsOverdue = d.IsOverdue
+                IsOverdue = d.IsOverdue,
+                SampleId = d.SampleId,
+                SampleType = d.Sample?.Type ?? ""
             }).ToList();
         }
 
@@ -599,6 +623,16 @@ namespace PouleLabApp.API.Services
             ReceivedAt = r.ReceivedAt,
             IsDraft = r.IsDraft,
             SamplesCount = r.Samples?.Count ?? 0
+        };
+
+        private static int GetPhaseOrder(string phase) => phase switch
+        {
+            "Reception"      => 1,
+            "Assignment"     => 2,
+            "Analysis"       => 3,
+            "Validation"     => 4,
+            "ResultDelivery" => 5,
+            _                => 99
         };
 
         private static RequestDetailDto MapToDetailDto(AnalysisRequest r) => new()
@@ -838,6 +872,14 @@ namespace PouleLabApp.API.Services
             _context.Notifications.RemoveRange(request.Notifications);
             _context.AnalysisRequests.Remove(request);
 
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task DeleteDeadlineAsync(int deadlineId)
+        {
+            var deadline = await _context.Deadlines.FindAsync(deadlineId)
+                ?? throw new KeyNotFoundException("Échéance introuvable.");
+            _context.Deadlines.Remove(deadline);
             await _context.SaveChangesAsync();
         }
     }

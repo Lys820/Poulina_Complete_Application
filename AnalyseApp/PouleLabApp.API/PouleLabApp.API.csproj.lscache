@@ -95,6 +95,8 @@ Migrations/
  20260509125131_AddTemplateTypeToLaboratory.Designer.cs
  20260512165502_AddAssignedStatus.cs
  20260512165502_AddAssignedStatus.Designer.cs
+ 20260515102951_AddSampleIdToDeadline.cs
+ 20260515102951_AddSampleIdToDeadline.Designer.cs
  ApplicationDbContextModelSnapshot.cs
 Models/
  AnalysisRequest.cs

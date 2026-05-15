@@ -11,5 +11,9 @@ namespace PouleLabApp.API.Models
 
         public int RequestId { get; set; }
         public AnalysisRequest Request { get; set; } = null!;
+
+        // Échéance liée à un échantillon spécifique
+        public int? SampleId { get; set; }
+        public Sample? Sample { get; set; }
     }
 }

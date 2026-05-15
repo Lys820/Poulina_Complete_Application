@@ -40,5 +40,8 @@ namespace PouleLabApp.API.Services.Interfaces
 
         //Supression d'une demande — uniquement si en brouillon
         Task DeleteAsync(int requestId);
+
+        //Suppression d'une échéance - uniquement si pas encore réceptionné
+        Task DeleteDeadlineAsync(int deadlineId);
     }
 }

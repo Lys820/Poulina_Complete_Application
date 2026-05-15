@@ -30,7 +30,7 @@ namespace PouleLabApp.API.Services
                 await CheckDeadlinesAsync();
 
                 // Attendre 1 heure avant la prochaine vérification
-                await Task.Delay(TimeSpan.FromHours(1), stoppingToken);
+                await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
             }
         }
 

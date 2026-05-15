@@ -113,6 +113,11 @@ namespace PouleLabApp.API.Controllers
             if (request.Status != "Submitted")
                 return BadRequest(new { message = "Seules les demandes soumises peuvent être réceptionnées." });
 
+            // Vérifier que des échéances sont définies
+            var deadlines = await _requestService.GetDeadlinesAsync(id);
+            if (!deadlines.Any())
+                return BadRequest(new { message = "Veuillez définir les échéances avant de réceptionner la demande." });
+            
             var result = await _requestService.ReceiveAsync(id, receptionistId!);
             return Ok(result);
         }
@@ -394,6 +399,30 @@ namespace PouleLabApp.API.Controllers
 
             await _requestService.DeleteAsync(id);
             return Ok(new { message = "Demande supprimée avec succès." });
+        }
+
+        // DELETE /api/requests/{id}/deadlines/{deadlineId}
+        [HttpDelete("{id}/deadlines/{deadlineId}")]
+        [Authorize(Policy = "RequireClientRole")]
+        public async Task<IActionResult> DeleteDeadline(int id, int deadlineId)
+        {
+            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                ?? User.FindFirst("sub")?.Value;
+
+            var request = await _requestService.GetByIdAsync(id);
+            if (request == null)
+                return NotFound(new { message = "Demande introuvable." });
+
+            // Seul le créateur ou Admin peut supprimer
+            if (request.ClientId != userId && !User.IsInRole("Administrator"))
+                return StatusCode(403, new { message = "Non autorisé." });
+
+            // Impossible de modifier après réception
+            if (request.Status != "Draft" && request.Status != "Submitted")
+                return BadRequest(new { message = "Les échéances ne peuvent plus être modifiées après réception." });
+
+            await _requestService.DeleteDeadlineAsync(deadlineId);
+            return Ok(new { message = "Échéance supprimée." });
         }
     }
 
