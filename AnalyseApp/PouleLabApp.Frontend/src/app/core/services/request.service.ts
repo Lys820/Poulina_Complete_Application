@@ -97,4 +97,12 @@ export class RequestService {
   delete(id: number): Observable<void> {
     return this.http.delete<void>(`${this.url}/${id}`);
   }
+
+  setDeadlines(id: number, deadlines: any[]): Observable<any> {
+    return this.http.put(`${this.url}/${id}/deadlines`, deadlines);
+  }
+
+  deleteDeadline(requestId: number, deadlineId: number): Observable<void> {
+    return this.http.delete<void>(`${this.url}/${requestId}/deadlines/${deadlineId}`);
+  }
 }

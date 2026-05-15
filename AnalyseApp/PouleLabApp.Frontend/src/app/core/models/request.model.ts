@@ -83,4 +83,6 @@ export interface DeadlineDto {
   plannedDate: Date;
   actualDate?: Date;
   isOverdue: boolean;
+  sampleId?: number;
+  sampleType?: string;
 }

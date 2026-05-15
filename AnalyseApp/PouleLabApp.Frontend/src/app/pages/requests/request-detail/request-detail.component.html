@@ -189,6 +189,180 @@
         }
       </div>
 
+      <!-- Section Échéances -->
+      <div class="card mb-4">
+        <div class="card-header d-flex align-items-center justify-content-between">
+          <span>Échéances</span>
+          @if (canEditDeadlines()) {
+            <button class="btn btn-light btn-sm" (click)="showDeadlineForm.update((v) => !v)">
+              {{
+                showDeadlineForm()
+                  ? 'Annuler'
+                  : deadlines().length > 0
+                    ? '✏️ Modifier'
+                    : '+ Définir'
+              }}
+            </button>
+          }
+        </div>
+        <div class="card-body">
+          <!-- Formulaire par échantillon -->
+          @if (showDeadlineForm() && canEditDeadlines() && deadlineForm) {
+            <form [formGroup]="deadlineForm" class="deadline-form mb-4">
+              @for (sample of request()!.samples; track sample.id) {
+                <div class="sample-deadline-card">
+                  <!-- En-tête échantillon -->
+                  <div class="sample-deadline-header">
+                    <span class="sample-dot"></span>
+                    <strong>{{ sample.type }}</strong>
+                    <small class="text-muted ms-2">
+                      {{ sample.quantity }} {{ sample.unit }} — {{ sample.characteristics }}
+                    </small>
+                  </div>
+
+                  <!-- Erreur chronologique -->
+                  @if (validateChronologicalOrder(sample.id)) {
+                    <div class="alert-chrono">
+                      {{ validateChronologicalOrder(sample.id) }}
+                    </div>
+                  }
+
+                  <!-- Champs -->
+                  <div [formGroupName]="'sample_' + sample.id">
+                    <div class="row g-2">
+                      @for (phase of phaseList; track phase.key) {
+                        <div class="col-md-6">
+                          <label
+                            class="form-label small"
+                            [for]="'phase_' + sample.id + '_' + phase.key"
+                          >
+                            <span class="phase-order">{{ phase.order }}</span>
+                            {{ phase.label }}
+                          </label>
+                          <input
+                            type="datetime-local"
+                            class="form-control form-control-sm"
+                            [id]="'phase_' + sample.id + '_' + phase.key"
+                            [formControlName]="phase.key"
+                            [attr.title]="phase.label"
+                          />
+                        </div>
+                      }
+                    </div>
+                  </div>
+                </div>
+              }
+
+              <div class="d-flex gap-2 mt-3">
+                <button
+                  type="button"
+                  class="btn btn-primary btn-sm"
+                  (click)="saveDeadlines()"
+                  [disabled]="actionLoading()"
+                >
+                  @if (actionLoading()) {
+                    <span class="spinner-border spinner-border-sm me-1"></span>
+                  }
+                  Enregistrer
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-light btn-sm"
+                  (click)="showDeadlineForm.set(false)"
+                >
+                  Annuler
+                </button>
+              </div>
+            </form>
+          }
+
+          <!-- Affichage des échéances par échantillon -->
+          @if (deadlines().length === 0) {
+            <p class="text-muted small mb-0">
+              Aucune échéance définie.
+              @if (request()!.status === 'Submitted') {
+                <span class="text-danger ms-1">(Requis avant réception)</span>
+              }
+            </p>
+          } @else {
+            @for (sample of request()!.samples; track sample.id) {
+              @if (deadlines().filter((d) => d.sampleId === sample.id).length > 0) {
+                <div class="sample-deadlines-card">
+                  <!-- En-tête -->
+                  <div class="sample-deadline-header">
+                    <span class="sample-dot"></span>
+                    <strong>{{ sample.type }}</strong>
+                    <small class="text-muted ms-2"> {{ sample.quantity }} {{ sample.unit }} </small>
+                  </div>
+
+                  <!-- Liste des phases -->
+                  <div class="deadline-phases">
+                    @for (
+                      deadline of deadlines().filter((d) => d.sampleId === sample.id);
+                      track deadline.id
+                    ) {
+                      <div
+                        class="deadline-phase-row"
+                        [class.overdue]="isDeadlineOverdue(deadline)"
+                        [class.completed]="deadline.actualDate"
+                      >
+                        <!-- Supprime le phase-number ici -->
+
+                        <div class="phase-info">
+                          <span class="phase-name">{{ getPhaseLabel(deadline.phase) }}</span>
+                          <span class="phase-date">
+                            {{ deadline.plannedDate | date: 'dd/MM/yyyy HH:mm' }}
+                          </span>
+                        </div>
+
+                        <div class="phase-status-actions">
+                          @if (deadline.actualDate) {
+                            <span class="badge badge-validated">✓ Complétée</span>
+                          } @else if (isDeadlineOverdue(deadline)) {
+                            <span class="badge badge-rejected">⚠ Retard</span>
+                          } @else {
+                            <span class="badge badge-submitted">En attente</span>
+                          }
+
+                          @if (canEditDeadlines()) {
+                            <span
+                              class="delete-deadline-btn"
+                              (click)="deleteDeadline(deadline.id)"
+                              title="Supprimer"
+                              role="button"
+                              tabindex="0"
+                              (keydown.enter)="deleteDeadline(deadline.id)"
+                            >
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="13"
+                                height="13"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                              >
+                                <polyline points="3 6 5 6 21 6" />
+                                <path d="M19 6l-1 14H6L5 6" />
+                                <path d="M10 11v6" />
+                                <path d="M14 11v6" />
+                                <path d="M9 6V4h6v2" />
+                              </svg>
+                            </span>
+                          }
+                        </div>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+            }
+          }
+        </div>
+      </div>
+
       <!-- Colonne droite — Actions -->
       <div class="col-lg-4">
         <!-- Actions selon rôle et statut -->

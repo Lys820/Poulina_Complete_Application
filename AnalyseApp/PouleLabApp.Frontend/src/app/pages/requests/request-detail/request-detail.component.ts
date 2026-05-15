@@ -1,15 +1,16 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { FormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { RequestService } from '../../../core/services/request.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { RequestDetailDto, AuditLogDto } from '../../../core/models/request.model';
+import { DeadlineDto } from '../../../core/models/request.model';
 
 @Component({
   selector: 'app-request-detail',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule],
+  imports: [CommonModule, RouterLink, FormsModule, ReactiveFormsModule],
   templateUrl: './request-detail.component.html',
   styleUrls: ['./request-detail.component.scss'],
 })
@@ -28,19 +29,23 @@ export class RequestDetailComponent implements OnInit {
   actionLoading = signal(false);
   successMessage = signal('');
   errorMessage = signal('');
+  deadlines = signal<DeadlineDto[]>([]);
+  showDeadlineForm = signal(false);
 
+  deadlineForm!: FormGroup;
   requestId!: number;
 
   constructor(
     private route: ActivatedRoute,
     private router: Router,
+    private fb: FormBuilder,
     private requestService: RequestService,
     public authService: AuthService,
   ) {}
 
   ngOnInit(): void {
     this.requestId = Number(this.route.snapshot.paramMap.get('id'));
-    this.loadRequest();
+    this.loadRequest(); // buildDeadlineForm sera appelé dedans
   }
 
   loadRequest(): void {
@@ -48,15 +53,24 @@ export class RequestDetailComponent implements OnInit {
     this.requestService.getById(this.requestId).subscribe({
       next: (data) => {
         this.request.set(data);
+        this.buildDeadlineForm(); // ← ICI seulement, après que data est disponible
         this.isLoading.set(false);
       },
       error: () => this.isLoading.set(false),
     });
 
+    this.requestService.getHistory(this.requestId).subscribe({
+      next: (data) => this.history.set(data),
+    });
+
+    this.loadDeadlines();
+
     // Charger l'historique pour tous les rôles
     this.requestService.getHistory(this.requestId).subscribe({
       next: (data) => this.history.set(data),
     });
+
+    this.loadDeadlines();
   }
 
   // -------------------------------------------------------
@@ -282,5 +296,179 @@ export class RequestDetailComponent implements OnInit {
       next: () => this.router.navigate(['/app/requests']),
       error: (err) => this.showError(err.error?.message),
     });
+  }
+
+  get deadlinesBySample(): Map<number | null, DeadlineDto[]> {
+    const map = new Map<number | null, DeadlineDto[]>();
+    this.deadlines().forEach((d) => {
+      const key = d.sampleId ?? null;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(d);
+    });
+    return map;
+  }
+
+  // Vérifier si les échéances peuvent être modifiées
+  canEditDeadlines(): boolean {
+    const status = this.request()?.status;
+    return (status === 'Draft' || status === 'Submitted') && this.isCreator();
+  }
+
+  buildDeadlineForm(): void {
+    // Un groupe par échantillon (les phases sont les mêmes pour chaque)
+    const req = this.request();
+    if (!req) return; // ← sécurité
+
+    const groups: any = {};
+    req.samples.forEach((s) => {
+      groups[`sample_${s.id}`] = this.buildPhaseGroup();
+    });
+    this.deadlineForm = this.fb.group(groups);
+  }
+
+  loadDeadlines(): void {
+    this.requestService.getDeadlines(this.requestId).subscribe({
+      next: (data) => this.deadlines.set(data),
+    });
+  }
+
+  private buildPhaseGroup(): FormGroup {
+    return this.fb.group({
+      reception: [''],
+      assignment: [''],
+      analysis: [''],
+      validation: [''],
+      resultDelivery: [''],
+    });
+  }
+
+  saveDeadlines(): void {
+    const dto: any[] = [];
+    const req = this.request();
+    if (!req) return;
+
+    const addPhases = (group: any, sampleId?: number) => {
+      const phases = [
+        { key: 'reception', phase: 'Reception' },
+        { key: 'assignment', phase: 'Assignment' },
+        { key: 'analysis', phase: 'Analysis' },
+        { key: 'validation', phase: 'Validation' },
+        { key: 'resultDelivery', phase: 'ResultDelivery' },
+      ];
+
+      phases.forEach((p) => {
+        if (group[p.key]) {
+          // Fix timezone — conserver l'heure locale
+          const local = new Date(group[p.key]);
+          const offset = local.getTimezoneOffset() * 60000;
+          const adjusted = new Date(local.getTime() - offset);
+
+          dto.push({
+            phase: p.phase,
+            plannedDate: adjusted.toISOString(),
+            sampleId: sampleId ?? null,
+          });
+        }
+      });
+    };
+
+    req.samples.forEach((s) => {
+      const group = this.deadlineForm.get(`sample_${s.id}`)?.value;
+      if (group) addPhases(group, s.id);
+    });
+
+    if (dto.length === 0) {
+      this.showError('Renseignez au moins une échéance.');
+      return;
+    }
+
+    this.actionLoading.set(true);
+    this.requestService.setDeadlines(this.requestId, dto).subscribe({
+      next: () => {
+        this.loadDeadlines();
+        this.showDeadlineForm.set(false);
+        this.showSuccess('Échéances enregistrées avec succès.');
+        this.actionLoading.set(false);
+      },
+      error: (err) => {
+        this.showError(err.error?.message ?? 'Erreur.');
+        this.actionLoading.set(false);
+      },
+    });
+  }
+
+  deleteDeadline(deadlineId: number): void {
+    if (!confirm('Supprimer cette échéance ?')) return;
+    this.requestService.deleteDeadline(this.requestId, deadlineId).subscribe({
+      next: () => {
+        this.deadlines.update((list) => list.filter((d) => d.id !== deadlineId));
+        this.showSuccess('Échéance supprimée.');
+      },
+      error: (err) => this.showError(err.error?.message),
+    });
+  }
+
+  // Calcul temps réel du retard
+  isDeadlineOverdue(deadline: DeadlineDto): boolean {
+    return !deadline.actualDate && new Date(deadline.plannedDate) < new Date();
+  }
+
+  // Noms des phases
+  getPhaseLabel(phase: string): string {
+    const map: Record<string, string> = {
+      Reception: 'Réception',
+      Assignment: 'Assignation',
+      Analysis: 'Analyse',
+      Validation: 'Validation',
+      ResultDelivery: 'Livraison des résultats',
+    };
+    return map[phase] ?? phase;
+  }
+
+  isCreator(): boolean {
+    const userId = this.authService.currentUser()?.userId;
+    return this.request()?.clientId === userId || this.authService.hasRole('Administrator');
+  }
+
+  validateChronologicalOrder(sampleId: number): string {
+    const group = this.deadlineForm.get(`sample_${sampleId}`)?.value;
+    if (!group) return '';
+
+    const phases = [
+      { key: 'reception', label: 'Réception' },
+      { key: 'assignment', label: 'Assignation' },
+      { key: 'analysis', label: 'Analyse' },
+      { key: 'validation', label: 'Validation' },
+      { key: 'resultDelivery', label: 'Livraison' },
+    ];
+
+    const dates = phases
+      .filter((p) => group[p.key])
+      .map((p) => ({ label: p.label, date: new Date(group[p.key]) }));
+
+    for (let i = 1; i < dates.length; i++) {
+      if (dates[i].date <= dates[i - 1].date) {
+        return `⚠ L'échéance "${dates[i].label}" doit être après "${dates[i - 1].label}".`;
+      }
+    }
+    return '';
+  }
+
+  readonly phaseList = [
+    { key: 'reception', label: 'Réception', order: 1 },
+    { key: 'assignment', label: 'Assignation', order: 2 },
+    { key: 'analysis', label: 'Analyse', order: 3 },
+    { key: 'validation', label: 'Validation', order: 4 },
+    { key: 'resultDelivery', label: 'Livraison résultats', order: 5 },
+  ];
+
+  getPhaseOrder(phase: string): number {
+    return (
+      this.phaseList.find(
+        (p) =>
+          p.key.toLowerCase() === phase.toLowerCase() ||
+          p.label.toLowerCase() === phase.toLowerCase(),
+      )?.order ?? 0
+    );
   }
 }
