@@ -53,6 +53,13 @@ export const LAYOUT_ROUTES: Routes = [
             (m) => m.NotificationsComponent,
           ),
       },
+      {
+        path: 'users',
+        loadComponent: () =>
+          import('../../pages/users/user-list/user-list.component').then(
+            (m) => m.UserListComponent,
+          ),
+      },
     ],
   },
 ];
