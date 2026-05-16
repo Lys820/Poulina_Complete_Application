@@ -151,5 +151,23 @@ namespace PouleLabApp.API.Controllers
 
             return Ok(new { message = "Utilisateur désactivé avec succès." });
         }
+
+        // GET /api/user/analysts — liste uniquement les laborantins actifs
+        [HttpGet("analysts")]
+        [Authorize(Policy = "RequireReceptionistOnly")]
+        public async Task<IActionResult> GetAnalysts()
+        {
+            var analysts = await _userManager.GetUsersInRoleAsync("Analyst");
+            var activeAnalysts = analysts
+                .Where(u => u.IsActive)
+                .Select(u => new {
+                    u.Id,
+                    FullName = $"{u.FirstName} {u.LastName}",
+                    u.Email
+                })
+                .ToList();
+
+            return Ok(activeAnalysts);
+        }
     }
 }
