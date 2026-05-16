@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { UserDto, UpdateUserDto } from '../models/user.model';
+import { UserDto, UpdateUserDto, AnalystDto } from '../models/user.model';
 
 @Injectable({ providedIn: 'root' })
 export class UserService {
@@ -36,5 +36,9 @@ export class UserService {
       JSON.stringify(role),
       { headers: { 'Content-Type': 'application/json' } },
     );
+  }
+
+  getAnalysts(): Observable<AnalystDto[]> {
+    return this.http.get<AnalystDto[]>(`${this.url}/analysts`);
   }
 }

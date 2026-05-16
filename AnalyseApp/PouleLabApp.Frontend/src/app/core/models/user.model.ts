@@ -16,3 +16,9 @@ export interface UpdateUserDto {
   isActive: boolean;
   role: string;
 }
+
+export interface AnalystDto {
+  id: string;
+  fullName: string;
+  email: string;
+}

@@ -6,6 +6,8 @@ import { RequestService } from '../../../core/services/request.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { RequestDetailDto, AuditLogDto } from '../../../core/models/request.model';
 import { DeadlineDto } from '../../../core/models/request.model';
+import { AnalystDto } from '../../../core/models/user.model';
+import { UserService } from '../../../core/services/user.service';
 
 @Component({
   selector: 'app-request-detail',
@@ -17,6 +19,7 @@ import { DeadlineDto } from '../../../core/models/request.model';
 export class RequestDetailComponent implements OnInit {
   request = signal<RequestDetailDto | null>(null);
   history = signal<AuditLogDto[]>([]);
+  analysts = signal<AnalystDto[]>([]);
   isLoading = signal(true);
 
   // Actions modales
@@ -40,6 +43,7 @@ export class RequestDetailComponent implements OnInit {
     private router: Router,
     private fb: FormBuilder,
     private requestService: RequestService,
+    private userService: UserService,
     public authService: AuthService,
   ) {}
 
@@ -156,6 +160,13 @@ export class RequestDetailComponent implements OnInit {
         this.actionLoading.set(false);
       },
     });
+  }
+
+  openAssignModal(): void {
+    this.userService.getAnalysts().subscribe({
+      next: (data) => this.analysts.set(data),
+    });
+    this.showAssignModal.set(true);
   }
 
   // -------------------------------------------------------
