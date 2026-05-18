@@ -38,6 +38,8 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 .AddEntityFrameworkStores<ApplicationDbContext>() // Stocke les utilisateurs en base via EF Core
 .AddDefaultTokenProviders();                       // Active les tokens pour reset de mot de passe etc.
 
+builder.Services.AddScoped<IAnalysisRequestService, AnalysisRequestService>();
+
 // ============================================================
 // 3. JWT AUTHENTICATION
 // Valide le token JWT envoyé dans chaque requête protégée
@@ -107,7 +109,6 @@ builder.Services.AddCors(options =>
 // Injection de dépendances — on déclare ici tous nos services
 // ============================================================
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
-builder.Services.AddScoped<IAnalysisRequestService, AnalysisRequestService>();
 builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 // Background service — vérifie les échéances dépassées toutes les heures
 builder.Services.AddHostedService<DeadlineCheckerService>();

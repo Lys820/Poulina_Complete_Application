@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using PouleLabApp.API.Data;
 using PouleLabApp.API.DTOs.Request;
@@ -6,44 +7,76 @@ using PouleLabApp.API.Services.Interfaces;
 
 namespace PouleLabApp.API.Services
 {
-    // Implémentation concrète de toutes les opérations métier sur les demandes
     public class AnalysisRequestService : IAnalysisRequestService
     {
         private readonly ApplicationDbContext _context;
         private readonly IAuditLogService _auditLogService;
         private readonly IEmailService _emailService;
+        private readonly UserManager<ApplicationUser> _userManager;
 
         public AnalysisRequestService(
             ApplicationDbContext context,
             IAuditLogService auditLogService,
-            IEmailService emailService)
+            IEmailService emailService,
+            UserManager<ApplicationUser> userManager)
         {
-            _context = context;
+            _context         = context;
             _auditLogService = auditLogService;
-            _emailService = emailService;
+            _emailService    = emailService;
+            _userManager     = userManager;
+        }
+
+        // -------------------------------------------------------
+        // Créer une notification en base pour un utilisateur
+        // -------------------------------------------------------
+        private async Task CreateNotificationAsync(
+            string recipientId, int requestId, string message)
+        {
+            _context.Notifications.Add(new Notification
+            {
+                RecipientId = recipientId,
+                RequestId   = requestId,
+                Message     = message,
+                IsRead      = false,
+                CreatedAt   = DateTime.UtcNow
+            });
+            await _context.SaveChangesAsync();
+        }
+
+        // Notifier tous les utilisateurs actifs d'un rôle
+        private async Task NotifyRoleAsync(
+            string role, int requestId, string message)
+        {
+            var users = await _userManager.GetUsersInRoleAsync(role);
+
+            foreach (var user in users.Where(u => u.IsActive))
+            {
+                await CreateNotificationAsync(user.Id, requestId, message);
+            }
         }
 
         // -------------------------------------------------------
         // Créer une nouvelle demande (brouillon ou soumise)
         // -------------------------------------------------------
-        public async Task<RequestDetailDto> CreateAsync(string clientId, CreateRequestDto dto)
+        public async Task<RequestDetailDto> CreateAsync(
+            string clientId, CreateRequestDto dto)
         {
-            // Vérifier que le laboratoire existe
             if (!dto.IsDraft && dto.LaboratoryId > 0)
             {
-                var lab = await _context.Laboratories.FindAsync(dto.LaboratoryId)
+                _ = await _context.Laboratories.FindAsync(dto.LaboratoryId)
                     ?? throw new KeyNotFoundException("Laboratoire introuvable.");
             }
 
-            // Vérification des doublons — même labo + mêmes échantillons + statut actif
+            // Vérification des doublons — même labo + mêmes échantillons
+            // Les notes sont ignorées volontairement
             if (!dto.IsDraft && dto.LaboratoryId > 0 && dto.Samples.Any())
             {
                 var newSamples = dto.Samples
                     .Select(s => new {
-                        Type = s.Type.ToLower().Trim(),
+                        Type            = s.Type.ToLower().Trim(),
                         Characteristics = s.Characteristics.ToLower().Trim(),
-                        Quantity = s.Quantity,
-                        Unit = s.Unit.ToLower().Trim()
+                        Quantity        = s.Quantity,
+                        Unit            = s.Unit.ToLower().Trim()
                     })
                     .OrderBy(s => s.Type)
                     .ToList();
@@ -52,8 +85,8 @@ namespace PouleLabApp.API.Services
                     .Include(r => r.Samples)
                     .Where(r =>
                         r.LaboratoryId == dto.LaboratoryId &&
-                        (r.Status == RequestStatus.Submitted ||
-                         r.Status == RequestStatus.Received ||
+                        (r.Status == RequestStatus.Submitted  ||
+                         r.Status == RequestStatus.Received   ||
                          r.Status == RequestStatus.InProgress ||
                          r.Status == RequestStatus.InReview))
                     .ToListAsync();
@@ -64,19 +97,19 @@ namespace PouleLabApp.API.Services
 
                     var existingSamples = r.Samples
                         .Select(s => new {
-                            Type = s.Type.ToLower().Trim(),
+                            Type            = s.Type.ToLower().Trim(),
                             Characteristics = s.Characteristics.ToLower().Trim(),
-                            Quantity = s.Quantity,
-                            Unit = s.Unit.ToLower().Trim()
+                            Quantity        = s.Quantity,
+                            Unit            = s.Unit.ToLower().Trim()
                         })
                         .OrderBy(s => s.Type)
                         .ToList();
 
                     return newSamples.Zip(existingSamples, (n, e) =>
-                        n.Type == e.Type &&
+                        n.Type            == e.Type            &&
                         n.Characteristics == e.Characteristics &&
-                        n.Quantity == e.Quantity &&
-                        n.Unit == e.Unit
+                        n.Quantity        == e.Quantity        &&
+                        n.Unit            == e.Unit
                     ).All(match => match);
                 });
 
@@ -85,39 +118,35 @@ namespace PouleLabApp.API.Services
                         "Une demande identique est déjà en cours de traitement pour ce laboratoire.");
             }
 
-            // Créer la demande
             var request = new AnalysisRequest
             {
-                ClientId = clientId,
-                LaboratoryId = dto.LaboratoryId > 0 ? dto.LaboratoryId : 1, // valeur par défaut
-                Notes = dto.Notes,
-                IsDraft = dto.IsDraft,
-                Status = dto.IsDraft ? RequestStatus.Draft : RequestStatus.Submitted,
-                CreatedAt = DateTime.UtcNow,
-                SubmittedAt = dto.IsDraft ? default : DateTime.UtcNow
+                ClientId     = clientId,
+                LaboratoryId = dto.LaboratoryId > 0 ? dto.LaboratoryId : 1,
+                Notes        = dto.Notes,
+                IsDraft      = dto.IsDraft,
+                Status       = dto.IsDraft ? RequestStatus.Draft : RequestStatus.Submitted,
+                CreatedAt    = DateTime.UtcNow,
+                SubmittedAt  = dto.IsDraft ? default : DateTime.UtcNow
             };
 
             _context.AnalysisRequests.Add(request);
             await _context.SaveChangesAsync();
 
-            // Créer et lier les échantillons à la demande
             foreach (var sampleDto in dto.Samples)
             {
-                // Ignorer les échantillons vides pour les brouillons
                 if (dto.IsDraft && string.IsNullOrEmpty(sampleDto.Type)) continue;
-                
+
                 var sample = new Sample
                 {
-                    RequestId = request.Id,
-                    Type = sampleDto.Type,
+                    RequestId       = request.Id,
+                    Type            = sampleDto.Type,
                     Characteristics = sampleDto.Characteristics,
-                    Quantity = sampleDto.Quantity,
-                    Unit = sampleDto.Unit
+                    Quantity        = sampleDto.Quantity,
+                    Unit            = sampleDto.Unit
                 };
                 _context.Samples.Add(sample);
                 await _context.SaveChangesAsync();
 
-                // Créer les résultats vides pour chaque type d'analyse demandé
                 foreach (var analysisTypeId in sampleDto.AnalysisTypeIds)
                 {
                     var analysisType = await _context.AnalysisTypes.FindAsync(analysisTypeId);
@@ -125,24 +154,31 @@ namespace PouleLabApp.API.Services
 
                     _context.AnalysisResults.Add(new AnalysisResult
                     {
-                        SampleId = sample.Id,
+                        SampleId       = sample.Id,
                         AnalysisTypeId = analysisTypeId,
-                        LowerBound = analysisType.ReferenceMin,
-                        UpperBound = analysisType.ReferenceMax,
-                        RecordedById = clientId
+                        LowerBound     = analysisType.ReferenceMin,
+                        UpperBound     = analysisType.ReferenceMax,
+                        RecordedById   = clientId
                     });
                 }
             }
 
             await _context.SaveChangesAsync();
 
-            // Notifier le client si la demande est soumise directement (pas un brouillon)
             if (!dto.IsDraft)
             {
                 var client = await _context.Users.FindAsync(clientId);
                 if (client != null)
                     await _emailService.SendRequestSubmittedAsync(
                         client.Email!, client.FirstName, request.Id);
+
+                // Notifier réceptionnistes + admins + managers
+                await NotifyRoleAsync("Receptionist", request.Id,
+                    $"Nouvelle demande #{request.Id} soumise par {client?.FirstName} {client?.LastName}.");
+                await NotifyRoleAsync("Administrator", request.Id,
+                    $"Nouvelle demande #{request.Id} soumise.");
+                await NotifyRoleAsync("Manager", request.Id,
+                    $"Nouvelle demande #{request.Id} soumise.");
             }
 
             await _auditLogService.LogAsync(
@@ -158,7 +194,8 @@ namespace PouleLabApp.API.Services
         // -------------------------------------------------------
         // Soumettre un brouillon
         // -------------------------------------------------------
-        public async Task<RequestDetailDto> SubmitAsync(int requestId, string clientId)
+        public async Task<RequestDetailDto> SubmitAsync(
+            int requestId, string clientId)
         {
             var request = await _context.AnalysisRequests
                 .Include(r => r.Samples)
@@ -166,23 +203,19 @@ namespace PouleLabApp.API.Services
                 .FirstOrDefaultAsync(r => r.Id == requestId)
                 ?? throw new KeyNotFoundException("Demande introuvable.");
 
-            // Vérifier que la demande appartient bien au client qui la soumet
             if (request.ClientId != clientId)
                 throw new UnauthorizedAccessException(
                     "Vous n'êtes pas autorisé à soumettre cette demande.");
 
-            // Vérifier que la demande est bien en brouillon
             if (request.Status != RequestStatus.Draft)
                 throw new ArgumentException("Seuls les brouillons peuvent être soumis.");
 
-            // Vérifier qu'au moins un échantillon est présent
             if (!request.Samples.Any())
                 throw new ArgumentException(
                     "La demande doit contenir au moins un échantillon.");
 
-            // Passer en Submitted
-            request.Status = RequestStatus.Submitted;
-            request.IsDraft = false;
+            request.Status      = RequestStatus.Submitted;
+            request.IsDraft     = false;
             request.SubmittedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
@@ -193,16 +226,23 @@ namespace PouleLabApp.API.Services
                 RequestStatus.Draft.ToString(),
                 RequestStatus.Submitted.ToString());
 
-            // Notifier le client que sa demande a été soumise
             await _emailService.SendRequestSubmittedAsync(
                 request.Client.Email!, request.Client.FirstName, requestId);
+
+            // Notifier réceptionnistes + admins + managers
+            await NotifyRoleAsync("Receptionist", requestId,
+                $"Nouvelle demande #{requestId} soumise par {request.Client.FirstName} {request.Client.LastName}.");
+            await NotifyRoleAsync("Administrator", requestId,
+                $"Nouvelle demande #{requestId} soumise.");
+            await NotifyRoleAsync("Manager", requestId,
+                $"Nouvelle demande #{requestId} soumise.");
 
             return await GetByIdAsync(requestId)
                 ?? throw new Exception("Erreur lors de la récupération de la demande.");
         }
 
         // -------------------------------------------------------
-        // Récupérer une demande par son ID avec tous ses détails
+        // Récupérer une demande par son ID
         // -------------------------------------------------------
         public async Task<RequestDetailDto?> GetByIdAsync(int requestId)
         {
@@ -216,12 +256,11 @@ namespace PouleLabApp.API.Services
                 .FirstOrDefaultAsync(r => r.Id == requestId);
 
             if (request == null) return null;
-
             return MapToDetailDto(request);
         }
 
         // -------------------------------------------------------
-        // Récupérer toutes les demandes avec filtre optionnel
+        // Récupérer toutes les demandes
         // -------------------------------------------------------
         public async Task<List<RequestListDto>> GetAllAsync(string? status = null)
         {
@@ -233,9 +272,7 @@ namespace PouleLabApp.API.Services
 
             if (!string.IsNullOrEmpty(status) &&
                 Enum.TryParse<RequestStatus>(status, true, out var parsedStatus))
-            {
                 query = query.Where(r => r.Status == parsedStatus);
-            }
 
             var requests = await query
                 .OrderByDescending(r => r.CreatedAt)
@@ -260,9 +297,10 @@ namespace PouleLabApp.API.Services
         }
 
         // -------------------------------------------------------
-        // Réceptionner une demande (Réceptionniste)
+        // Réceptionner une demande
         // -------------------------------------------------------
-        public async Task<RequestDetailDto> ReceiveAsync(int requestId, string receptionistId)
+        public async Task<RequestDetailDto> ReceiveAsync(
+            int requestId, string receptionistId)
         {
             var request = await _context.AnalysisRequests
                 .Include(r => r.Client)
@@ -273,29 +311,33 @@ namespace PouleLabApp.API.Services
                 throw new ArgumentException(
                     "Seules les demandes soumises peuvent être réceptionnées.");
 
-            request.Status = RequestStatus.Received;
+            request.Status     = RequestStatus.Received;
             request.ReceivedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
-            
+
             await _auditLogService.LogAsync(
                 requestId, receptionistId,
                 "Réception de la demande",
                 RequestStatus.Submitted.ToString(),
                 RequestStatus.Received.ToString());
 
-            // Notifier le client que sa demande a été réceptionnée
             await _emailService.SendRequestReceivedAsync(
                 request.Client.Email!, request.Client.FirstName, requestId);
+
+            // Notifier le client
+            await CreateNotificationAsync(request.ClientId, requestId,
+                $"Votre demande #{requestId} a été réceptionnée et est en cours de traitement.");
 
             return await GetByIdAsync(requestId)
                 ?? throw new Exception("Erreur lors de la récupération de la demande.");
         }
 
         // -------------------------------------------------------
-        // Assigner une demande à un laborantin (Réceptionniste)
+        // Assigner une demande à un laborantin
         // -------------------------------------------------------
-        public async Task<RequestDetailDto> AssignAsync(int requestId, string analystId)
+        public async Task<RequestDetailDto> AssignAsync(
+            int requestId, string analystId)
         {
             var request = await _context.AnalysisRequests
                 .Include(r => r.Client)
@@ -307,28 +349,33 @@ namespace PouleLabApp.API.Services
                     "Seules les demandes réceptionnées peuvent être assignées.");
 
             request.AssignedToId = analystId;
-            request.Status = RequestStatus.Assigned;
+            request.Status       = RequestStatus.Assigned;
 
             await _context.SaveChangesAsync();
 
             await _auditLogService.LogAsync(
-                requestId, "system",
+                requestId, analystId,
                 "Assignation de la demande",
                 RequestStatus.Received.ToString(),
                 RequestStatus.Assigned.ToString());
 
-            // Notifier le client que sa demande a été assignée à un laborantin
             await _emailService.SendRequestAssignedAsync(
                 request.Client.Email!, request.Client.FirstName, requestId);
+
+            // Notifier le laborantin
+            await CreateNotificationAsync(analystId, requestId,
+                $"La demande #{requestId} vous a été assignée. Veuillez l'accepter ou la refuser.");
+
+            // Notifier le client
+            await CreateNotificationAsync(request.ClientId, requestId,
+                $"Votre demande #{requestId} a été assignée à un laborantin.");
 
             return await GetByIdAsync(requestId)
                 ?? throw new Exception("Erreur lors de la récupération de la demande.");
         }
 
-
         // -------------------------------------------------------
-        // Saisir les résultats d'analyse (Laborantin)
-        // IsAnomaly est calculé automatiquement selon les bornes
+        // Saisir les résultats d'analyse
         // -------------------------------------------------------
         public async Task<RequestDetailDto> SaveResultsAsync(
             int requestId,
@@ -358,12 +405,10 @@ namespace PouleLabApp.API.Services
                         $"Résultat id={resultDto.ResultId} introuvable.");
 
                 result.MeasuredValue = resultDto.MeasuredValue;
-                result.RecordedById = analystId;
-                result.RecordedAt = DateTime.UtcNow;
-
-                // Calcul automatique de l'anomalie
-                result.IsAnomaly = resultDto.MeasuredValue < result.LowerBound ||
-                                   resultDto.MeasuredValue > result.UpperBound;
+                result.RecordedById  = analystId;
+                result.RecordedAt    = DateTime.UtcNow;
+                result.IsAnomaly     = resultDto.MeasuredValue < result.LowerBound ||
+                                       resultDto.MeasuredValue > result.UpperBound;
             }
 
             await _context.SaveChangesAsync();
@@ -373,7 +418,7 @@ namespace PouleLabApp.API.Services
         }
 
         // -------------------------------------------------------
-        // Marquer les analyses comme terminées (Laborantin)
+        // Terminer les analyses
         // -------------------------------------------------------
         public async Task<RequestDetailDto> CompleteAnalysisAsync(
             int requestId, string analystId)
@@ -407,12 +452,16 @@ namespace PouleLabApp.API.Services
                 RequestStatus.InProgress.ToString(),
                 RequestStatus.InReview.ToString());
 
+            // Notifier les chefs de labo
+            await NotifyRoleAsync("LabChief", requestId,
+                $"La demande #{requestId} est prête pour validation.");
+
             return await GetByIdAsync(requestId)
                 ?? throw new Exception("Erreur lors de la récupération de la demande.");
         }
 
         // -------------------------------------------------------
-        // Valider les résultats (Chef de laboratoire)
+        // Valider les résultats
         // -------------------------------------------------------
         public async Task<RequestDetailDto> ValidateAsync(
             int requestId, string labChiefId)
@@ -426,31 +475,30 @@ namespace PouleLabApp.API.Services
                 throw new ArgumentException(
                     "Seules les demandes en cours de révision peuvent être validées.");
 
-            var oldStatus = request.Status.ToString();
+            var oldStatus  = request.Status.ToString();
             request.Status = RequestStatus.Validated;
 
             await _context.SaveChangesAsync();
 
-            // Enregistrer dans l'historique
             await _auditLogService.LogAsync(
                 requestId, labChiefId,
                 "Validation des résultats",
                 oldStatus,
                 RequestStatus.Validated.ToString());
 
-            // Notifier le client que ses résultats sont disponibles
             await _emailService.SendResultsReadyAsync(
                 request.Client.Email!, request.Client.FirstName, requestId);
+
+            // Notifier le client
+            await CreateNotificationAsync(request.ClientId, requestId,
+                $"✓ Votre demande #{requestId} a été validée. Le bulletin est disponible en téléchargement.");
 
             return await GetByIdAsync(requestId)
                 ?? throw new Exception("Erreur lors de la récupération de la demande.");
         }
 
         // -------------------------------------------------------
-        // Rejeter et renvoyer au laborantin (Chef de laboratoire)
-        // La demande repasse en InProgress pour que le laborantin
-        // corrige et resaisisse les résultats avant de renvoyer
-        // à la validation
+        // Rejeter et renvoyer au laborantin
         // -------------------------------------------------------
         public async Task<RequestDetailDto> InvalidateAsync(
             int requestId, string labChiefId, string reason)
@@ -466,41 +514,124 @@ namespace PouleLabApp.API.Services
                 throw new ArgumentException(
                     "Seules les demandes en cours de révision peuvent être rejetées.");
 
-            var oldStatus = request.Status.ToString();
-
-            // Repasser en InProgress — le même laborantin doit refaire l'analyse
+            var oldStatus  = request.Status.ToString();
             request.Status = RequestStatus.InProgress;
-            request.Notes = string.IsNullOrEmpty(request.Notes)
+            request.Notes  = string.IsNullOrEmpty(request.Notes)
                 ? $"Rejet chef de labo : {reason}"
                 : $"{request.Notes} | Rejet chef de labo : {reason}";
 
-            // Remettre toutes les valeurs mesurées à 0
-            // pour forcer le laborantin à tout resaisir
             foreach (var sample in request.Samples)
             {
                 foreach (var result in sample.Results)
                 {
                     result.MeasuredValue = 0;
-                    result.IsAnomaly = false;
-                    result.RecordedAt = DateTime.UtcNow;
+                    result.IsAnomaly     = false;
+                    result.RecordedAt    = DateTime.UtcNow;
                 }
             }
 
             await _context.SaveChangesAsync();
 
-            // Enregistrer dans l'historique
             await _auditLogService.LogAsync(
                 requestId, labChiefId,
                 "Rejet des résultats — renvoi au laborantin",
                 oldStatus,
                 RequestStatus.InProgress.ToString());
 
+            // Notifier le laborantin
+            if (!string.IsNullOrEmpty(request.AssignedToId))
+                await CreateNotificationAsync(request.AssignedToId, requestId,
+                    $"⚠ Les résultats de la demande #{requestId} ont été rejetés : {reason}. Veuillez corriger et renvoyer.");
+
             return await GetByIdAsync(requestId)
                 ?? throw new Exception("Erreur lors de la récupération de la demande.");
         }
 
         // -------------------------------------------------------
-        // Récupérer l'historique complet d'une demande
+        // Laborantin accepte la demande
+        // -------------------------------------------------------
+        public async Task<RequestDetailDto> AnalystAcceptAsync(
+            int requestId, string analystId)
+        {
+            var request = await _context.AnalysisRequests
+                .Include(r => r.Client)
+                .FirstOrDefaultAsync(r => r.Id == requestId)
+                ?? throw new KeyNotFoundException("Demande introuvable.");
+
+            if (request.AssignedToId != analystId)
+                throw new UnauthorizedAccessException(
+                    "Cette demande ne vous est pas assignée.");
+
+            if (request.Status != RequestStatus.Assigned)
+                throw new ArgumentException(
+                    "Seules les demandes assignées peuvent être acceptées.");
+
+            request.Status = RequestStatus.InProgress;
+
+            await _context.SaveChangesAsync();
+
+            await _auditLogService.LogAsync(
+                requestId, analystId,
+                "Acceptation par le laborantin",
+                RequestStatus.Assigned.ToString(),
+                RequestStatus.InProgress.ToString());
+
+            // Notifier le client
+            await CreateNotificationAsync(request.ClientId, requestId,
+                $"Votre demande #{requestId} a été acceptée par le laborantin et est en cours d'analyse.");
+
+            return await GetByIdAsync(requestId)
+                ?? throw new Exception("Erreur lors de la récupération de la demande.");
+        }
+
+        // -------------------------------------------------------
+        // Laborantin refuse la demande
+        // -------------------------------------------------------
+        public async Task<RequestDetailDto> AnalystRejectAsync(
+            int requestId, string analystId, string reason)
+        {
+            var request = await _context.AnalysisRequests
+                .Include(r => r.Client)
+                .FirstOrDefaultAsync(r => r.Id == requestId)
+                ?? throw new KeyNotFoundException("Demande introuvable.");
+
+            if (request.AssignedToId != analystId)
+                throw new UnauthorizedAccessException(
+                    "Cette demande ne vous est pas assignée.");
+
+            if (request.Status != RequestStatus.Assigned)
+                throw new ArgumentException(
+                    "Seules les demandes assignées peuvent être refusées.");
+
+            var oldStatus  = request.Status.ToString();
+            request.Status = RequestStatus.Closed;
+            request.Notes  = string.IsNullOrEmpty(request.Notes)
+                ? $"Refus laborantin : {reason}"
+                : $"{request.Notes} | Refus laborantin : {reason}";
+
+            await _context.SaveChangesAsync();
+
+            await _auditLogService.LogAsync(
+                requestId, analystId,
+                "Refus par le laborantin",
+                oldStatus,
+                RequestStatus.Closed.ToString());
+
+            await _emailService.SendRequestRejectedAsync(
+                request.Client.Email!, request.Client.FirstName, requestId, reason);
+
+            // Notifier le client et les réceptionnistes
+            await CreateNotificationAsync(request.ClientId, requestId,
+                $"Votre demande #{requestId} a été refusée par le laborantin : {reason}.");
+            await NotifyRoleAsync("Receptionist", requestId,
+                $"La demande #{requestId} a été refusée par le laborantin. Une réassignation peut être nécessaire.");
+
+            return await GetByIdAsync(requestId)
+                ?? throw new Exception("Erreur lors de la récupération de la demande.");
+        }
+
+        // -------------------------------------------------------
+        // Récupérer l'historique
         // -------------------------------------------------------
         public async Task<List<AuditLogDto>> GetHistoryAsync(int requestId)
         {
@@ -512,17 +643,17 @@ namespace PouleLabApp.API.Services
 
             return logs.Select(a => new AuditLogDto
             {
-                Id = a.Id,
-                Action = a.Action,
+                Id          = a.Id,
+                Action      = a.Action,
                 PerformedBy = $"{a.PerformedBy?.FirstName} {a.PerformedBy?.LastName}",
-                OldValue = a.OldValue,
-                NewValue = a.NewValue,
+                OldValue    = a.OldValue,
+                NewValue    = a.NewValue,
                 PerformedAt = a.PerformedAt
             }).ToList();
         }
 
         // -------------------------------------------------------
-        // Définir les échéances d'une demande
+        // Définir les échéances
         // -------------------------------------------------------
         public async Task<RequestDetailDto> SetDeadlinesAsync(
             int requestId, List<SetDeadlineDto> deadlines)
@@ -533,20 +664,18 @@ namespace PouleLabApp.API.Services
                 ?? throw new KeyNotFoundException("Demande introuvable.");
 
             // Valider l'ordre chronologique par échantillon
-                var bySample = deadlines.GroupBy(d => d.SampleId);
-                foreach (var group in bySample)
+            var bySample = deadlines.GroupBy(d => d.SampleId);
+            foreach (var group in bySample)
+            {
+                var ordered = group.OrderBy(d => GetPhaseOrder(d.Phase)).ToList();
+                for (int i = 1; i < ordered.Count; i++)
                 {
-                    var ordered = group.OrderBy(d => GetPhaseOrder(d.Phase)).ToList();
-                    for (int i = 1; i < ordered.Count; i++)
-                    {
-                        if (ordered[i].PlannedDate <= ordered[i - 1].PlannedDate)
-                        {
-                            throw new ArgumentException(
-                                $"L'échéance '{ordered[i].Phase}' doit être postérieure " +
-                                $"à '{ordered[i - 1].Phase}'.");
-                        }
-                    }
+                    if (ordered[i].PlannedDate <= ordered[i - 1].PlannedDate)
+                        throw new ArgumentException(
+                            $"L'échéance '{ordered[i].Phase}' doit être postérieure " +
+                            $"à '{ordered[i - 1].Phase}'.");
                 }
+            }
 
             foreach (var deadlineDto in deadlines)
             {
@@ -555,27 +684,26 @@ namespace PouleLabApp.API.Services
 
                 if (deadlineDto.PlannedDate <= DateTime.UtcNow)
                     throw new ArgumentException(
-                        $"La date pour la phase {deadlineDto.Phase} doit être dans le futur.");
+                        $"La date pour la phase '{deadlineDto.Phase}' doit être dans le futur.");
 
-                // Chercher une échéance existante pour cette phase + cet échantillon
                 var existing = request.Deadlines
-                    .FirstOrDefault(d => d.Phase == phase &&
-                                        d.SampleId == deadlineDto.SampleId);
+                    .FirstOrDefault(d => d.Phase    == phase &&
+                                         d.SampleId == deadlineDto.SampleId);
 
                 if (existing != null)
                 {
                     existing.PlannedDate = deadlineDto.PlannedDate;
-                    existing.IsOverdue = false;
+                    existing.IsOverdue   = false;
                 }
                 else
                 {
                     _context.Deadlines.Add(new Deadline
                     {
-                        RequestId = requestId,
+                        RequestId   = requestId,
                         SampleId    = deadlineDto.SampleId,
-                        Phase = phase,
+                        Phase       = phase,
                         PlannedDate = deadlineDto.PlannedDate,
-                        IsOverdue = false
+                        IsOverdue   = false
                     });
                 }
             }
@@ -587,7 +715,7 @@ namespace PouleLabApp.API.Services
         }
 
         // -------------------------------------------------------
-        // Récupérer les échéances d'une demande
+        // Récupérer les échéances
         // -------------------------------------------------------
         public async Task<List<DeadlineDto>> GetDeadlinesAsync(int requestId)
         {
@@ -600,84 +728,18 @@ namespace PouleLabApp.API.Services
 
             return deadlines.Select(d => new DeadlineDto
             {
-                Id = d.Id,
-                Phase = d.Phase.ToString(),
+                Id          = d.Id,
+                Phase       = d.Phase.ToString(),
                 PlannedDate = d.PlannedDate,
-                ActualDate = d.ActualDate,
-                IsOverdue = d.IsOverdue,
-                SampleId = d.SampleId,
-                SampleType = d.Sample?.Type ?? ""
+                ActualDate  = d.ActualDate,
+                IsOverdue   = d.IsOverdue || (d.PlannedDate < DateTime.UtcNow && d.ActualDate == null),
+                SampleId    = d.SampleId,
+                SampleType  = d.Sample?.Type ?? ""
             }).ToList();
         }
 
         // -------------------------------------------------------
-        // Méthodes privées de mapping Model → DTO
-        // -------------------------------------------------------
-        private static RequestListDto MapToListDto(AnalysisRequest r) => new()
-        {
-            Id = r.Id,
-            Status = r.Status.ToString(),
-            LaboratoryName = r.Laboratory?.Name ?? "",
-            ClientName = $"{r.Client?.FirstName} {r.Client?.LastName}",
-            CreatedAt = r.CreatedAt,
-            ReceivedAt = r.ReceivedAt,
-            IsDraft = r.IsDraft,
-            SamplesCount = r.Samples?.Count ?? 0
-        };
-
-        private static int GetPhaseOrder(string phase) => phase switch
-        {
-            "Reception"      => 1,
-            "Assignment"     => 2,
-            "Analysis"       => 3,
-            "Validation"     => 4,
-            "ResultDelivery" => 5,
-            _                => 99
-        };
-
-        private static RequestDetailDto MapToDetailDto(AnalysisRequest r) => new()
-        {
-            Id = r.Id,
-            Status = r.Status.ToString(),
-            Notes = r.Notes,
-            IsDraft = r.IsDraft,
-            CreatedAt = r.CreatedAt,
-            ReceivedAt = r.ReceivedAt,
-            SubmittedAt = r.SubmittedAt,
-            LaboratoryId   = r.LaboratoryId,
-            LaboratoryName = r.Laboratory?.Name ?? "",
-            ClientId = r.ClientId,
-            ClientName = $"{r.Client?.FirstName} {r.Client?.LastName}",
-            ClientEmail = r.Client?.Email ?? "",
-            AssignedToId = r.AssignedToId,
-            AssignedToName = r.AssignedTo != null
-                ? $"{r.AssignedTo.FirstName} {r.AssignedTo.LastName}"
-                : null,
-            Samples = r.Samples?.Select(s => new SampleDetailDto
-            {
-                Id = s.Id,
-                Type = s.Type,
-                Characteristics = s.Characteristics,
-                Quantity = s.Quantity,
-                Unit = s.Unit,
-                Results = s.Results?.Select(res => new AnalysisResultDetailDto
-                {
-                    Id = res.Id,
-                    AnalysisTypeId   = res.AnalysisTypeId,
-                    AnalysisTypeName = res.AnalysisType?.Name ?? "",
-                    MeasuredValue = res.MeasuredValue,
-                    LowerBound = res.LowerBound,
-                    UpperBound = res.UpperBound,
-                    Unit = res.AnalysisType?.Unit ?? "",
-                    IsAnomaly = res.IsAnomaly,
-                    RecordedAt = res.RecordedAt
-                }).ToList() ?? new()
-            }).ToList() ?? new()
-        };
-
-        // -------------------------------------------------------
-        // Modifier une demande existante
-        // Uniquement possible si la demande est en statut Draft
+        // Modifier une demande existante (brouillon)
         // -------------------------------------------------------
         public async Task<RequestDetailDto> UpdateAsync(
             int requestId, string userId, UpdateRequestDto dto)
@@ -692,158 +754,61 @@ namespace PouleLabApp.API.Services
                 throw new UnauthorizedAccessException(
                     "Vous n'êtes pas autorisé à modifier cette demande.");
 
-            // Vérifier que la demande est en brouillon
             if (request.Status != RequestStatus.Draft)
                 throw new ArgumentException(
                     "Seules les demandes en brouillon peuvent être modifiées.");
 
-            // Vérifier que le laboratoire existe
             if (dto.LaboratoryId > 0)
             {
-                var lab = await _context.Laboratories.FindAsync(dto.LaboratoryId)
+                _ = await _context.Laboratories.FindAsync(dto.LaboratoryId)
                     ?? throw new KeyNotFoundException("Laboratoire introuvable.");
                 request.LaboratoryId = dto.LaboratoryId;
             }
 
-            // Mettre à jour les infos de base
-            request.Notes = dto.Notes;
+            request.Notes   = dto.Notes;
             request.IsDraft = dto.IsDraft;
-            request.Status = dto.IsDraft
-                ? RequestStatus.Draft
-                : RequestStatus.Submitted;
+            request.Status  = dto.IsDraft ? RequestStatus.Draft : RequestStatus.Submitted;
 
             if (!dto.IsDraft)
                 request.SubmittedAt = DateTime.UtcNow;
 
-            // Supprimer les anciens échantillons et résultats
-            var oldResults = request.Samples
-                .SelectMany(s => s.Results).ToList();
+            var oldResults = request.Samples.SelectMany(s => s.Results).ToList();
             _context.AnalysisResults.RemoveRange(oldResults);
             _context.Samples.RemoveRange(request.Samples);
             await _context.SaveChangesAsync();
 
-            // Recréer les nouveaux échantillons
             foreach (var sampleDto in dto.Samples)
             {
                 if (dto.IsDraft && string.IsNullOrEmpty(sampleDto.Type)) continue;
-                
+
                 var sample = new Sample
                 {
-                    RequestId = requestId,
-                    Type = sampleDto.Type,
+                    RequestId       = requestId,
+                    Type            = sampleDto.Type,
                     Characteristics = sampleDto.Characteristics,
-                    Quantity = sampleDto.Quantity,
-                    Unit = sampleDto.Unit
+                    Quantity        = sampleDto.Quantity,
+                    Unit            = sampleDto.Unit
                 };
                 _context.Samples.Add(sample);
                 await _context.SaveChangesAsync();
 
                 foreach (var analysisTypeId in sampleDto.AnalysisTypeIds)
                 {
-                    var analysisType = await _context.AnalysisTypes
-                        .FindAsync(analysisTypeId);
+                    var analysisType = await _context.AnalysisTypes.FindAsync(analysisTypeId);
                     if (analysisType == null) continue;
 
                     _context.AnalysisResults.Add(new AnalysisResult
                     {
-                        SampleId = sample.Id,
+                        SampleId       = sample.Id,
                         AnalysisTypeId = analysisTypeId,
-                        LowerBound = analysisType.ReferenceMin,
-                        UpperBound = analysisType.ReferenceMax,
-                        RecordedById = userId
+                        LowerBound     = analysisType.ReferenceMin,
+                        UpperBound     = analysisType.ReferenceMax,
+                        RecordedById   = userId
                     });
                 }
             }
 
             await _context.SaveChangesAsync();
-
-            return await GetByIdAsync(requestId)
-                ?? throw new Exception("Erreur lors de la récupération de la demande.");
-        }
-
-        // -------------------------------------------------------
-        // Laborantin accepte la demande assignée
-        // La demande passe en InProgress — analyses en cours
-        // -------------------------------------------------------
-        public async Task<RequestDetailDto> AnalystAcceptAsync(
-            int requestId, string analystId)
-        {
-            var request = await _context.AnalysisRequests
-                .Include(r => r.Client)
-                .FirstOrDefaultAsync(r => r.Id == requestId)
-                ?? throw new KeyNotFoundException("Demande introuvable.");
-
-            // Vérifier que la demande est bien assignée à ce laborantin
-            if (request.AssignedToId != analystId)
-                throw new UnauthorizedAccessException(
-                    "Cette demande ne vous est pas assignée.");
-
-            // Vérifier que la demande est en attente d'acceptation
-            if (request.Status != RequestStatus.Assigned)
-                throw new ArgumentException(
-                    "Seules les demandes assignées peuvent être acceptées.");
-
-            // passe en InProgress après acceptation de la demande par le laborantin
-            request.Status = RequestStatus.InProgress;
-
-            await _context.SaveChangesAsync();
-
-            // Enregistrer l'acceptation dans l'historique
-            await _auditLogService.LogAsync(
-                requestId, analystId,
-                "Acceptation par le laborantin",
-                RequestStatus.Assigned.ToString(),
-                RequestStatus.InProgress.ToString());
-
-            return await GetByIdAsync(requestId)
-                ?? throw new Exception("Erreur lors de la récupération de la demande.");
-        }
-
-        // -------------------------------------------------------
-        // Laborantin refuse la demande assignée
-        // La demande est automatiquement clôturée selon le workflow
-        // -------------------------------------------------------
-        public async Task<RequestDetailDto> AnalystRejectAsync(
-            int requestId, string analystId, string reason)
-        {
-            var request = await _context.AnalysisRequests
-                .Include(r => r.Client)
-                .FirstOrDefaultAsync(r => r.Id == requestId)
-                ?? throw new KeyNotFoundException("Demande introuvable.");
-
-            // Vérifier que la demande est bien assignée à ce laborantin
-            if (request.AssignedToId != analystId)
-                throw new UnauthorizedAccessException(
-                    "Cette demande ne vous est pas assignée.");
-
-            // Vérifier que la demande est en cours (assignée)
-            if (request.Status != RequestStatus.Assigned)
-                throw new ArgumentException(
-                    "Seules les demandes assignées peuvent être refusées.");
-
-            var oldStatus = request.Status.ToString();
-
-            // Clôturer automatiquement la demande
-            request.Status = RequestStatus.Closed;
-            request.Notes = string.IsNullOrEmpty(request.Notes)
-                ? $"Refus laborantin : {reason}"
-                : $"{request.Notes} | Refus laborantin : {reason}";
-
-            await _context.SaveChangesAsync();
-
-            // Enregistrer dans l'historique
-            await _auditLogService.LogAsync(
-                requestId, analystId,
-                "Refus par le laborantin",
-                oldStatus,
-                RequestStatus.Closed.ToString());
-
-            // Notifier le client du refus
-            await _emailService.SendRequestRejectedAsync(
-                request.Client.Email!,
-                request.Client.FirstName,
-                requestId,
-                reason);
 
             return await GetByIdAsync(requestId)
                 ?? throw new Exception("Erreur lors de la récupération de la demande.");
@@ -863,7 +828,6 @@ namespace PouleLabApp.API.Services
                 .FirstOrDefaultAsync(r => r.Id == requestId)
                 ?? throw new KeyNotFoundException("Demande introuvable.");
 
-            // Supprimer les entités liées dans l'ordre
             _context.AnalysisResults.RemoveRange(
                 request.Samples.SelectMany(s => s.Results));
             _context.Samples.RemoveRange(request.Samples);
@@ -875,12 +839,136 @@ namespace PouleLabApp.API.Services
             await _context.SaveChangesAsync();
         }
 
+        // -------------------------------------------------------
+        // Supprimer une échéance individuelle
+        // -------------------------------------------------------
         public async Task DeleteDeadlineAsync(int deadlineId)
         {
             var deadline = await _context.Deadlines.FindAsync(deadlineId)
                 ?? throw new KeyNotFoundException("Échéance introuvable.");
             _context.Deadlines.Remove(deadline);
             await _context.SaveChangesAsync();
+        }
+
+        // -------------------------------------------------------
+        // Mappings Model → DTO
+        // -------------------------------------------------------
+        private static RequestListDto MapToListDto(AnalysisRequest r) => new()
+        {
+            Id             = r.Id,
+            Status         = r.Status.ToString(),
+            LaboratoryName = r.Laboratory?.Name ?? "",
+            ClientName     = $"{r.Client?.FirstName} {r.Client?.LastName}",
+            CreatedAt      = r.CreatedAt,
+            ReceivedAt     = r.ReceivedAt,
+            IsDraft        = r.IsDraft,
+            SamplesCount   = r.Samples?.Count ?? 0
+        };
+
+        private static int GetPhaseOrder(string phase) => phase switch
+        {
+            "Reception"      => 1,
+            "Assignment"     => 2,
+            "Analysis"       => 3,
+            "Validation"     => 4,
+            "ResultDelivery" => 5,
+            _                => 99
+        };
+
+        private static RequestDetailDto MapToDetailDto(AnalysisRequest r) => new()
+        {
+            Id             = r.Id,
+            Status         = r.Status.ToString(),
+            Notes          = r.Notes,
+            IsDraft        = r.IsDraft,
+            CreatedAt      = r.CreatedAt,
+            ReceivedAt     = r.ReceivedAt,
+            SubmittedAt    = r.SubmittedAt,
+            LaboratoryId   = r.LaboratoryId,
+            LaboratoryName = r.Laboratory?.Name ?? "",
+            ClientId       = r.ClientId,
+            ClientName     = $"{r.Client?.FirstName} {r.Client?.LastName}",
+            ClientEmail    = r.Client?.Email ?? "",
+            AssignedToId   = r.AssignedToId,
+            AssignedToName = r.AssignedTo != null
+                ? $"{r.AssignedTo.FirstName} {r.AssignedTo.LastName}"
+                : null,
+            Samples = r.Samples?.Select(s => new SampleDetailDto
+            {
+                Id              = s.Id,
+                Type            = s.Type,
+                Characteristics = s.Characteristics,
+                Quantity        = s.Quantity,
+                Unit            = s.Unit,
+                Results = s.Results?.Select(res => new AnalysisResultDetailDto
+                {
+                    Id               = res.Id,
+                    AnalysisTypeId   = res.AnalysisTypeId,
+                    AnalysisTypeName = res.AnalysisType?.Name ?? "",
+                    MeasuredValue    = res.MeasuredValue,
+                    LowerBound       = res.LowerBound,
+                    UpperBound       = res.UpperBound,
+                    Unit             = res.AnalysisType?.Unit ?? "",
+                    IsAnomaly        = res.IsAnomaly,
+                    RecordedAt       = res.RecordedAt
+                }).ToList() ?? new()
+            }).ToList() ?? new()
+        };
+
+        private async Task<bool> CheckDuplicateAsync(
+            string clientId, CreateRequestDto dto)
+        {
+            // Récupérer les demandes actives du même client pour le même labo
+            var existingRequests = await _context.AnalysisRequests
+                .Include(r => r.Samples)
+                    .ThenInclude(s => s.Results)
+                .Where(r =>
+                    r.ClientId     == clientId &&
+                    r.LaboratoryId == dto.LaboratoryId &&
+                    r.Status != RequestStatus.Draft &&      // Ignorer les brouillons
+                    r.Status != RequestStatus.Closed &&
+                    r.Status != RequestStatus.Validated)
+                .ToListAsync();
+
+            foreach (var existing in existingRequests)
+            {
+                if (existing.Samples.Count != dto.Samples.Count) continue;
+
+                bool isDuplicate = true;
+                for (int i = 0; i < dto.Samples.Count; i++)
+                {
+                    var dtoSample      = dto.Samples[i];
+                    var existingSample = existing.Samples.ElementAtOrDefault(i);
+
+                    if (existingSample == null) { isDuplicate = false; break; }
+
+                    // Comparer uniquement type, caractéristiques, quantité, unité
+                    // ← Ne pas comparer les notes
+                    if (existingSample.Type            != dtoSample.Type ||
+                        existingSample.Characteristics != dtoSample.Characteristics ||
+                        existingSample.Quantity        != dtoSample.Quantity ||
+                        existingSample.Unit            != dtoSample.Unit)
+                    {
+                        isDuplicate = false;
+                        break;
+                    }
+
+                    // Comparer les types d'analyses
+                    var existingTypeIds = existingSample.Results
+                        .Select(r => r.AnalysisTypeId).OrderBy(x => x).ToList();
+                    var dtoTypeIds = dtoSample.AnalysisTypeIds.OrderBy(x => x).ToList();
+
+                    if (!existingTypeIds.SequenceEqual(dtoTypeIds))
+                    {
+                        isDuplicate = false;
+                        break;
+                    }
+                }
+
+                if (isDuplicate) return true;
+            }
+
+            return false;
         }
     }
 }
