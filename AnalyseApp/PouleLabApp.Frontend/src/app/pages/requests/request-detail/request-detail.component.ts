@@ -402,7 +402,12 @@ export class RequestDetailComponent implements OnInit {
         this.actionLoading.set(false);
       },
       error: (err) => {
-        this.showError(err.error?.message ?? 'Erreur.');
+        // Afficher le message d'erreur du backend (ex: date passée)
+        const msg =
+          err.error?.message ??
+          err.error?.detail ??
+          "Erreur lors de l'enregistrement des échéances.";
+        this.showError(msg);
         this.actionLoading.set(false);
       },
     });
@@ -410,9 +415,29 @@ export class RequestDetailComponent implements OnInit {
 
   deleteDeadline(deadlineId: number): void {
     if (!confirm('Supprimer cette échéance ?')) return;
+
+    // Trouver l'échéance à supprimer pour connaître sa phase et son sampleId
+    const deadline = this.deadlines().find((d) => d.id === deadlineId);
+
     this.requestService.deleteDeadline(this.requestId, deadlineId).subscribe({
       next: () => {
+        // Supprimer de la liste
         this.deadlines.update((list) => list.filter((d) => d.id !== deadlineId));
+
+        // Vider le champ correspondant dans le formulaire
+        if (deadline && this.deadlineForm) {
+          const phaseKeyMap: Record<string, string> = {
+            Reception: 'reception',
+            Assignment: 'assignment',
+            Analysis: 'analysis',
+            Validation: 'validation',
+            ResultDelivery: 'resultDelivery',
+          };
+          const key = phaseKeyMap[deadline.phase];
+          const sampleKey = `sample_${deadline.sampleId}`;
+          this.deadlineForm.get(`${sampleKey}.${key}`)?.setValue('');
+        }
+
         this.showSuccess('Échéance supprimée.');
       },
       error: (err) => this.showError(err.error?.message),

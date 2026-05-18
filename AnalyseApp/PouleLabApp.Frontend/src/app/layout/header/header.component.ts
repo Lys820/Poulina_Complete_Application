@@ -1,9 +1,8 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../core/services/auth.service';
-import { environment } from '../../../environments/environment';
+import { NotificationBadgeService } from '../../core/services/notification-badge.service';
 
 @Component({
   selector: 'app-header',
@@ -13,25 +12,16 @@ import { environment } from '../../../environments/environment';
   styleUrls: ['./header.component.scss'],
 })
 export class HeaderComponent implements OnInit {
-  unreadCount = signal(0);
-  showDropdown = signal(false);
+  showDropdown = false;
 
   constructor(
     public authService: AuthService,
-    private http: HttpClient,
+    public badgeService: NotificationBadgeService,
   ) {}
 
   ngOnInit(): void {
-    this.loadUnreadCount();
-    // Vérifier les notifications toutes les 30 secondes
-    setInterval(() => this.loadUnreadCount(), 30000);
-  }
-
-  loadUnreadCount(): void {
-    this.http.get<{ count: number }>(`${environment.apiUrl}/notifications/unread`).subscribe({
-      next: (res) => this.unreadCount.set(res.count),
-      error: () => this.unreadCount.set(0),
-    });
+    this.badgeService.refresh();
+    setInterval(() => this.badgeService.refresh(), 30000);
   }
 
   get userInitials(): string {
@@ -50,7 +40,7 @@ export class HeaderComponent implements OnInit {
   }
 
   toggleDropdown(): void {
-    this.showDropdown.update((v) => !v);
+    this.showDropdown = !this.showDropdown;
   }
 
   logout(): void {

@@ -195,11 +195,20 @@ export class RequestFormComponent implements OnInit {
   // -------------------------------------------------------
   submit(isDraft: boolean): void {
     // Pour soumettre, valider que tout est rempli
-    if (!isDraft && !this.isFormCompleteForSubmit()) {
-      this.errorMessage.set(
-        'Pour soumettre, remplissez tous les champs et sélectionnez au moins une analyse par échantillon.',
-      );
-      return;
+    if (!isDraft) {
+      // Vérifications explicites avec messages clairs
+      if (!this.form.get('laboratoryId')!.value) {
+        this.errorMessage.set('Veuillez sélectionner un laboratoire avant de soumettre.');
+        return;
+      }
+      if (!this.isFormCompleteForSubmit()) {
+        console.log('isDraft envoyé :', isDraft); // ← ajouter
+        console.log('formValue :', this.form.value);
+        this.errorMessage.set(
+          'Veuillez remplir tous les champs obligatoires et sélectionner au moins une analyse par échantillon.',
+        );
+        return;
+      }
     }
 
     const formValue = {

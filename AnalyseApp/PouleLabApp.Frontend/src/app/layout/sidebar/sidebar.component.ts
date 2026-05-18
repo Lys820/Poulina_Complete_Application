@@ -4,6 +4,7 @@ import { CommonModule } from '@angular/common';
 import { AuthService } from '../../core/services/auth.service';
 import { DomSanitizer } from '@angular/platform-browser';
 import { SafeHtmlPipe } from '../../shared/pipes/safe-html.pipe';
+import { NotificationBadgeService } from '../../core/services/notification-badge.service';
 
 interface NavItem {
   label: string;
@@ -65,6 +66,7 @@ export class SidebarComponent {
   constructor(
     public authService: AuthService,
     private sanitizer: DomSanitizer,
+    public badgeService: NotificationBadgeService,
   ) {}
 
   // Filtrer les liens selon le rôle connecté

@@ -18,6 +18,9 @@
         >
           <span [innerHTML]="getIcon(item.icon) | safeHtml"></span>
           <span class="nav-label">{{ item.label }}</span>
+          @if (item.label === 'Notifications' && badgeService.unreadCount() > 0) {
+            <span class="nav-badge">{{ badgeService.unreadCount() }}</span>
+          }
         </a>
       </div>
     }
