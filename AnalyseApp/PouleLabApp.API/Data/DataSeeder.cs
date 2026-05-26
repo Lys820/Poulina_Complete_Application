@@ -98,27 +98,6 @@ namespace PouleLabApp.API.Data
                 await context.SaveChangesAsync();
                 Console.WriteLine("[Seeder] Laboratoires créés : DICK, SNA, GIPA, MEDOIL");
             }
-
-            // -------------------------------------------------------
-            // 4. TYPES D'ANALYSES
-            // Exemples de types d'analyses avec valeurs de référence
-            // -------------------------------------------------------
-            if (!await context.AnalysisTypes.AnyAsync())
-            {
-                var analysisTypes = new List<AnalysisType>
-                {
-                    new() { Name = "pH",              Unit = "pH",    Description = "Mesure de l'acidité",           ReferenceMin = 6.5,  ReferenceMax = 8.5  },
-                    new() { Name = "Viscosité",       Unit = "cSt",   Description = "Viscosité cinématique",         ReferenceMin = 28.0, ReferenceMax = 35.0 },
-                    new() { Name = "Densité",         Unit = "g/cm³", Description = "Densité à 15°C",               ReferenceMin = 0.85, ReferenceMax = 0.95 },
-                    new() { Name = "Indice d'acide",  Unit = "mgKOH", Description = "Indice d'acidité totale",      ReferenceMin = 0.0,  ReferenceMax = 2.5  },
-                    new() { Name = "Teneur en eau",   Unit = "%",     Description = "Pourcentage d'eau",            ReferenceMin = 0.0,  ReferenceMax = 0.1  },
-                    new() { Name = "Point d'éclair",  Unit = "°C",    Description = "Température d'inflammation",   ReferenceMin = 180,  ReferenceMax = 250  }
-                };
-
-                context.AnalysisTypes.AddRange(analysisTypes);
-                await context.SaveChangesAsync();
-                Console.WriteLine("[Seeder] Types d'analyses créés : pH, Viscosité, Densité...");
-            }
         }
     }
 }

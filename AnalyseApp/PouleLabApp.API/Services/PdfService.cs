@@ -25,7 +25,6 @@ namespace PouleLabApp.API.Services
                 .Include(r => r.Laboratory)
                 .Include(r => r.Samples)
                     .ThenInclude(s => s.Results)
-                        .ThenInclude(res => res.AnalysisType)
                 .FirstOrDefault(r => r.Id == requestId)
                 ?? throw new KeyNotFoundException("Demande introuvable.");
 
@@ -45,7 +44,6 @@ namespace PouleLabApp.API.Services
                 .Include(r => r.Laboratory)
                 .Include(r => r.Samples)
                     .ThenInclude(s => s.Results)
-                        .ThenInclude(res => res.AnalysisType)
                 .FirstOrDefault(r => r.Id == requestId)
                 ?? throw new KeyNotFoundException("Demande introuvable.");
 
@@ -321,7 +319,7 @@ namespace PouleLabApp.API.Services
                                                         .Text("✓").FontSize(8)
                                                         .FontColor("#991B1B");
                                                     r.AutoItem().PaddingLeft(4)
-                                                        .Text(result.AnalysisType?.Name ?? "")
+                                                        .Text(result.AnalysisName ?? "")
                                                         .FontSize(8);
                                                 });
                                             }
@@ -601,7 +599,7 @@ namespace PouleLabApp.API.Services
                                                     .Text("✓").FontSize(8)
                                                     .FontColor(accentColor);
                                                 r.AutoItem().PaddingLeft(4)
-                                                    .Text(result.AnalysisType?.Name ?? "")
+                                                    .Text(result.AnalysisName ?? "")
                                                     .FontSize(8);
                                             });
                                         }
@@ -634,7 +632,7 @@ namespace PouleLabApp.API.Services
                                         {
                                             table.Cell().BorderBottom(1)
                                                 .BorderColor("#E5E7EB").Padding(4)
-                                                .Text(result.AnalysisType?.Name ?? "")
+                                                .Text(result.AnalysisName ?? "")
                                                 .FontSize(8);
                                             table.Cell().BorderBottom(1)
                                                 .BorderColor("#E5E7EB").Padding(4)
@@ -649,7 +647,7 @@ namespace PouleLabApp.API.Services
                                             table.Cell().BorderBottom(1)
                                                 .BorderColor("#E5E7EB").Padding(4)
                                                 .AlignCenter()
-                                                .Text(result.AnalysisType?.Unit ?? "")
+                                                .Text(result.Unit ?? "")
                                                 .FontSize(8);
                                         }
                                     });
@@ -862,7 +860,7 @@ namespace PouleLabApp.API.Services
 
                                             table.Cell().Background(bg).BorderBottom(1)
                                                 .BorderColor("#E5E7EB").Padding(4)
-                                                .Text(result.AnalysisType?.Name ?? "")
+                                                .Text(result.AnalysisName ?? "")
                                                 .FontSize(8);
                                             table.Cell().Background(bg).BorderBottom(1)
                                                 .BorderColor("#E5E7EB").Padding(4)
@@ -883,7 +881,7 @@ namespace PouleLabApp.API.Services
                                             table.Cell().Background(bg).BorderBottom(1)
                                                 .BorderColor("#E5E7EB").Padding(4)
                                                 .AlignCenter()
-                                                .Text(result.AnalysisType?.Unit ?? "")
+                                                .Text(result.Unit ?? "")
                                                 .FontSize(8);
                                             table.Cell().Background(bg).BorderBottom(1)
                                                 .BorderColor("#E5E7EB").Padding(4)

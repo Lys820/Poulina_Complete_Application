@@ -11,8 +11,8 @@ namespace PouleLabApp.API.Models
 
         public int RequestId { get; set; }
         public AnalysisRequest Request { get; set; } = null!;
-
         public ICollection<AnalysisResult> Results { get; set; } = new List<AnalysisResult>();
+
         public ICollection<Deadline> Deadlines { get; set; } = new List<Deadline>();
     }
 }

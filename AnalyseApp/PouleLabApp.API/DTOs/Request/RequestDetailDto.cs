@@ -34,14 +34,13 @@ namespace PouleLabApp.API.DTOs.Request
     // Détail d'un résultat d'analyse dans la vue complète
     public class AnalysisResultDetailDto
     {
-        public int Id { get; set; }
-        public int AnalysisTypeId { get; set; }
-        public string AnalysisTypeName { get; set; } = string.Empty;
+        public int    Id            { get; set; }
+        public string AnalysisName  { get; set; } = string.Empty;
         public double MeasuredValue { get; set; }
-        public double LowerBound { get; set; }
-        public double UpperBound { get; set; }
-        public string Unit { get; set; } = string.Empty;
-        public bool IsAnomaly { get; set; }                        // Signalé en rouge dans l'UI
-        public DateTime RecordedAt { get; set; }
+        public double LowerBound    { get; set; }
+        public double UpperBound    { get; set; }
+        public string Unit          { get; set; } = string.Empty;
+        public bool   IsAnomaly     { get; set; }
+        public DateTime RecordedAt  { get; set; }
     }
 }

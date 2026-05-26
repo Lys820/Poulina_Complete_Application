@@ -12,10 +12,12 @@ namespace PouleLabApp.API.DTOs.Request
     // Données d'un échantillon inclus dans la demande
     public class CreateSampleDto
     {
-        public string Type { get; set; } = string.Empty;           // Type d'échantillon (ex: Huile, Eau)
-        public string Characteristics { get; set; } = string.Empty; // Description physique
-        public double Quantity { get; set; }                        // Quantité
-        public string Unit { get; set; } = string.Empty;           // Unité (ex: ml, g)
-        public List<int> AnalysisTypeIds { get; set; } = new();    // Types d'analyses demandées pour cet échantillon
+        public string Type            { get; set; } = string.Empty;
+        public string Characteristics { get; set; } = string.Empty;
+        public double Quantity        { get; set; }
+        public string Unit            { get; set; } = string.Empty;
+
+        // Noms libres des analyses — ex: "pH", "Viscosité à 40°C"
+        public List<string> AnalysisNames { get; set; } = new();
     }
 }

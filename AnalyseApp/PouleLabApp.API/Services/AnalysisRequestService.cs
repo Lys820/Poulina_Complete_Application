@@ -147,18 +147,15 @@ namespace PouleLabApp.API.Services
                 _context.Samples.Add(sample);
                 await _context.SaveChangesAsync();
 
-                foreach (var analysisTypeId in sampleDto.AnalysisTypeIds)
+                // Créer un résultat vide pour chaque nom d'analyse libre
+                foreach (var analysisName in sampleDto.AnalysisNames
+                        .Where(n => !string.IsNullOrWhiteSpace(n)))
                 {
-                    var analysisType = await _context.AnalysisTypes.FindAsync(analysisTypeId);
-                    if (analysisType == null) continue;
-
                     _context.AnalysisResults.Add(new AnalysisResult
                     {
-                        SampleId       = sample.Id,
-                        AnalysisTypeId = analysisTypeId,
-                        LowerBound     = analysisType.ReferenceMin,
-                        UpperBound     = analysisType.ReferenceMax,
-                        RecordedById   = clientId
+                        SampleId     = sample.Id,
+                        AnalysisName = analysisName.Trim(),
+                        RecordedById = clientId
                     });
                 }
             }
@@ -252,7 +249,6 @@ namespace PouleLabApp.API.Services
                 .Include(r => r.Laboratory)
                 .Include(r => r.Samples)
                     .ThenInclude(s => s.Results)
-                        .ThenInclude(res => res.AnalysisType)
                 .FirstOrDefaultAsync(r => r.Id == requestId);
 
             if (request == null) return null;
@@ -378,9 +374,7 @@ namespace PouleLabApp.API.Services
         // Saisir les résultats d'analyse
         // -------------------------------------------------------
         public async Task<RequestDetailDto> SaveResultsAsync(
-            int requestId,
-            string analystId,
-            List<SaveResultDto> results)
+            int requestId, string analystId, List<SaveResultDto> results)
         {
             var request = await _context.AnalysisRequests
                 .Include(r => r.Samples)
@@ -394,7 +388,7 @@ namespace PouleLabApp.API.Services
 
             if (request.Status != RequestStatus.InProgress)
                 throw new ArgumentException(
-                    "La demande doit être en cours d'analyse pour saisir des résultats.");
+                    "La demande doit être en cours d'analyse.");
 
             foreach (var resultDto in results)
             {
@@ -405,16 +399,19 @@ namespace PouleLabApp.API.Services
                         $"Résultat id={resultDto.ResultId} introuvable.");
 
                 result.MeasuredValue = resultDto.MeasuredValue;
+                result.LowerBound    = resultDto.LowerBound;
+                result.UpperBound    = resultDto.UpperBound;
+                result.Unit          = resultDto.Unit;
                 result.RecordedById  = analystId;
                 result.RecordedAt    = DateTime.UtcNow;
-                result.IsAnomaly     = resultDto.MeasuredValue < result.LowerBound ||
-                                       resultDto.MeasuredValue > result.UpperBound;
+                result.IsAnomaly     = resultDto.MeasuredValue < resultDto.LowerBound ||
+                                    resultDto.MeasuredValue > resultDto.UpperBound;
             }
 
             await _context.SaveChangesAsync();
 
             return await GetByIdAsync(requestId)
-                ?? throw new Exception("Erreur lors de la récupération de la demande.");
+                ?? throw new Exception("Erreur.");
         }
 
         // -------------------------------------------------------
@@ -437,8 +434,9 @@ namespace PouleLabApp.API.Services
                 throw new ArgumentException(
                     "La demande doit être en cours d'analyse.");
 
+            // Vérifier que toutes les valeurs mesurées sont saisies
             var allResults = request.Samples.SelectMany(s => s.Results).ToList();
-            if (allResults.Any(r => r.MeasuredValue == 0))
+            if (allResults.Any(r => r.MeasuredValue == 0 && r.LowerBound == 0))
                 throw new ArgumentException(
                     "Tous les résultats doivent être saisis avant de terminer.");
 
@@ -792,21 +790,17 @@ namespace PouleLabApp.API.Services
                 _context.Samples.Add(sample);
                 await _context.SaveChangesAsync();
 
-                foreach (var analysisTypeId in sampleDto.AnalysisTypeIds)
+                foreach (var analysisName in sampleDto.AnalysisNames
+                        .Where(n => !string.IsNullOrWhiteSpace(n)))
                 {
-                    var analysisType = await _context.AnalysisTypes.FindAsync(analysisTypeId);
-                    if (analysisType == null) continue;
-
                     _context.AnalysisResults.Add(new AnalysisResult
                     {
-                        SampleId       = sample.Id,
-                        AnalysisTypeId = analysisTypeId,
-                        LowerBound     = analysisType.ReferenceMin,
-                        UpperBound     = analysisType.ReferenceMax,
-                        RecordedById   = userId
+                        SampleId     = sample.Id,
+                        AnalysisName = analysisName.Trim(),
+                        RecordedById = userId
                     });
                 }
-            }
+                            }
 
             await _context.SaveChangesAsync();
 
@@ -902,15 +896,14 @@ namespace PouleLabApp.API.Services
                 Unit            = s.Unit,
                 Results = s.Results?.Select(res => new AnalysisResultDetailDto
                 {
-                    Id               = res.Id,
-                    AnalysisTypeId   = res.AnalysisTypeId,
-                    AnalysisTypeName = res.AnalysisType?.Name ?? "",
-                    MeasuredValue    = res.MeasuredValue,
-                    LowerBound       = res.LowerBound,
-                    UpperBound       = res.UpperBound,
-                    Unit             = res.AnalysisType?.Unit ?? "",
-                    IsAnomaly        = res.IsAnomaly,
-                    RecordedAt       = res.RecordedAt
+                    Id            = res.Id,
+                    AnalysisName  = res.AnalysisName,
+                    MeasuredValue = res.MeasuredValue,
+                    LowerBound    = res.LowerBound,
+                    UpperBound    = res.UpperBound,
+                    Unit          = res.Unit,
+                    IsAnomaly     = res.IsAnomaly,
+                    RecordedAt    = res.RecordedAt
                 }).ToList() ?? new()
             }).ToList() ?? new()
         };
@@ -955,8 +948,8 @@ namespace PouleLabApp.API.Services
 
                     // Comparer les types d'analyses
                     var existingTypeIds = existingSample.Results
-                        .Select(r => r.AnalysisTypeId).OrderBy(x => x).ToList();
-                    var dtoTypeIds = dtoSample.AnalysisTypeIds.OrderBy(x => x).ToList();
+                        .Select(r => r.AnalysisName).OrderBy(x => x).ToList();
+                    var dtoTypeIds = dtoSample.AnalysisNames.OrderBy(x => x).ToList();
 
                     if (!existingTypeIds.SequenceEqual(dtoTypeIds))
                     {
