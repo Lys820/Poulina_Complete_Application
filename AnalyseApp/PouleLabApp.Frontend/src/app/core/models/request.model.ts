@@ -38,8 +38,7 @@ export interface SampleDetailDto {
 
 export interface AnalysisResultDetailDto {
   id: number;
-  analysisTypeId: number;
-  analysisTypeName: string;
+  analysisName: string;
   measuredValue: number;
   lowerBound: number;
   upperBound: number;
@@ -60,12 +59,15 @@ export interface CreateSampleDto {
   characteristics: string;
   quantity: number;
   unit: string;
-  analysisTypeIds: number[];
+  analysisNames: string[];
 }
 
 export interface SaveResultDto {
   resultId: number;
   measuredValue: number;
+  lowerBound: number;
+  upperBound: number;
+  unit: string;
 }
 
 export interface AuditLogDto {

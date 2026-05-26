@@ -1,5 +1,4 @@
 <div class="results-page">
-  <!-- Retour -->
   <div class="mb-3">
     <a [routerLink]="'/app/requests/' + requestId" class="back-link">
       <svg
@@ -25,7 +24,6 @@
       <div class="spinner-border text-primary"></div>
     </div>
   } @else if (request()) {
-    <!-- En-tête -->
     <div class="page-header mb-4">
       <div>
         <h4>Saisie des résultats</h4>
@@ -36,7 +34,6 @@
       </div>
     </div>
 
-    <!-- Messages -->
     @if (successMsg()) {
       <div class="alert alert-success mb-3">{{ successMsg() }}</div>
     }
@@ -44,12 +41,10 @@
       <div class="alert alert-danger mb-3">{{ errorMsg() }}</div>
     }
 
-    <!-- Formulaire -->
     @if (form) {
       <form [formGroup]="form">
         @for (sample of request()!.samples; track sample.id) {
           <div class="card mb-4">
-            <!-- En-tête échantillon -->
             <div class="card-header">
               <div class="sample-header">
                 <div>
@@ -59,18 +54,16 @@
                 <small class="text-muted">{{ sample.characteristics }}</small>
               </div>
             </div>
-
-            <!-- Tableau de saisie -->
             <div class="card-body p-0">
               <div class="table-responsive">
                 <table class="table mb-0">
                   <thead>
                     <tr>
                       <th>Type d'analyse</th>
-                      <th>Min référence</th>
-                      <th>Max référence</th>
-                      <th>Unité</th>
                       <th>Valeur mesurée</th>
+                      <th>Borne min</th>
+                      <th>Borne max</th>
+                      <th>Unité</th>
                       <th>Statut</th>
                     </tr>
                   </thead>
@@ -82,11 +75,8 @@
                         "
                       >
                         <td>
-                          <strong>{{ result.analysisTypeName }}</strong>
+                          <strong>{{ result.analysisName }}</strong>
                         </td>
-                        <td class="text-muted">{{ result.lowerBound }}</td>
-                        <td class="text-muted">{{ result.upperBound }}</td>
-                        <td class="text-muted">{{ result.unit }}</td>
                         <td>
                           <input
                             type="number"
@@ -102,9 +92,52 @@
                                   .get('measuredValue')
                               )
                             "
-                            placeholder="Saisir..."
+                            placeholder="Valeur"
                             step="0.01"
                             aria-label="Valeur mesurée"
+                            [title]="'Valeur mesurée pour ' + result.analysisName"
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            class="form-control result-input"
+                            [formControl]="
+                              $any(
+                                results.at(getResultIndex(sample.id, result.id)).get('lowerBound')
+                              )
+                            "
+                            placeholder="Min"
+                            step="0.01"
+                            aria-label="Borne minimale"
+                            [title]="'Borne minimale pour ' + result.analysisName"
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            class="form-control result-input"
+                            [formControl]="
+                              $any(
+                                results.at(getResultIndex(sample.id, result.id)).get('upperBound')
+                              )
+                            "
+                            placeholder="Max"
+                            step="0.01"
+                            aria-label="Borne maximale"
+                            [title]="'Borne maximale pour ' + result.analysisName"
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            class="form-control result-input"
+                            [formControl]="
+                              $any(results.at(getResultIndex(sample.id, result.id)).get('unit'))
+                            "
+                            placeholder="Ex: pH, cSt..."
+                            aria-label="Unité"
+                            [title]="'Unité pour ' + result.analysisName"
                           />
                         </td>
                         <td>
@@ -132,7 +165,6 @@
       </form>
     }
 
-    <!-- Actions -->
     <div class="results-actions">
       <a [routerLink]="'/app/requests/' + requestId" class="btn btn-light"> Annuler </a>
       <div class="d-flex gap-2">

@@ -170,18 +170,43 @@
                     <div class="invalid-feedback">Quantité invalide.</div>
                   }
                 </div>
+
                 <div class="col-md-6">
+                  <div class="select-wrapper"></div>
                   <label class="form-label">Unité *</label>
-                  <input
-                    type="text"
-                    class="form-control"
-                    formControlName="unit"
-                    placeholder="Ex: ml, g, L"
-                    [class.is-invalid]="sample.get('unit')!.touched && sample.get('unit')!.invalid"
-                  />
-                  @if (sample.get('unit')!.touched && sample.get('unit')!.invalid) {
-                    <div class="invalid-feedback">Champ obligatoire.</div>
-                  }
+                  <div class="select-wrapper">
+                    <select
+                      class="form-control custom-select"
+                      formControlName="unit"
+                      aria-label="Unité de mesure"
+                      title="Unité de mesure"
+                    >
+                      <option value="">— Sélectionner —</option>
+                      <option value="L">L — Litre</option>
+                      <option value="mL">mL — Millilitre</option>
+                      <option value="cL">cL — Centilitre</option>
+                      <option value="m³">m³ — Mètre cube</option>
+                      <option value="kg">kg — Kilogramme</option>
+                      <option value="g">g — Gramme</option>
+                      <option value="mg">mg — Milligramme</option>
+                      <option value="t">t — Tonne</option>
+                    </select>
+                    <span class="select-arrow">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
+                        <polyline points="6 9 12 15 18 9" />
+                      </svg>
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -209,7 +234,7 @@
       </div>
     }
 
-    <!-- ÉTAPE 3 — Types d'analyses -->
+    <!-- ÉTAPE 3 — Analyses à effectuer -->
     @if (currentStep() === 3) {
       <div formArrayName="samples">
         @for (sample of samples.controls; track $index; let i = $index) {
@@ -219,49 +244,61 @@
             </div>
             <div class="card-body">
               <p class="text-muted small mb-3">
-                Sélectionnez les analyses à effectuer pour cet échantillon :
+                Ajoutez les noms des analyses à effectuer pour cet échantillon :
               </p>
-              <div class="analysis-grid">
-                @for (type of analysisTypes(); track type.id) {
-                  <div
-                    class="analysis-card"
-                    [class.selected]="isTypeSelected(i, type.id)"
-                    (click)="toggleAnalysisType(i, type.id)"
-                    (keydown.enter)="toggleAnalysisType(i, type.id)"
-                    (keydown.space)="toggleAnalysisType(i, type.id)"
-                    tabindex="0"
-                    role="button"
-                    [attr.aria-checked]="isTypeSelected(i, type.id) ? 'true' : 'false'"
-                  >
-                    <div class="analysis-check">
-                      @if (isTypeSelected(i, type.id)) {
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="14"
-                          height="14"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="white"
-                          stroke-width="3"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
+
+              <div [formGroupName]="i">
+                <div formArrayName="analysisNames">
+                  @for (ctrl of getAnalysisNames(i).controls; track $index; let j = $index) {
+                    <div class="analysis-name-row mb-2">
+                      <input
+                        type="text"
+                        class="form-control"
+                        [formControlName]="j"
+                        [placeholder]="'Ex: pH, Viscosité à 40°C, Indice d\'acide...'"
+                        [id]="'analysis_' + i + '_' + j"
+                        [title]="'Nom de l\'analyse ' + (j + 1)"
+                      />
+                      @if (getAnalysisNames(i).length > 1) {
+                        <span
+                          class="remove-analysis"
+                          (click)="removeAnalysisName(i, j)"
+                          role="button"
+                          tabindex="0"
+                          title="Supprimer"
+                          (keydown.enter)="removeAnalysisName(i, j)"
                         >
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          >
+                            <line x1="18" y1="6" x2="6" y2="18" />
+                            <line x1="6" y1="6" x2="18" y2="18" />
+                          </svg>
+                        </span>
                       }
                     </div>
-                    <div class="analysis-info">
-                      <strong>{{ type.name }}</strong>
-                      <small
-                        >{{ type.referenceMin }} — {{ type.referenceMax }} {{ type.unit }}</small
-                      >
-                    </div>
-                  </div>
-                }
+                  }
+                </div>
               </div>
 
-              @if (hasNoAnalysisTypes(i)) {
-                <p class="text-danger small mt-2">Sélectionnez au moins un type d'analyse.</p>
+              <button
+                type="button"
+                class="btn btn-light btn-sm mt-2 add-analysis-btn"
+                (click)="addAnalysisName(i)"
+              >
+                + Ajouter une analyse
+              </button>
+
+              @if (hasNoAnalysisNames(i)) {
+                <p class="text-danger small mt-2">Ajoutez au moins un type d'analyse.</p>
               }
             </div>
           </div>

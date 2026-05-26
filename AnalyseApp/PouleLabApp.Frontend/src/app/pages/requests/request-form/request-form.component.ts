@@ -4,7 +4,7 @@ import { FormBuilder, FormGroup, FormArray, ReactiveFormsModule } from '@angular
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { LaboratoryService } from '../../../core/services/laboratory.service';
 import { RequestService } from '../../../core/services/request.service';
-import { Laboratory, AnalysisType } from '../../../core/models/laboratory.model';
+import { Laboratory } from '../../../core/models/laboratory.model';
 
 @Component({
   selector: 'app-request-form',
@@ -16,7 +16,6 @@ import { Laboratory, AnalysisType } from '../../../core/models/laboratory.model'
 export class RequestFormComponent implements OnInit {
   form!: FormGroup;
   laboratories = signal<Laboratory[]>([]);
-  analysisTypes = signal<AnalysisType[]>([]);
   isLoading = signal(false);
   errorMessage = signal('');
   currentStep = signal(1);
@@ -36,7 +35,6 @@ export class RequestFormComponent implements OnInit {
     this.buildForm();
     this.loadData();
 
-    // Détecter le mode édition
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
       this.requestId.set(Number(id));
@@ -46,7 +44,7 @@ export class RequestFormComponent implements OnInit {
 
   buildForm(): void {
     this.form = this.fb.group({
-      laboratoryId: [null], // ← pas de Validators.required
+      laboratoryId: [null],
       notes: [''],
       isDraft: [true],
       samples: this.fb.array([this.createSample()]),
@@ -57,55 +55,53 @@ export class RequestFormComponent implements OnInit {
     this.labService.getLaboratories().subscribe({
       next: (labs) => {
         this.laboratories.set(labs);
-        // Charger la demande existante APRÈS avoir les données
         if (this.isEditMode() && this.requestId()) {
           this.loadExistingRequest(this.requestId()!);
         }
       },
-    });
-    this.labService.getAnalysisTypes().subscribe({
-      next: (types) => this.analysisTypes.set(types),
     });
   }
 
   loadExistingRequest(id: number): void {
     this.requestService.getById(id).subscribe({
       next: (req) => {
-        // Vider les échantillons existants
-        while (this.samples.length) {
-          this.samples.removeAt(0);
-        }
+        // Construire les groupes échantillons depuis la demande existante
+        const sampleGroups =
+          req.samples.length > 0
+            ? req.samples.map((sample) => {
+                // Restaurer les noms d'analyses ou mettre un champ vide
+                const names =
+                  sample.results.length > 0
+                    ? sample.results.map((r) => this.fb.control(r.analysisName))
+                    : [this.fb.control('')];
 
-        // Pré-remplir les infos de base
-        this.form.patchValue({
-          laboratoryId: req.laboratoryId,
-          notes: req.notes,
-          isDraft: req.isDraft,
+                return this.fb.group({
+                  type: [sample.type ?? ''],
+                  characteristics: [sample.characteristics ?? ''],
+                  quantity: [sample.quantity ?? null],
+                  unit: [sample.unit ?? ''],
+                  analysisNames: this.fb.array(names),
+                });
+              })
+            : [this.createSample()]; // Aucun échantillon → un vide par défaut
+
+        // Reconstruire entièrement le formulaire avec les données existantes
+        this.form = this.fb.group({
+          laboratoryId: [req.laboratoryId ?? null],
+          notes: [req.notes ?? ''],
+          isDraft: [req.isDraft ?? true],
+          samples: this.fb.array(sampleGroups),
         });
-
-        // Recréer les échantillons avec leurs valeurs
-        req.samples.forEach((sample) => {
-          const sampleGroup = this.createSample();
-          sampleGroup.patchValue({
-            type: sample.type,
-            characteristics: sample.characteristics,
-            quantity: sample.quantity,
-            unit: sample.unit,
-            analysisTypeIds: sample.results.map((r) => r.analysisTypeId),
-          });
-          this.samples.push(sampleGroup);
-        });
-
-        // Si aucun échantillon, en ajouter un vide
-        if (this.samples.length === 0) {
-          this.samples.push(this.createSample());
-        }
+      },
+      error: (err) => {
+        console.error('Erreur lors du chargement de la demande :', err);
+        this.errorMessage.set('Impossible de charger la demande.');
       },
     });
   }
 
   // -------------------------------------------------------
-  // Gestion des échantillons — sans validators obligatoires
+  // Gestion des échantillons
   // -------------------------------------------------------
   get samples(): FormArray {
     return this.form.get('samples') as FormArray;
@@ -113,11 +109,11 @@ export class RequestFormComponent implements OnInit {
 
   createSample(): FormGroup {
     return this.fb.group({
-      type: [''], // ← pas de Validators.required
+      type: [''],
       characteristics: [''],
       quantity: [null],
       unit: [''],
-      analysisTypeIds: [[]],
+      analysisNames: this.fb.array([this.fb.control('')]),
     });
   }
 
@@ -127,85 +123,76 @@ export class RequestFormComponent implements OnInit {
 
   removeSample(index: number): void {
     if (this.samples.length > 1) {
-      this.samples.removeAt(index);
+      // Récupérer tous les groupes sauf celui à supprimer
+      const remaining = this.samples.controls
+        .filter((_, i) => i !== index)
+        .map((c) => c as FormGroup);
+
+      // Reconstruire le FormArray entièrement
+      this.form.setControl('samples', this.fb.array(remaining));
     }
-  }
-
-  toggleAnalysisType(sampleIndex: number, typeId: number): void {
-    const control = this.samples.at(sampleIndex).get('analysisTypeIds')!;
-    const current: number[] = control.value;
-    const idx = current.indexOf(typeId);
-    if (idx === -1) {
-      control.setValue([...current, typeId]);
-    } else {
-      control.setValue(current.filter((id) => id !== typeId));
-    }
-  }
-
-  isTypeSelected(sampleIndex: number, typeId: number): boolean {
-    return (this.samples.at(sampleIndex).get('analysisTypeIds')!.value as number[]).includes(
-      typeId,
-    );
-  }
-
-  hasNoAnalysisTypes(sampleIndex: number): boolean {
-    return (this.samples.at(sampleIndex).get('analysisTypeIds')!.value as number[]).length === 0;
   }
 
   // -------------------------------------------------------
-  // Navigation libre entre étapes
+  // Gestion des noms d'analyses
+  // -------------------------------------------------------
+  getAnalysisNames(sampleIndex: number): FormArray {
+    return this.samples.at(sampleIndex).get('analysisNames') as FormArray;
+  }
+
+  addAnalysisName(sampleIndex: number): void {
+    this.getAnalysisNames(sampleIndex).push(this.fb.control(''));
+  }
+
+  removeAnalysisName(sampleIndex: number, nameIndex: number): void {
+    const arr = this.getAnalysisNames(sampleIndex);
+    if (arr.length > 1) arr.removeAt(nameIndex);
+  }
+
+  // -------------------------------------------------------
+  // Navigation
   // -------------------------------------------------------
   nextStep(): void {
-    if (this.currentStep() < this.totalSteps) {
-      this.currentStep.update((s) => s + 1);
-    }
+    if (this.currentStep() < this.totalSteps) this.currentStep.update((s) => s + 1);
   }
 
   prevStep(): void {
-    if (this.currentStep() > 1) {
-      this.currentStep.update((s) => s - 1);
-    }
-  }
-
-  // Plus de blocage sur la navigation
-  canGoNext(): boolean {
-    return true;
+    if (this.currentStep() > 1) this.currentStep.update((s) => s - 1);
   }
 
   // -------------------------------------------------------
-  // Validation avant soumission
+  // Validation
   // -------------------------------------------------------
   isFormCompleteForSubmit(): boolean {
-    // Labo obligatoire
     if (!this.form.get('laboratoryId')!.value) return false;
-
-    // Chaque échantillon doit être complet
-    return this.samples.controls.every(
-      (s) =>
+    return this.samples.controls.every((s) => {
+      const names = (s.get('analysisNames') as FormArray).controls;
+      return (
         s.get('type')!.value?.trim() &&
         s.get('characteristics')!.value?.trim() &&
         s.get('quantity')!.value > 0 &&
         s.get('unit')!.value?.trim() &&
-        (s.get('analysisTypeIds')!.value as number[]).length > 0,
-    );
+        names.some((n) => n.value?.trim())
+      );
+    });
+  }
+
+  hasNoAnalysisNames(sampleIndex: number): boolean {
+    return this.getAnalysisNames(sampleIndex).controls.every((c) => !c.value?.trim());
   }
 
   // -------------------------------------------------------
   // Soumission
   // -------------------------------------------------------
   submit(isDraft: boolean): void {
-    // Pour soumettre, valider que tout est rempli
     if (!isDraft) {
-      // Vérifications explicites avec messages clairs
       if (!this.form.get('laboratoryId')!.value) {
-        this.errorMessage.set('Veuillez sélectionner un laboratoire avant de soumettre.');
+        this.errorMessage.set('Veuillez sélectionner un laboratoire.');
         return;
       }
       if (!this.isFormCompleteForSubmit()) {
-        console.log('isDraft envoyé :', isDraft); // ← ajouter
-        console.log('formValue :', this.form.value);
         this.errorMessage.set(
-          'Veuillez remplir tous les champs obligatoires et sélectionner au moins une analyse par échantillon.',
+          'Remplissez tous les champs et ajoutez au moins une analyse par échantillon.',
         );
         return;
       }
@@ -215,17 +202,24 @@ export class RequestFormComponent implements OnInit {
       ...this.form.value,
       isDraft,
       laboratoryId: this.form.value.laboratoryId ?? 0,
-      samples: isDraft
-        ? this.form.value.samples
-            .filter((s: any) => s.type?.trim())
-            .map((s: any) => ({
-              ...s,
-              quantity: s.quantity ?? 0, // ← null devient 0
-            }))
-        : this.form.value.samples.map((s: any) => ({
-            ...s,
-            quantity: s.quantity ?? 0, // ← null devient 0 aussi pour la soumission
-          })),
+      samples: this.form.value.samples
+        .filter((s: any) => {
+          if (!isDraft) return true;
+          // Conserver si au moins un champ est rempli
+          return (
+            s.type?.trim() ||
+            s.characteristics?.trim() ||
+            (s.quantity && s.quantity > 0) ||
+            s.analysisNames?.some((n: string) => n?.trim())
+          );
+        })
+        .map((s: any) => ({
+          type: s.type || '',
+          characteristics: s.characteristics || '',
+          quantity: s.quantity ?? 0,
+          unit: s.unit || '',
+          analysisNames: (s.analysisNames || []).filter((n: string) => n?.trim()),
+        })),
     };
 
     this.isLoading.set(true);

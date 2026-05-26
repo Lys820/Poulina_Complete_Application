@@ -1,13 +1,7 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import {
-  FormBuilder,
-  FormGroup,
-  FormArray,
-  FormControl,
-  ReactiveFormsModule,
-} from '@angular/forms';
+import { FormBuilder, FormGroup, FormArray, ReactiveFormsModule } from '@angular/forms';
 import { RequestService } from '../../../core/services/request.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { RequestDetailDto } from '../../../core/models/request.model';
@@ -53,17 +47,15 @@ export class RequestResultsComponent implements OnInit {
   }
 
   buildForm(data: RequestDetailDto): void {
-    // Créer un contrôle par résultat dans tous les échantillons
     const resultsArray = data.samples.flatMap((s) =>
       s.results.map((r) =>
         this.fb.group({
           resultId: [r.id],
+          analysisName: [r.analysisName],
           measuredValue: [r.measuredValue === 0 ? null : r.measuredValue],
-          // Infos en lecture seule pour l'affichage
-          analysisTypeName: [r.analysisTypeName],
-          lowerBound: [r.lowerBound],
-          upperBound: [r.upperBound],
-          unit: [r.unit],
+          lowerBound: [r.lowerBound || null],
+          upperBound: [r.upperBound || null],
+          unit: [r.unit || ''],
           isAnomaly: [r.isAnomaly],
         }),
       ),
@@ -74,13 +66,20 @@ export class RequestResultsComponent implements OnInit {
     });
 
     // Recalculer IsAnomaly en temps réel
-    this.results.controls.forEach((ctrl, i) => {
-      ctrl.get('measuredValue')!.valueChanges.subscribe((val) => {
+    this.results.controls.forEach((ctrl) => {
+      const recalculate = () => {
+        const val = ctrl.get('measuredValue')!.value;
         const lb = ctrl.get('lowerBound')!.value;
         const ub = ctrl.get('upperBound')!.value;
-        const isAnomaly = val !== null && val !== '' && (Number(val) < lb || Number(val) > ub);
-        ctrl.get('isAnomaly')!.setValue(isAnomaly, { emitEvent: false });
-      });
+        if (val !== null && lb !== null && ub !== null) {
+          ctrl
+            .get('isAnomaly')!
+            .setValue(Number(val) < Number(lb) || Number(val) > Number(ub), { emitEvent: false });
+        }
+      };
+      ctrl.get('measuredValue')!.valueChanges.subscribe(recalculate);
+      ctrl.get('lowerBound')!.valueChanges.subscribe(recalculate);
+      ctrl.get('upperBound')!.valueChanges.subscribe(recalculate);
     });
   }
 
@@ -88,27 +87,26 @@ export class RequestResultsComponent implements OnInit {
     return this.form.get('results') as FormArray;
   }
 
-  // Trouver les résultats d'un échantillon spécifique
-  getResultsForSample(sampleId: number): any[] {
+  getResultIndex(sampleId: number, resultId: number): number {
     const req = this.request();
-    if (!req) return [];
-    const sample = req.samples.find((s) => s.id === sampleId);
-    if (!sample) return [];
-
-    return this.results.controls.filter((ctrl) =>
-      sample.results.some((r) => r.id === ctrl.get('resultId')!.value),
-    );
+    if (!req) return -1;
+    let idx = 0;
+    for (const sample of req.samples) {
+      for (const result of sample.results) {
+        if (result.id === resultId) return idx;
+        idx++;
+      }
+    }
+    return -1;
   }
 
-  // Sauvegarder les résultats
   saveResults(): void {
     const hasEmpty = this.results.controls.some(
-      (ctrl) =>
-        ctrl.get('measuredValue')!.value === null || ctrl.get('measuredValue')!.value === '',
+      (ctrl) => ctrl.get('measuredValue')!.value === null || !ctrl.get('unit')!.value?.trim(),
     );
 
     if (hasEmpty) {
-      this.errorMsg.set('Veuillez renseigner toutes les valeurs avant de sauvegarder.');
+      this.errorMsg.set('Veuillez renseigner toutes les valeurs, bornes et unités.');
       return;
     }
 
@@ -118,6 +116,9 @@ export class RequestResultsComponent implements OnInit {
     const dto = this.results.controls.map((ctrl) => ({
       resultId: ctrl.get('resultId')!.value,
       measuredValue: Number(ctrl.get('measuredValue')!.value),
+      lowerBound: Number(ctrl.get('lowerBound')!.value ?? 0),
+      upperBound: Number(ctrl.get('upperBound')!.value ?? 0),
+      unit: ctrl.get('unit')!.value,
     }));
 
     this.requestService.saveResults(this.requestId, dto).subscribe({
@@ -125,7 +126,7 @@ export class RequestResultsComponent implements OnInit {
         this.request.set(data);
         this.buildForm(data);
         this.isSaving.set(false);
-        this.showSuccess('Résultats sauvegardés avec succès.');
+        this.showSuccess('Résultats sauvegardés.');
       },
       error: (err) => {
         this.isSaving.set(false);
@@ -134,23 +135,14 @@ export class RequestResultsComponent implements OnInit {
     });
   }
 
-  // Terminer les analyses et envoyer au chef de labo
   completeAnalysis(): void {
-    const hasEmpty = this.results.controls.some(
-      (ctrl) =>
-        ctrl.get('measuredValue')!.value === null || ctrl.get('measuredValue')!.value === '',
-    );
-
-    if (hasEmpty) {
-      this.errorMsg.set('Renseignez toutes les valeurs avant de terminer.');
-      return;
-    }
-
-    // Sauvegarder d'abord, puis terminer
     this.isSaving.set(true);
     const dto = this.results.controls.map((ctrl) => ({
       resultId: ctrl.get('resultId')!.value,
       measuredValue: Number(ctrl.get('measuredValue')!.value),
+      lowerBound: Number(ctrl.get('lowerBound')!.value ?? 0),
+      upperBound: Number(ctrl.get('upperBound')!.value ?? 0),
+      unit: ctrl.get('unit')!.value,
     }));
 
     this.requestService.saveResults(this.requestId, dto).subscribe({
@@ -168,7 +160,7 @@ export class RequestResultsComponent implements OnInit {
       },
       error: (err) => {
         this.isSaving.set(false);
-        this.errorMsg.set(err.error?.message ?? 'Erreur lors de la sauvegarde.');
+        this.errorMsg.set(err.error?.message ?? 'Erreur.');
       },
     });
   }
@@ -176,19 +168,5 @@ export class RequestResultsComponent implements OnInit {
   private showSuccess(msg: string): void {
     this.successMsg.set(msg);
     setTimeout(() => this.successMsg.set(''), 4000);
-  }
-
-  // Retourne l'index global d'un résultat dans le FormArray
-  getResultIndex(sampleId: number, resultId: number): number {
-    const req = this.request();
-    if (!req) return -1;
-    let idx = 0;
-    for (const sample of req.samples) {
-      for (const result of sample.results) {
-        if (result.id === resultId) return idx;
-        idx++;
-      }
-    }
-    return -1;
   }
 }

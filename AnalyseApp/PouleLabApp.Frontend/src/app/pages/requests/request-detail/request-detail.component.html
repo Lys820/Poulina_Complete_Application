@@ -152,8 +152,10 @@
                   <tr>
                     <th>Analyse</th>
                     <th>Valeur mesurée</th>
-                    <th>Min référence</th>
-                    <th>Max référence</th>
+                    @if (!authService.hasRole('Client')) {
+                      <th>Min référence</th>
+                      <th>Max référence</th>
+                    }
                     <th>Unité</th>
                     <th>Statut</th>
                   </tr>
@@ -161,14 +163,16 @@
                 <tbody>
                   @for (result of sample.results; track result.id) {
                     <tr [class.anomaly-row]="result.isAnomaly">
-                      <td>{{ result.analysisTypeName }}</td>
+                      <td>{{ result.analysisName }}</td>
                       <td>
                         <strong [class.text-danger]="result.isAnomaly">
                           {{ result.measuredValue || '—' }}
                         </strong>
                       </td>
-                      <td>{{ result.lowerBound }}</td>
-                      <td>{{ result.upperBound }}</td>
+                      @if (!authService.hasRole('Client')) {
+                        <td>{{ result.lowerBound }}</td>
+                        <td>{{ result.upperBound }}</td>
+                      }
                       <td>{{ result.unit }}</td>
                       <td>
                         @if (result.measuredValue === 0) {
