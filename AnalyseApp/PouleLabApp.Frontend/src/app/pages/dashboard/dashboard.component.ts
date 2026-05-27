@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { RequestService } from '../../core/services/request.service';
 import { RequestListDto } from '../../core/models/request.model';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-dashboard',
@@ -19,6 +20,7 @@ export class DashboardComponent implements OnInit {
   constructor(
     public authService: AuthService,
     private requestService: RequestService,
+    public router: Router,
   ) {}
 
   ngOnInit(): void {

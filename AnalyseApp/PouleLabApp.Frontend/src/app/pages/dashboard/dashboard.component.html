@@ -171,7 +171,7 @@
               </thead>
               <tbody>
                 @for (req of recentRequests; track req.id) {
-                  <tr>
+                  <tr class="clickable-row" (click)="router.navigate(['/app/requests', req.id])">
                     <td>
                       <strong>#{{ req.id | number: '6.0-0' }}</strong>
                     </td>
@@ -191,6 +191,7 @@
                         [routerLink]="'/app/requests/' + req.id"
                         class="btn btn-icon btn-light"
                         title="Voir le détail"
+                        (click)="$event.stopPropagation()"
                       >
                         <svg
                           xmlns="http://www.w3.org/2000/svg"

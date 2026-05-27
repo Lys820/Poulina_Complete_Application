@@ -63,6 +63,11 @@ export class RequestDetailComponent implements OnInit {
         this.request.set(data);
         this.buildDeadlineForm(); // ← ICI seulement, après que data est disponible
         this.isLoading.set(false);
+        console.log('Status:', data.status);
+        console.log('Samples:', data.samples);
+        console.log('canEditDeadlines:', this.canEditDeadlines());
+        console.log('isCreator:', this.isCreator());
+        console.log('deadlineForm:', this.deadlineForm);
 
         // Marquer les notifications liées à cette demande comme lues
         this.notificationService.markAsReadByRequestId(this.requestId);

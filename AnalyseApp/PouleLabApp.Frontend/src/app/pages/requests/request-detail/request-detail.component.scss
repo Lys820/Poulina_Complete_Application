@@ -12,6 +12,9 @@
   }
 }
 
+// =============================================
+// EN-TÊTE DÉTAIL
+// =============================================
 .detail-header {
   display: flex;
   align-items: center;
@@ -31,6 +34,9 @@
   }
 }
 
+// =============================================
+// INFOS CLIENT
+// =============================================
 .info-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -77,12 +83,17 @@
   background: #fff5f5 !important;
 }
 
+// =============================================
+// ACTIONS
+// =============================================
 .actions-panel {
   display: flex;
   flex-direction: column;
 }
 
-// Historique
+// =============================================
+// HISTORIQUE
+// =============================================
 .history-item {
   padding: 12px 16px;
   border-bottom: 1px solid var(--border-color);
@@ -109,7 +120,9 @@
   }
 }
 
-// Modales
+// =============================================
+// MODALES
+// =============================================
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -144,243 +157,239 @@
       transform: translateY(0);
     }
   }
+}
 
-  // =============================================
-  // DEADLINES
-  // =============================================
-  .deadline-form {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
+// =============================================
+// ASSIGNATION — Laborantins
+// =============================================
+.analysts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.analyst-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1.5px solid var(--border-color);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+
+  &:hover {
+    border-color: var(--primary);
+    background: rgba(115, 102, 255, 0.04);
   }
 
-  .sample-deadline-card,
-  .sample-deadlines-card {
-    border: 1px solid var(--border-color);
-    border-radius: 10px;
-    overflow: hidden;
-    margin-bottom: 12px;
-    &:last-child {
-      margin-bottom: 0;
-    }
+  &.selected {
+    border-color: var(--primary);
+    background: rgba(115, 102, 255, 0.08);
   }
 
-  .sample-deadline-header {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 14px;
-    background: linear-gradient(135deg, rgba(115, 102, 255, 0.06), rgba(115, 102, 255, 0.02));
-    border-bottom: 1px solid var(--border-color);
-
-    .sample-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--primary);
-      flex-shrink: 0;
-    }
-
-    strong {
-      font-size: 13px;
-      color: var(--dark);
-    }
-  }
-
-  // Formulaire dans la card
-  .sample-deadline-card {
-    .row {
-      padding: 12px;
-    }
-  }
-
-  .alert-chrono {
-    margin: 0 12px 8px;
-    padding: 8px 12px;
-    background: #fff3cd;
-    border: 1px solid #ffeaa7;
-    border-radius: 6px;
-    font-size: 12px;
-    color: #856404;
-  }
-
-  .phase-order-label {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-  }
-
-  .phase-order {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 18px;
-    height: 18px;
+  .analyst-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
     background: var(--primary);
     color: white;
-    border-radius: 50%;
-    font-size: 10px;
-    font-weight: 700;
-    margin-right: 4px;
-  }
-
-  // Affichage des phases
-  .deadline-phases {
-    padding: 8px 12px;
-  }
-
-  .deadline-phase-row {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 8px 6px;
-    border-bottom: 1px solid var(--border-color);
-    border-radius: 6px;
-    transition: background 0.15s;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 15px;
+    flex-shrink: 0;
+  }
 
-    &:last-child {
-      border-bottom: none;
-    }
-    &:hover {
-      background: var(--light);
-    }
-    &.overdue {
-      background: #fff8f8;
-    }
-    &.completed {
-      opacity: 0.7;
-    }
+  .analyst-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
 
-    .phase-number {
-      width: 22px;
-      height: 22px;
-      border-radius: 50%;
-      background: var(--primary);
-      color: white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 10px;
-      font-weight: 700;
-      flex-shrink: 0;
+    strong {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--dark);
+      line-height: 1.3;
     }
 
-    &.overdue .phase-number {
-      background: var(--danger);
-    }
-    &.completed .phase-number {
-      background: var(--success);
-    }
-
-    .phase-info {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      .phase-name {
-        font-size: 12px;
-        font-weight: 600;
-        color: var(--dark);
-      }
-      .phase-date {
-        font-size: 11px;
-        color: var(--text-muted);
-      }
-    }
-
-    // Status + bouton suppression sur la même ligne
-    .phase-status-actions {
-      display: flex;
-      align-items: center;
-      gap: 24px;
+    small {
+      display: block;
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.3;
     }
   }
 
-  .delete-deadline-btn {
-    background: none !important;
-    border: none !important;
-    outline: none !important;
-    box-shadow: none !important;
-    padding: 0;
-    margin-left: 10px;
-    cursor: pointer;
-    color: var(--text-muted);
-    opacity: 0.4;
-    display: inline-flex;
+  .check-icon {
+    color: var(--primary);
+    flex-shrink: 0;
+  }
+}
+
+// =============================================
+// ÉCHÉANCES
+// =============================================
+.deadline-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sample-deadline-card,
+.sample-deadlines-card {
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 12px;
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.sample-deadline-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, rgba(115, 102, 255, 0.06), rgba(115, 102, 255, 0.02));
+  border-bottom: 1px solid var(--border-color);
+
+  .sample-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--primary);
+    flex-shrink: 0;
+  }
+
+  strong {
+    font-size: 13px;
+    color: var(--dark);
+  }
+}
+
+// Formulaire d'échéances — disposition verticale
+.sample-deadline-card {
+  .deadline-form-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .deadline-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+}
+
+.alert-chrono {
+  margin: 0 12px 8px;
+  padding: 8px 12px;
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #856404;
+}
+
+.phase-order {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  background: var(--primary);
+  color: white;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 700;
+  margin-right: 4px;
+}
+
+// Affichage des phases
+.deadline-phases {
+  padding: 8px 12px;
+}
+
+.sample-deadlines-group {
+  margin-bottom: 16px;
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.deadline-phase-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 6px;
+  border-bottom: 1px solid var(--border-color);
+  border-radius: 6px;
+  transition: background 0.15s;
+
+  &:last-child {
+    border-bottom: none;
+  }
+  &:hover {
+    background: var(--light);
+  }
+  &.overdue {
+    background: #fff8f8;
+  }
+  &.completed {
+    opacity: 0.7;
+  }
+
+  .phase-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+
+    .phase-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--dark);
+    }
+
+    .phase-date {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+  }
+
+  .phase-status-actions {
+    display: flex;
     align-items: center;
-    transition: all 0.2s;
+    gap: 12px;
+  }
+}
 
-    &:hover {
-      opacity: 1;
-      color: var(--danger);
-      background: none !important;
-    }
+.delete-deadline-btn {
+  background: none;
+  border: none;
+  padding: 2px;
+  margin-left: 10px;
+  cursor: pointer;
+  color: var(--text-muted);
+  opacity: 0.4;
+  display: inline-flex;
+  align-items: center;
+  transition: all 0.2s;
 
-    &:focus {
-      outline: none !important;
-      box-shadow: none !important;
-      background: none !important;
-    }
+  &:hover {
+    opacity: 1;
+    color: var(--danger);
+  }
 
-    .analysts-list {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      max-height: 240px;
-      overflow-y: auto;
-    }
-
-    .analyst-item {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 10px 12px;
-      border: 1.5px solid var(--border-color);
-      border-radius: 8px;
-      cursor: pointer;
-      transition: all 0.15s;
-
-      &:hover {
-        border-color: var(--primary);
-        background: rgba(115, 102, 255, 0.04);
-      }
-
-      &.selected {
-        border-color: var(--primary);
-        background: rgba(115, 102, 255, 0.08);
-      }
-
-      .analyst-avatar {
-        width: 34px;
-        height: 34px;
-        border-radius: 50%;
-        background: var(--primary);
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 700;
-        font-size: 14px;
-        flex-shrink: 0;
-      }
-
-      .analyst-info {
-        flex: 1;
-        strong {
-          display: block;
-          font-size: 13px;
-          color: var(--dark);
-        }
-        small {
-          display: block;
-          font-size: 11px;
-          color: var(--text-muted);
-        }
-      }
-
-      .check-icon {
-        color: var(--primary);
-        flex-shrink: 0;
-      }
-    }
+  &:focus {
+    outline: none;
   }
 }

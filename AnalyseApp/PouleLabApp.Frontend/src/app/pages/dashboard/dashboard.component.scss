@@ -57,4 +57,12 @@
     color: var(--text-muted);
     margin-bottom: 16px;
   }
+
+  .clickable-row {
+    cursor: pointer;
+    transition: background 0.15s;
+    &:hover {
+      background: rgba(115, 102, 255, 0.05) !important;
+    }
+  }
 }

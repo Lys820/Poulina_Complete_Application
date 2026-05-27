@@ -229,9 +229,9 @@
 
                 <!-- Champs -->
                 <div [formGroupName]="'sample_' + sample.id">
-                  <div class="row g-2">
+                  <div class="deadline-form-grid">
                     @for (phase of phaseList; track phase.key) {
-                      <div class="col-md-6">
+                      <div class="deadline-field">
                         <label
                           class="form-label small"
                           [for]="'phase_' + sample.id + '_' + phase.key"
