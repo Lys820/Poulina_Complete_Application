@@ -8,6 +8,8 @@ import { RequestDetailDto, AuditLogDto } from '../../../core/models/request.mode
 import { DeadlineDto } from '../../../core/models/request.model';
 import { AnalystDto } from '../../../core/models/user.model';
 import { UserService } from '../../../core/services/user.service';
+import { NotificationService } from '../../../core/services/notification.service';
+import { NotificationBadgeService } from '../../../core/services/notification-badge.service';
 
 @Component({
   selector: 'app-request-detail',
@@ -44,6 +46,8 @@ export class RequestDetailComponent implements OnInit {
     private fb: FormBuilder,
     private requestService: RequestService,
     private userService: UserService,
+    private notificationService: NotificationService,
+    private badgeService: NotificationBadgeService,
     public authService: AuthService,
   ) {}
 
@@ -59,6 +63,11 @@ export class RequestDetailComponent implements OnInit {
         this.request.set(data);
         this.buildDeadlineForm(); // ← ICI seulement, après que data est disponible
         this.isLoading.set(false);
+
+        // Marquer les notifications liées à cette demande comme lues
+        this.notificationService.markAsReadByRequestId(this.requestId);
+        // Rafraîchir le badge dans la sidebar/header
+        setTimeout(() => this.badgeService.refresh(), 500);
       },
       error: () => this.isLoading.set(false),
     });

@@ -33,4 +33,19 @@ export class NotificationService {
   deleteAll(): Observable<void> {
     return this.http.delete<void>(this.url);
   }
+
+  markAsReadByRequestId(requestId: number): void {
+    this.getAll().subscribe({
+      next: (notifications) => {
+        const unread = notifications.filter((n) => n.requestId === requestId && !n.isRead);
+        unread.forEach((n) => {
+          this.markAsRead(n.id).subscribe();
+        });
+        // Rafraîchir le badge
+        if (unread.length > 0) {
+          this.http.get<{ count: number }>(`${this.url}/unread`).subscribe();
+        }
+      },
+    });
+  }
 }

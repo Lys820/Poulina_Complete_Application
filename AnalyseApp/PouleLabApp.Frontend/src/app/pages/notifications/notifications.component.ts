@@ -3,6 +3,7 @@ import { CommonModule, NgClass } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { NotificationService } from '../../core/services/notification.service';
 import { NotificationDto } from '../../core/models/notification.model';
+import { NotificationBadgeService } from '../../core/services/notification-badge.service';
 
 @Component({
   selector: 'app-notifications',
@@ -16,7 +17,10 @@ export class NotificationsComponent implements OnInit {
   isLoading = signal(true);
   successMsg = signal('');
 
-  constructor(private notificationService: NotificationService) {}
+  constructor(
+    private notificationService: NotificationService,
+    private badgeService: NotificationBadgeService,
+  ) {}
 
   ngOnInit(): void {
     this.load();
@@ -28,6 +32,19 @@ export class NotificationsComponent implements OnInit {
       next: (data) => {
         this.notifications.set(data);
         this.isLoading.set(false);
+
+        // Marquer automatiquement toutes les non lues comme lues
+        const unread = data.filter((n) => !n.isRead);
+        if (unread.length > 0) {
+          this.notificationService.markAllAsRead().subscribe({
+            next: () => {
+              // Mettre à jour localement sans recharger
+              this.notifications.update((list) => list.map((n) => ({ ...n, isRead: true })));
+              // Rafraîchir le badge
+              this.badgeService.refresh();
+            },
+          });
+        }
       },
       error: () => this.isLoading.set(false),
     });
