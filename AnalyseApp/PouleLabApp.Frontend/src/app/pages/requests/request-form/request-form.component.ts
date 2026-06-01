@@ -23,6 +23,7 @@ export class RequestFormComponent implements OnInit {
   isEditMode = signal(false);
   requestId = signal<number | null>(null);
   selectedBrand = signal<string>('');
+  showBrandError = signal(false);
 
   readonly brands = [
     { value: 'DICK', label: 'DICK', color: '#991B1B', icon: '🔴' },
@@ -170,14 +171,20 @@ export class RequestFormComponent implements OnInit {
   // Navigation
   // -------------------------------------------------------
   nextStep(): void {
-    if (this.currentStep() < this.totalSteps) this.currentStep.update((s) => s + 1);
+    if (this.currentStep() === 1) {
+      if (!this.form.get('laboratoryId')!.value || !this.selectedBrand()) {
+        this.showBrandError.set(true);
+        return;
+      }
+    }
+    this.showBrandError.set(false);
+    this.currentStep.update((s) => s + 1);
   }
 
   prevStep(): void {
     if (this.currentStep() > 1) this.currentStep.update((s) => s - 1);
   }
 
-  // ← NOUVEAU — bloque Suivant si labo ou marque non sélectionnés
   canGoNext(): boolean {
     if (this.currentStep() === 1) {
       return !!this.form.get('laboratoryId')!.value && !!this.selectedBrand();

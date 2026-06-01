@@ -136,8 +136,11 @@
                 </div>
               }
             </div>
-            @if (!selectedBrand() && form.get('laboratoryId')!.touched) {
-              <p class="text-danger small mt-2">Veuillez sélectionner une marque.</p>
+
+            @if (showBrandError()) {
+              <p class="text-danger small mt-2">
+                ⚠ Veuillez sélectionner un laboratoire et une marque pour continuer.
+              </p>
             }
           </div>
 
