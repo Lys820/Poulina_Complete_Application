@@ -122,6 +122,7 @@ namespace PouleLabApp.API.Services
             {
                 ClientId     = clientId,
                 LaboratoryId = dto.LaboratoryId > 0 ? dto.LaboratoryId : 1,
+                Brand        = dto.Brand,
                 Notes        = dto.Notes,
                 IsDraft      = dto.IsDraft,
                 Status       = dto.IsDraft ? RequestStatus.Draft : RequestStatus.Submitted,
@@ -764,6 +765,7 @@ namespace PouleLabApp.API.Services
             }
 
             request.Notes   = dto.Notes;
+            request.Brand   = dto.Brand;
             request.IsDraft = dto.IsDraft;
             request.Status  = dto.IsDraft ? RequestStatus.Draft : RequestStatus.Submitted;
 
@@ -873,6 +875,7 @@ namespace PouleLabApp.API.Services
         {
             Id             = r.Id,
             Status         = r.Status.ToString(),
+            Brand          = r.Brand,
             Notes          = r.Notes,
             IsDraft        = r.IsDraft,
             CreatedAt      = r.CreatedAt,

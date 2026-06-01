@@ -12,6 +12,7 @@ namespace PouleLabApp.API.DTOs.Request
         public DateTime SubmittedAt { get; set; }
         public int LaboratoryId { get; set; }
         public string LaboratoryName { get; set; } = string.Empty;
+        public string Brand { get; set; } = string.Empty;
         public string ClientId { get; set; } = string.Empty;
         public string ClientName { get; set; } = string.Empty;     // Prénom + Nom
         public string ClientEmail { get; set; } = string.Empty;

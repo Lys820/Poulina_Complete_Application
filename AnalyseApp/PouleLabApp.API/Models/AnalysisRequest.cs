@@ -24,5 +24,6 @@ namespace PouleLabApp.API.Models
         public ICollection<Deadline> Deadlines { get; set; } = new List<Deadline>();
         public ICollection<AuditLog> AuditLogs { get; set; } = new List<AuditLog>();
         public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
+        public string Brand { get; set; } = string.Empty;
     }
 }

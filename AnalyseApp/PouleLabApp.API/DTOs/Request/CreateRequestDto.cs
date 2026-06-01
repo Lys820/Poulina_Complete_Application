@@ -4,6 +4,7 @@ namespace PouleLabApp.API.DTOs.Request
     public class CreateRequestDto
     {
         public int LaboratoryId { get; set; }           // Laboratoire destinataire
+        public string Brand { get; set; } = string.Empty; // Marque du produit à analyser
         public string Notes { get; set; } = string.Empty; // Remarques libres du client
         public bool IsDraft { get; set; } = true;       // true = brouillon, false = soumis directement
         public List<CreateSampleDto> Samples { get; set; } = new(); // Échantillons joints à la demande
