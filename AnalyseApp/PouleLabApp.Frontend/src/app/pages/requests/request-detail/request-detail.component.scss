@@ -393,3 +393,27 @@
     outline: none;
   }
 }
+
+.brand-tag {
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+
+  &-dick {
+    background: #fee2e2;
+    color: #991b1b;
+  }
+  &-sna {
+    background: #dbeafe;
+    color: #1e3a8a;
+  }
+  &-gipa {
+    background: #ede9fe;
+    color: #7c3aed;
+  }
+  &-medoil {
+    background: #fef3c7;
+    color: #b45309;
+  }
+}

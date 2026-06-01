@@ -105,6 +105,18 @@
               <span class="info-value">{{ request()!.clientEmail }}</span>
             </div>
             <div class="info-item">
+              <span class="info-label">Marque</span>
+              <span class="info-value">
+                @if (request()!.brand) {
+                  <span class="brand-tag brand-tag-{{ request()!.brand.toLowerCase() }}">
+                    {{ request()!.brand }}
+                  </span>
+                } @else {
+                  —
+                }
+              </span>
+            </div>
+            <div class="info-item">
               <span class="info-label">Laboratoire</span>
               <span class="info-value lab-badge">{{ request()!.laboratoryName }}</span>
             </div>

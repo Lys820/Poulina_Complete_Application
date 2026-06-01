@@ -22,6 +22,29 @@ export class RequestFormComponent implements OnInit {
   totalSteps = 3;
   isEditMode = signal(false);
   requestId = signal<number | null>(null);
+  selectedBrand = signal<string>('');
+
+  readonly brands = [
+    { value: 'DICK', label: 'DICK', color: '#991B1B', icon: '🔴' },
+    { value: 'SNA', label: 'SNA', color: '#1E3A8A', icon: '🔵' },
+    { value: 'GIPA', label: 'GIPA', color: '#7C3AED', icon: '🟣' },
+    { value: 'MEDOIL', label: 'MEDOIL', color: '#B45309', icon: '🟠' },
+  ];
+
+  private readonly brandConfig: Record<
+    string,
+    {
+      color: string;
+      lightColor: string;
+      textColor: string;
+      label: string;
+    }
+  > = {
+    DICK: { color: '#991B1B', lightColor: '#FEF2F2', textColor: '#7F1D1D', label: 'DICK' },
+    SNA: { color: '#1E3A8A', lightColor: '#EFF6FF', textColor: '#1E3A8A', label: 'SNA' },
+    GIPA: { color: '#7C3AED', lightColor: '#F5F3FF', textColor: '#6D28D9', label: 'GIPA' },
+    MEDOIL: { color: '#B45309', lightColor: '#FFFBEB', textColor: '#92400E', label: 'MEDOIL' },
+  };
 
   constructor(
     private fb: FormBuilder,
@@ -65,11 +88,9 @@ export class RequestFormComponent implements OnInit {
   loadExistingRequest(id: number): void {
     this.requestService.getById(id).subscribe({
       next: (req) => {
-        // Construire les groupes échantillons depuis la demande existante
         const sampleGroups =
           req.samples.length > 0
             ? req.samples.map((sample) => {
-                // Restaurer les noms d'analyses ou mettre un champ vide
                 const names =
                   sample.results.length > 0
                     ? sample.results.map((r) => this.fb.control(r.analysisName))
@@ -83,9 +104,8 @@ export class RequestFormComponent implements OnInit {
                   analysisNames: this.fb.array(names),
                 });
               })
-            : [this.createSample()]; // Aucun échantillon → un vide par défaut
+            : [this.createSample()];
 
-        // Reconstruire entièrement le formulaire avec les données existantes
         this.form = this.fb.group({
           laboratoryId: [req.laboratoryId ?? null],
           notes: [req.notes ?? ''],
@@ -123,12 +143,9 @@ export class RequestFormComponent implements OnInit {
 
   removeSample(index: number): void {
     if (this.samples.length > 1) {
-      // Récupérer tous les groupes sauf celui à supprimer
       const remaining = this.samples.controls
         .filter((_, i) => i !== index)
         .map((c) => c as FormGroup);
-
-      // Reconstruire le FormArray entièrement
       this.form.setControl('samples', this.fb.array(remaining));
     }
   }
@@ -160,11 +177,21 @@ export class RequestFormComponent implements OnInit {
     if (this.currentStep() > 1) this.currentStep.update((s) => s - 1);
   }
 
+  // ← NOUVEAU — bloque Suivant si labo ou marque non sélectionnés
+  canGoNext(): boolean {
+    if (this.currentStep() === 1) {
+      return !!this.form.get('laboratoryId')!.value && !!this.selectedBrand();
+    }
+    return true;
+  }
+
   // -------------------------------------------------------
   // Validation
   // -------------------------------------------------------
+  // ← MIS À JOUR — vérifie aussi la marque
   isFormCompleteForSubmit(): boolean {
     if (!this.form.get('laboratoryId')!.value) return false;
+    if (!this.selectedBrand()) return false;
     return this.samples.controls.every((s) => {
       const names = (s.get('analysisNames') as FormArray).controls;
       return (
@@ -179,6 +206,24 @@ export class RequestFormComponent implements OnInit {
 
   hasNoAnalysisNames(sampleIndex: number): boolean {
     return this.getAnalysisNames(sampleIndex).controls.every((c) => !c.value?.trim());
+  }
+
+  // -------------------------------------------------------
+  // Marque
+  // -------------------------------------------------------
+  getBrandConfig() {
+    return (
+      this.brandConfig[this.selectedBrand()] ?? {
+        color: '#7366FF',
+        lightColor: '#F5F3FF',
+        textColor: '#5b4fd4',
+        label: '',
+      }
+    );
+  }
+
+  selectBrand(brand: string): void {
+    this.selectedBrand.set(brand);
   }
 
   // -------------------------------------------------------
@@ -201,11 +246,11 @@ export class RequestFormComponent implements OnInit {
     const formValue = {
       ...this.form.value,
       isDraft,
+      brand: this.selectedBrand(),
       laboratoryId: this.form.value.laboratoryId ?? 0,
       samples: this.form.value.samples
         .filter((s: any) => {
           if (!isDraft) return true;
-          // Conserver si au moins un champ est rempli
           return (
             s.type?.trim() ||
             s.characteristics?.trim() ||
@@ -240,5 +285,57 @@ export class RequestFormComponent implements OnInit {
         this.errorMessage.set(err.error?.detail ?? "Erreur lors de l'enregistrement.");
       },
     });
+  }
+
+  readonly brandFieldConfig: Record<
+    string,
+    {
+      sampleTypeLabel: string;
+      sampleTypePlaceholder: string;
+      characteristicsLabel: string;
+      characteristicsPlaceholder: string;
+      extraFields: { key: string; label: string; placeholder: string }[];
+    }
+  > = {
+    DICK: {
+      sampleTypeLabel: 'Espèce animale *',
+      sampleTypePlaceholder: 'Ex: Poulet, Dinde, Vache...',
+      characteristicsLabel: 'Description / Symptômes',
+      characteristicsPlaceholder: 'Ex: Poulets de 6 semaines, mortalité élevée...',
+      extraFields: [],
+    },
+    SNA: {
+      sampleTypeLabel: "Type d'huile *",
+      sampleTypePlaceholder: 'Ex: Huile moteur, Huile hydraulique...',
+      characteristicsLabel: 'Grade / Spécification',
+      characteristicsPlaceholder: 'Ex: SAE 10W-40, ISO VG 46...',
+      extraFields: [],
+    },
+    GIPA: {
+      sampleTypeLabel: 'Type de lubrifiant *',
+      sampleTypePlaceholder: 'Ex: Lubrifiant industriel, Graisse...',
+      characteristicsLabel: 'Application / Usage',
+      characteristicsPlaceholder: 'Ex: Compresseur, Engrenage, Roulement...',
+      extraFields: [],
+    },
+    MEDOIL: {
+      sampleTypeLabel: 'Corps gras / Huile *',
+      sampleTypePlaceholder: "Ex: Huile d'olive, Huile de tournesol...",
+      characteristicsLabel: 'Origine / Qualité',
+      characteristicsPlaceholder: 'Ex: Première pression à froid, Raffinée...',
+      extraFields: [],
+    },
+  };
+
+  getFieldConfig() {
+    return (
+      this.brandFieldConfig[this.selectedBrand()] ?? {
+        sampleTypeLabel: "Type d'échantillon *",
+        sampleTypePlaceholder: 'Ex: Huile, Eau industrielle...',
+        characteristicsLabel: 'Caractéristiques',
+        characteristicsPlaceholder: "Décrivez l'échantillon...",
+        extraFields: [],
+      }
+    );
   }
 }

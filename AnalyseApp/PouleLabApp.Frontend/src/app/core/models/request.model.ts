@@ -12,6 +12,7 @@ export interface RequestListDto {
 export interface RequestDetailDto {
   id: number;
   status: string;
+  brand: string;
   notes: string;
   isDraft: boolean;
   createdAt: Date;

@@ -348,4 +348,248 @@
       align-items: center;
     }
   }
+
+  // =============================================
+  // SÉLECTEUR DE MARQUE
+  // =============================================
+  .brand-selector {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+
+  .brand-choice {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 14px 10px;
+    border: 2px solid var(--border-color);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    -webkit-user-select: none;
+    user-select: none;
+
+    &:hover {
+      border-color: var(--primary);
+      background: rgba(115, 102, 255, 0.04);
+      transform: translateY(-2px);
+    }
+
+    &.selected {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .brand-icon {
+      font-size: 22px;
+    }
+
+    .brand-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--dark);
+      transition: color 0.2s;
+    }
+
+    .brand-check {
+      position: absolute;
+      top: 6px;
+      right: 8px;
+    }
+
+    .brand-header-text {
+      color: white;
+      font-weight: 600;
+      font-size: 13px;
+    }
+  }
+
+  // =============================================
+  // BRAND INDICATOR
+  // =============================================
+  .brand-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: 1.5px solid;
+    font-size: 13px;
+
+    .brand-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+  }
+
+  // =============================================
+  // BRAND CARD
+  // =============================================
+  .brand-card {
+    border-width: 1.5px !important;
+    border-style: solid !important;
+    overflow: hidden;
+
+    .brand-card-header {
+      padding: 10px 16px;
+      border-bottom: none;
+    }
+  }
+
+  // =============================================
+  // CLASSES DYNAMIQUES PAR MARQUE
+  // =============================================
+
+  // DICK — Rouge
+  .brand-DICK {
+    .brand-choice-active {
+      border-color: #991b1b !important;
+      background: rgba(153, 27, 27, 0.08) !important;
+    }
+    .brand-name-active {
+      color: #7f1d1d !important;
+    }
+    .brand-indicator-wrap {
+      background: #fef2f2;
+      border-color: #991b1b;
+    }
+    .brand-dot-color {
+      background: #991b1b;
+    }
+    .brand-label-color {
+      color: #7f1d1d;
+    }
+    .brand-card-header {
+      background: #991b1b !important;
+    }
+    .brand-card {
+      border-color: #991b1b !important;
+    }
+    .brand-card-body {
+      background: #fef2f2 !important;
+    }
+    .brand-input:focus {
+      border-color: #991b1b !important;
+    }
+    .add-analysis-btn {
+      border-color: #991b1b !important;
+      color: #7f1d1d !important;
+    }
+  }
+
+  // SNA — Bleu
+  .brand-SNA {
+    .brand-choice-active {
+      border-color: #1e3a8a !important;
+      background: rgba(30, 58, 138, 0.08) !important;
+    }
+    .brand-name-active {
+      color: #1e3a8a !important;
+    }
+    .brand-indicator-wrap {
+      background: #eff6ff;
+      border-color: #1e3a8a;
+    }
+    .brand-dot-color {
+      background: #1e3a8a;
+    }
+    .brand-label-color {
+      color: #1e3a8a;
+    }
+    .brand-card-header {
+      background: #1e3a8a !important;
+    }
+    .brand-card {
+      border-color: #1e3a8a !important;
+    }
+    .brand-card-body {
+      background: #eff6ff !important;
+    }
+    .brand-input:focus {
+      border-color: #1e3a8a !important;
+    }
+    .add-analysis-btn {
+      border-color: #1e3a8a !important;
+      color: #1e3a8a !important;
+    }
+  }
+
+  // GIPA — Violet
+  .brand-GIPA {
+    .brand-choice-active {
+      border-color: #7c3aed !important;
+      background: rgba(124, 58, 237, 0.08) !important;
+    }
+    .brand-name-active {
+      color: #6d28d9 !important;
+    }
+    .brand-indicator-wrap {
+      background: #f5f3ff;
+      border-color: #7c3aed;
+    }
+    .brand-dot-color {
+      background: #7c3aed;
+    }
+    .brand-label-color {
+      color: #6d28d9;
+    }
+    .brand-card-header {
+      background: #7c3aed !important;
+    }
+    .brand-card {
+      border-color: #7c3aed !important;
+    }
+    .brand-card-body {
+      background: #f5f3ff !important;
+    }
+    .brand-input:focus {
+      border-color: #7c3aed !important;
+    }
+    .add-analysis-btn {
+      border-color: #7c3aed !important;
+      color: #6d28d9 !important;
+    }
+  }
+
+  // MEDOIL — Marron
+  .brand-MEDOIL {
+    .brand-choice-active {
+      border-color: #b45309 !important;
+      background: rgba(180, 83, 9, 0.08) !important;
+    }
+    .brand-name-active {
+      color: #92400e !important;
+    }
+    .brand-indicator-wrap {
+      background: #fffbeb;
+      border-color: #b45309;
+    }
+    .brand-dot-color {
+      background: #b45309;
+    }
+    .brand-label-color {
+      color: #92400e;
+    }
+    .brand-card-header {
+      background: #b45309 !important;
+    }
+    .brand-card {
+      border-color: #b45309 !important;
+    }
+    .brand-card-body {
+      background: #fffbeb !important;
+    }
+    .brand-input:focus {
+      border-color: #b45309 !important;
+    }
+    .add-analysis-btn {
+      border-color: #b45309 !important;
+      color: #92400e !important;
+    }
+  }
 }
