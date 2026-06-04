@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PouleLabApp.API.Data;
 
@@ -11,9 +12,11 @@ using PouleLabApp.API.Data;
 namespace PouleLabApp.API.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260604102313_RefactorDeadlinesToUrgency")]
+    partial class RefactorDeadlinesToUrgency
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -638,7 +641,7 @@ namespace PouleLabApp.API.Migrations
                     b.HasOne("PouleLabApp.API.Models.Sample", "Sample")
                         .WithMany("Deadlines")
                         .HasForeignKey("SampleId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Request");

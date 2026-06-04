@@ -662,47 +662,28 @@ namespace PouleLabApp.API.Services
                 .FirstOrDefaultAsync(r => r.Id == requestId)
                 ?? throw new KeyNotFoundException("Demande introuvable.");
 
-            // Valider l'ordre chronologique par échantillon
-            var bySample = deadlines.GroupBy(d => d.SampleId);
-            foreach (var group in bySample)
+            foreach (var dto in deadlines)
             {
-                var ordered = group.OrderBy(d => GetPhaseOrder(d.Phase)).ToList();
-                for (int i = 1; i < ordered.Count; i++)
-                {
-                    if (ordered[i].PlannedDate <= ordered[i - 1].PlannedDate)
-                        throw new ArgumentException(
-                            $"L'échéance '{ordered[i].Phase}' doit être postérieure " +
-                            $"à '{ordered[i - 1].Phase}'.");
-                }
-            }
-
-            foreach (var deadlineDto in deadlines)
-            {
-                if (!Enum.TryParse<DeadlinePhase>(deadlineDto.Phase, true, out var phase))
-                    throw new ArgumentException($"Phase invalide : {deadlineDto.Phase}");
-
-                if (deadlineDto.PlannedDate <= DateTime.UtcNow)
-                    throw new ArgumentException(
-                        $"La date pour la phase '{deadlineDto.Phase}' doit être dans le futur.");
-
                 var existing = request.Deadlines
-                    .FirstOrDefault(d => d.Phase    == phase &&
-                                         d.SampleId == deadlineDto.SampleId);
+                    .FirstOrDefault(d => d.SampleId == dto.SampleId);
 
                 if (existing != null)
                 {
-                    existing.PlannedDate = deadlineDto.PlannedDate;
-                    existing.IsOverdue   = false;
+                    existing.IsPerishable       = dto.IsPerishable;
+                    existing.ExpiryDate         = dto.ExpiryDate;
+                    existing.UrgencyLevel       = dto.UrgencyLevel;
+                    existing.UrgencyDescription = dto.UrgencyDescription;
                 }
                 else
                 {
                     _context.Deadlines.Add(new Deadline
                     {
-                        RequestId   = requestId,
-                        SampleId    = deadlineDto.SampleId,
-                        Phase       = phase,
-                        PlannedDate = deadlineDto.PlannedDate,
-                        IsOverdue   = false
+                        RequestId          = requestId,
+                        SampleId           = dto.SampleId,
+                        IsPerishable       = dto.IsPerishable,
+                        ExpiryDate         = dto.ExpiryDate,
+                        UrgencyLevel       = dto.UrgencyLevel,
+                        UrgencyDescription = dto.UrgencyDescription
                     });
                 }
             }
@@ -710,7 +691,7 @@ namespace PouleLabApp.API.Services
             await _context.SaveChangesAsync();
 
             return await GetByIdAsync(requestId)
-                ?? throw new Exception("Erreur lors de la récupération de la demande.");
+                ?? throw new Exception("Erreur.");
         }
 
         // -------------------------------------------------------
@@ -722,18 +703,17 @@ namespace PouleLabApp.API.Services
                 .Include(d => d.Sample)
                 .Where(d => d.RequestId == requestId)
                 .OrderBy(d => d.SampleId)
-                .ThenBy(d => d.Phase)
                 .ToListAsync();
 
             return deadlines.Select(d => new DeadlineDto
             {
-                Id          = d.Id,
-                Phase       = d.Phase.ToString(),
-                PlannedDate = d.PlannedDate,
-                ActualDate  = d.ActualDate,
-                IsOverdue   = d.IsOverdue || (d.PlannedDate < DateTime.UtcNow && d.ActualDate == null),
-                SampleId    = d.SampleId,
-                SampleType  = d.Sample?.Type ?? ""
+                Id                 = d.Id,
+                SampleId           = d.SampleId,
+                SampleType         = d.Sample?.Type ?? "",
+                IsPerishable       = d.IsPerishable,
+                ExpiryDate         = d.ExpiryDate,
+                UrgencyLevel       = d.UrgencyLevel,
+                UrgencyDescription = d.UrgencyDescription
             }).ToList();
         }
 
@@ -859,16 +839,6 @@ namespace PouleLabApp.API.Services
             ReceivedAt     = r.ReceivedAt,
             IsDraft        = r.IsDraft,
             SamplesCount   = r.Samples?.Count ?? 0
-        };
-
-        private static int GetPhaseOrder(string phase) => phase switch
-        {
-            "Reception"      => 1,
-            "Assignment"     => 2,
-            "Analysis"       => 3,
-            "Validation"     => 4,
-            "ResultDelivery" => 5,
-            _                => 99
         };
 
         private static RequestDetailDto MapToDetailDto(AnalysisRequest r) => new()

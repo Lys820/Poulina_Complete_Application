@@ -1,22 +1,22 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using PouleLabApp.API.Data;
+using PouleLabApp.API.Models;
 
 namespace PouleLabApp.API.Services
 {
-    // Service d'arrière-plan — vérifie toutes les heures les échéances dépassées
-    // Tourne en continu tant que l'application est en cours d'exécution
     public class DeadlineCheckerService : BackgroundService
     {
-        // IServiceScopeFactory permet de créer un scope pour accéder au DbContext
-        // car les BackgroundService sont des singletons et le DbContext est scoped
-        private readonly IServiceScopeFactory _scopeFactory;
+        private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<DeadlineCheckerService> _logger;
 
         public DeadlineCheckerService(
-            IServiceScopeFactory scopeFactory,
+            IServiceProvider serviceProvider,
             ILogger<DeadlineCheckerService> logger)
         {
-            _scopeFactory = scopeFactory;
+            _serviceProvider = serviceProvider;
             _logger = logger;
         }
 
@@ -24,70 +24,67 @@ namespace PouleLabApp.API.Services
         {
             _logger.LogInformation("[DeadlineChecker] Service démarré.");
 
-            // Boucle infinie — s'arrête quand l'application s'arrête
             while (!stoppingToken.IsCancellationRequested)
             {
-                await CheckDeadlinesAsync();
-
-                // Attendre 1 heure avant la prochaine vérification
+                await CheckExpiringDeadlines();
                 await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
             }
         }
 
-        private async Task CheckDeadlinesAsync()
+        private async Task CheckExpiringDeadlines()
         {
-            // Créer un nouveau scope pour accéder au DbContext
-            using var scope = _scopeFactory.CreateScope();
+            using var scope = _serviceProvider.CreateScope();
             var context = scope.ServiceProvider
                 .GetRequiredService<ApplicationDbContext>();
 
             var now = DateTime.UtcNow;
 
-            // Récupérer toutes les échéances non complétées et non encore marquées en retard
-            var overdueDeadlines = await context.Deadlines
+            // Chercher les échantillons périmables dont la date est dépassée
+            var expired = await context.Deadlines
                 .Include(d => d.Request)
+                    .ThenInclude(r => r.Client)
                 .Where(d =>
-                    d.PlannedDate < now &&
-                    d.ActualDate == null &&
-                    !d.IsOverdue)
+                    d.IsPerishable &&
+                    d.ExpiryDate.HasValue &&
+                    d.ExpiryDate < now &&
+                    d.Request.Status != RequestStatus.Validated &&
+                    d.Request.Status != RequestStatus.Closed)
                 .ToListAsync();
 
-            if (!overdueDeadlines.Any())
+            if (!expired.Any())
             {
-                _logger.LogInformation("[DeadlineChecker] Aucun retard détecté.");
+                _logger.LogInformation("[DeadlineChecker] Aucune péremption détectée.");
                 return;
             }
 
-            // Marquer chaque échéance dépassée
-            foreach (var deadline in overdueDeadlines)
+            foreach (var deadline in expired)
             {
-                deadline.IsOverdue = true;
+                // Vérifier si une notification a déjà été envoyée
+                var alreadyNotified = await context.Notifications
+                    .AnyAsync(n =>
+                        n.RequestId == deadline.RequestId &&
+                        n.Message.Contains("péremption") &&
+                        n.CreatedAt > now.AddHours(-24));
 
-                _logger.LogWarning(
-                    "[DeadlineChecker] Retard détecté — Demande #{RequestId} — Phase {Phase} — Prévue le {PlannedDate}",
-                    deadline.RequestId,
-                    deadline.Phase,
-                    deadline.PlannedDate
-                );
+                if (alreadyNotified) continue;
 
-                // Créer une notification pour alerter les responsables
-                context.Notifications.Add(new Models.Notification
+                // Notifier le client
+                context.Notifications.Add(new Notification
                 {
-                    RecipientId = deadline.Request.AssignedToId
-                        ?? deadline.Request.ClientId,
-                    RequestId = deadline.RequestId,
-                    Message = $"Retard détecté sur la demande #{deadline.RequestId} — Phase {deadline.Phase} dépassée depuis le {deadline.PlannedDate:dd/MM/yyyy}.",
-                    IsRead = false,
-                    CreatedAt = now
+                    RecipientId = deadline.Request.ClientId,
+                    RequestId   = deadline.RequestId,
+                    Message     = $"⚠ Alerte péremption — Demande #{deadline.RequestId} : " +
+                                  $"un échantillon a dépassé sa date de péremption.",
+                    IsRead      = false,
+                    CreatedAt   = now
                 });
+
+                _logger.LogInformation(
+                    "[DeadlineChecker] Péremption détectée — Demande #{Id}",
+                    deadline.RequestId);
             }
 
             await context.SaveChangesAsync();
-
-            _logger.LogInformation(
-                "[DeadlineChecker] {Count} retard(s) marqué(s).",
-                overdueDeadlines.Count
-            );
         }
     }
 }

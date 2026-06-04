@@ -49,10 +49,12 @@ namespace PouleLabApp.API.Data
             builder.Entity<AnalysisRequest>()
                 .Property(r => r.Status)
                 .HasConversion<string>();
-
+            
             builder.Entity<Deadline>()
-                .Property(d => d.Phase)
-                .HasConversion<string>();
+                .HasOne(d => d.Sample)
+                .WithMany(s => s.Deadlines)
+                .HasForeignKey(d => d.SampleId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }
