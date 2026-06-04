@@ -534,4 +534,36 @@ a {
     align-items: center;
     line-height: 0;
   }
+
+  // =============================================
+  // BADGES MARQUES — GLOBAL
+  // =============================================
+  .brand-tag {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    display: inline-block;
+  }
+
+  .brand-tag-dick {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+  }
+  .brand-tag-sna {
+    background: #dbeafe;
+    color: #1e3a8a;
+    border: 1px solid #bfdbfe;
+  }
+  .brand-tag-gipa {
+    background: #ede9fe;
+    color: #7c3aed;
+    border: 1px solid #ddd6fe;
+  }
+  .brand-tag-medoil {
+    background: #fef3c7;
+    color: #b45309;
+    border: 1px solid #fde68a;
+  }
 }

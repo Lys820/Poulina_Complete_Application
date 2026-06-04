@@ -113,6 +113,9 @@ export class RequestFormComponent implements OnInit {
           isDraft: [req.isDraft ?? true],
           samples: this.fb.array(sampleGroups),
         });
+        if (req.brand) {
+          this.selectedBrand.set(req.brand);
+        }
       },
       error: (err) => {
         console.error('Erreur lors du chargement de la demande :', err);
