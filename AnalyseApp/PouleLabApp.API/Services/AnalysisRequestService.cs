@@ -752,6 +752,14 @@ namespace PouleLabApp.API.Services
             if (!dto.IsDraft)
                 request.SubmittedAt = DateTime.UtcNow;
 
+            // ← Supprimer d'abord les Deadlines liées aux échantillons
+            var sampleIds = request.Samples.Select(s => s.Id).ToList();
+            var relatedDeadlines = await _context.Deadlines
+                .Where(d => sampleIds.Contains(d.SampleId))
+                .ToListAsync();
+            _context.Deadlines.RemoveRange(relatedDeadlines);
+
+            // Supprimer les résultats et échantillons existants
             var oldResults = request.Samples.SelectMany(s => s.Results).ToList();
             _context.AnalysisResults.RemoveRange(oldResults);
             _context.Samples.RemoveRange(request.Samples);
@@ -782,7 +790,7 @@ namespace PouleLabApp.API.Services
                         RecordedById = userId
                     });
                 }
-                            }
+            }
 
             await _context.SaveChangesAsync();
 
