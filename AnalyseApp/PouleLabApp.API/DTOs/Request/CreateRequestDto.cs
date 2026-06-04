@@ -20,5 +20,11 @@ namespace PouleLabApp.API.DTOs.Request
 
         // Noms libres des analyses — ex: "pH", "Viscosité à 40°C"
         public List<string> AnalysisNames { get; set; } = new();
+
+        // Urgence & péremption
+        public bool      IsPerishable       { get; set; } = false;
+        public DateTime? ExpiryDate         { get; set; }
+        public string    UrgencyLevel       { get; set; } = "Normal";
+        public string    UrgencyDescription { get; set; } = string.Empty;
     }
 }

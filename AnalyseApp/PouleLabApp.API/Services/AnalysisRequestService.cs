@@ -27,7 +27,7 @@ namespace PouleLabApp.API.Services
         }
 
         // -------------------------------------------------------
-        // Créer une notification en base pour un utilisateur
+        // Notifications
         // -------------------------------------------------------
         private async Task CreateNotificationAsync(
             string recipientId, int requestId, string message)
@@ -43,20 +43,16 @@ namespace PouleLabApp.API.Services
             await _context.SaveChangesAsync();
         }
 
-        // Notifier tous les utilisateurs actifs d'un rôle
         private async Task NotifyRoleAsync(
             string role, int requestId, string message)
         {
             var users = await _userManager.GetUsersInRoleAsync(role);
-
             foreach (var user in users.Where(u => u.IsActive))
-            {
                 await CreateNotificationAsync(user.Id, requestId, message);
-            }
         }
 
         // -------------------------------------------------------
-        // Créer une nouvelle demande (brouillon ou soumise)
+        // Créer une nouvelle demande
         // -------------------------------------------------------
         public async Task<RequestDetailDto> CreateAsync(
             string clientId, CreateRequestDto dto)
@@ -67,8 +63,6 @@ namespace PouleLabApp.API.Services
                     ?? throw new KeyNotFoundException("Laboratoire introuvable.");
             }
 
-            // Vérification des doublons — même labo + mêmes échantillons
-            // Les notes sont ignorées volontairement
             if (!dto.IsDraft && dto.LaboratoryId > 0 && dto.Samples.Any())
             {
                 var newSamples = dto.Samples
@@ -94,7 +88,6 @@ namespace PouleLabApp.API.Services
                 var isDuplicate = existingRequests.Any(r =>
                 {
                     if (r.Samples.Count != dto.Samples.Count) return false;
-
                     var existingSamples = r.Samples
                         .Select(s => new {
                             Type            = s.Type.ToLower().Trim(),
@@ -106,10 +99,8 @@ namespace PouleLabApp.API.Services
                         .ToList();
 
                     return newSamples.Zip(existingSamples, (n, e) =>
-                        n.Type            == e.Type            &&
-                        n.Characteristics == e.Characteristics &&
-                        n.Quantity        == e.Quantity        &&
-                        n.Unit            == e.Unit
+                        n.Type == e.Type && n.Characteristics == e.Characteristics &&
+                        n.Quantity == e.Quantity && n.Unit == e.Unit
                     ).All(match => match);
                 });
 
@@ -148,7 +139,6 @@ namespace PouleLabApp.API.Services
                 _context.Samples.Add(sample);
                 await _context.SaveChangesAsync();
 
-                // Créer un résultat vide pour chaque nom d'analyse libre
                 foreach (var analysisName in sampleDto.AnalysisNames
                         .Where(n => !string.IsNullOrWhiteSpace(n)))
                 {
@@ -159,6 +149,18 @@ namespace PouleLabApp.API.Services
                         RecordedById = clientId
                     });
                 }
+
+                // ← Créer la deadline/urgence associée à cet échantillon
+                _context.Deadlines.Add(new Deadline
+                {
+                    RequestId          = request.Id,
+                    SampleId           = sample.Id,
+                    IsPerishable       = sampleDto.IsPerishable,
+                    ExpiryDate         = sampleDto.IsPerishable ? sampleDto.ExpiryDate : null,
+                    UrgencyLevel       = string.IsNullOrEmpty(sampleDto.UrgencyLevel)
+                                          ? "Normal" : sampleDto.UrgencyLevel,
+                    UrgencyDescription = sampleDto.UrgencyDescription ?? string.Empty
+                });
             }
 
             await _context.SaveChangesAsync();
@@ -170,7 +172,6 @@ namespace PouleLabApp.API.Services
                     await _emailService.SendRequestSubmittedAsync(
                         client.Email!, client.FirstName, request.Id);
 
-                // Notifier réceptionnistes + admins + managers
                 await NotifyRoleAsync("Receptionist", request.Id,
                     $"Nouvelle demande #{request.Id} soumise par {client?.FirstName} {client?.LastName}.");
                 await NotifyRoleAsync("Administrator", request.Id,
@@ -227,7 +228,6 @@ namespace PouleLabApp.API.Services
             await _emailService.SendRequestSubmittedAsync(
                 request.Client.Email!, request.Client.FirstName, requestId);
 
-            // Notifier réceptionnistes + admins + managers
             await NotifyRoleAsync("Receptionist", requestId,
                 $"Nouvelle demande #{requestId} soumise par {request.Client.FirstName} {request.Client.LastName}.");
             await NotifyRoleAsync("Administrator", requestId,
@@ -250,6 +250,7 @@ namespace PouleLabApp.API.Services
                 .Include(r => r.Laboratory)
                 .Include(r => r.Samples)
                     .ThenInclude(s => s.Results)
+                .Include(r => r.Deadlines) // ← inclure les deadlines
                 .FirstOrDefaultAsync(r => r.Id == requestId);
 
             if (request == null) return null;
@@ -322,7 +323,6 @@ namespace PouleLabApp.API.Services
             await _emailService.SendRequestReceivedAsync(
                 request.Client.Email!, request.Client.FirstName, requestId);
 
-            // Notifier le client
             await CreateNotificationAsync(request.ClientId, requestId,
                 $"Votre demande #{requestId} a été réceptionnée et est en cours de traitement.");
 
@@ -359,11 +359,8 @@ namespace PouleLabApp.API.Services
             await _emailService.SendRequestAssignedAsync(
                 request.Client.Email!, request.Client.FirstName, requestId);
 
-            // Notifier le laborantin
             await CreateNotificationAsync(analystId, requestId,
                 $"La demande #{requestId} vous a été assignée. Veuillez l'accepter ou la refuser.");
-
-            // Notifier le client
             await CreateNotificationAsync(request.ClientId, requestId,
                 $"Votre demande #{requestId} a été assignée à un laborantin.");
 
@@ -406,7 +403,7 @@ namespace PouleLabApp.API.Services
                 result.RecordedById  = analystId;
                 result.RecordedAt    = DateTime.UtcNow;
                 result.IsAnomaly     = resultDto.MeasuredValue < resultDto.LowerBound ||
-                                    resultDto.MeasuredValue > resultDto.UpperBound;
+                                       resultDto.MeasuredValue > resultDto.UpperBound;
             }
 
             await _context.SaveChangesAsync();
@@ -435,7 +432,6 @@ namespace PouleLabApp.API.Services
                 throw new ArgumentException(
                     "La demande doit être en cours d'analyse.");
 
-            // Vérifier que toutes les valeurs mesurées sont saisies
             var allResults = request.Samples.SelectMany(s => s.Results).ToList();
             if (allResults.Any(r => r.MeasuredValue == 0 && r.LowerBound == 0))
                 throw new ArgumentException(
@@ -451,7 +447,6 @@ namespace PouleLabApp.API.Services
                 RequestStatus.InProgress.ToString(),
                 RequestStatus.InReview.ToString());
 
-            // Notifier les chefs de labo
             await NotifyRoleAsync("LabChief", requestId,
                 $"La demande #{requestId} est prête pour validation.");
 
@@ -488,7 +483,6 @@ namespace PouleLabApp.API.Services
             await _emailService.SendResultsReadyAsync(
                 request.Client.Email!, request.Client.FirstName, requestId);
 
-            // Notifier le client
             await CreateNotificationAsync(request.ClientId, requestId,
                 $"✓ Votre demande #{requestId} a été validée. Le bulletin est disponible en téléchargement.");
 
@@ -520,14 +514,12 @@ namespace PouleLabApp.API.Services
                 : $"{request.Notes} | Rejet chef de labo : {reason}";
 
             foreach (var sample in request.Samples)
-            {
                 foreach (var result in sample.Results)
                 {
                     result.MeasuredValue = 0;
                     result.IsAnomaly     = false;
                     result.RecordedAt    = DateTime.UtcNow;
                 }
-            }
 
             await _context.SaveChangesAsync();
 
@@ -537,7 +529,6 @@ namespace PouleLabApp.API.Services
                 oldStatus,
                 RequestStatus.InProgress.ToString());
 
-            // Notifier le laborantin
             if (!string.IsNullOrEmpty(request.AssignedToId))
                 await CreateNotificationAsync(request.AssignedToId, requestId,
                     $"⚠ Les résultats de la demande #{requestId} ont été rejetés : {reason}. Veuillez corriger et renvoyer.");
@@ -575,7 +566,6 @@ namespace PouleLabApp.API.Services
                 RequestStatus.Assigned.ToString(),
                 RequestStatus.InProgress.ToString());
 
-            // Notifier le client
             await CreateNotificationAsync(request.ClientId, requestId,
                 $"Votre demande #{requestId} a été acceptée par le laborantin et est en cours d'analyse.");
 
@@ -619,7 +609,6 @@ namespace PouleLabApp.API.Services
             await _emailService.SendRequestRejectedAsync(
                 request.Client.Email!, request.Client.FirstName, requestId, reason);
 
-            // Notifier le client et les réceptionnistes
             await CreateNotificationAsync(request.ClientId, requestId,
                 $"Votre demande #{requestId} a été refusée par le laborantin : {reason}.");
             await NotifyRoleAsync("Receptionist", requestId,
@@ -652,7 +641,7 @@ namespace PouleLabApp.API.Services
         }
 
         // -------------------------------------------------------
-        // Définir les échéances
+        // Définir les échéances (depuis le détail)
         // -------------------------------------------------------
         public async Task<RequestDetailDto> SetDeadlinesAsync(
             int requestId, List<SetDeadlineDto> deadlines)
@@ -718,7 +707,7 @@ namespace PouleLabApp.API.Services
         }
 
         // -------------------------------------------------------
-        // Modifier une demande existante (brouillon)
+        // Modifier une demande (brouillon)
         // -------------------------------------------------------
         public async Task<RequestDetailDto> UpdateAsync(
             int requestId, string userId, UpdateRequestDto dto)
@@ -752,14 +741,23 @@ namespace PouleLabApp.API.Services
             if (!dto.IsDraft)
                 request.SubmittedAt = DateTime.UtcNow;
 
-            // ← Supprimer d'abord les Deadlines liées aux échantillons
+            // ← Sauvegarder l'urgence existante par type d'échantillon
+            var urgencyByType = new Dictionary<string, Deadline>();
+            foreach (var sample in request.Samples)
+            {
+                var deadline = await _context.Deadlines
+                    .FirstOrDefaultAsync(d => d.SampleId == sample.Id);
+                if (deadline != null)
+                    urgencyByType[sample.Type.ToLower()] = deadline;
+            }
+
+            // ← Supprimer deadlines, résultats et échantillons
             var sampleIds = request.Samples.Select(s => s.Id).ToList();
             var relatedDeadlines = await _context.Deadlines
                 .Where(d => sampleIds.Contains(d.SampleId))
                 .ToListAsync();
             _context.Deadlines.RemoveRange(relatedDeadlines);
 
-            // Supprimer les résultats et échantillons existants
             var oldResults = request.Samples.SelectMany(s => s.Results).ToList();
             _context.AnalysisResults.RemoveRange(oldResults);
             _context.Samples.RemoveRange(request.Samples);
@@ -790,6 +788,25 @@ namespace PouleLabApp.API.Services
                         RecordedById = userId
                     });
                 }
+
+                // ← Urgence : utiliser celle du DTO, ou restaurer l'ancienne
+                var existingUrgency = urgencyByType.GetValueOrDefault(sampleDto.Type.ToLower());
+                _context.Deadlines.Add(new Deadline
+                {
+                    RequestId          = requestId,
+                    SampleId           = sample.Id,
+                    IsPerishable       = sampleDto.IsPerishable != default
+                                          ? sampleDto.IsPerishable
+                                          : existingUrgency?.IsPerishable ?? false,
+                    ExpiryDate         = sampleDto.ExpiryDate
+                                          ?? existingUrgency?.ExpiryDate,
+                    UrgencyLevel       = !string.IsNullOrEmpty(sampleDto.UrgencyLevel)
+                                          ? sampleDto.UrgencyLevel
+                                          : existingUrgency?.UrgencyLevel ?? "Normal",
+                    UrgencyDescription = !string.IsNullOrEmpty(sampleDto.UrgencyDescription)
+                                          ? sampleDto.UrgencyDescription
+                                          : existingUrgency?.UrgencyDescription ?? string.Empty
+                });
             }
 
             await _context.SaveChangesAsync();
@@ -814,8 +831,8 @@ namespace PouleLabApp.API.Services
 
             _context.AnalysisResults.RemoveRange(
                 request.Samples.SelectMany(s => s.Results));
+                _context.Deadlines.RemoveRange(request.Deadlines);
             _context.Samples.RemoveRange(request.Samples);
-            _context.Deadlines.RemoveRange(request.Deadlines);
             _context.AuditLogs.RemoveRange(request.AuditLogs);
             _context.Notifications.RemoveRange(request.Notifications);
             _context.AnalysisRequests.Remove(request);
@@ -868,81 +885,33 @@ namespace PouleLabApp.API.Services
             AssignedToName = r.AssignedTo != null
                 ? $"{r.AssignedTo.FirstName} {r.AssignedTo.LastName}"
                 : null,
-            Samples = r.Samples?.Select(s => new SampleDetailDto
+            Samples = r.Samples?.Select(s =>
             {
-                Id              = s.Id,
-                Type            = s.Type,
-                Characteristics = s.Characteristics,
-                Quantity        = s.Quantity,
-                Unit            = s.Unit,
-                Results = s.Results?.Select(res => new AnalysisResultDetailDto
+                var deadline = r.Deadlines?.FirstOrDefault(d => d.SampleId == s.Id);
+                return new SampleDetailDto
                 {
-                    Id            = res.Id,
-                    AnalysisName  = res.AnalysisName,
-                    MeasuredValue = res.MeasuredValue,
-                    LowerBound    = res.LowerBound,
-                    UpperBound    = res.UpperBound,
-                    Unit          = res.Unit,
-                    IsAnomaly     = res.IsAnomaly,
-                    RecordedAt    = res.RecordedAt
-                }).ToList() ?? new()
+                    Id              = s.Id,
+                    Type            = s.Type,
+                    Characteristics = s.Characteristics,
+                    Quantity        = s.Quantity,
+                    Unit            = s.Unit,
+                    Results         = s.Results?.Select(res => new AnalysisResultDetailDto
+                    {
+                        Id            = res.Id,
+                        AnalysisName  = res.AnalysisName,
+                        MeasuredValue = res.MeasuredValue,
+                        LowerBound    = res.LowerBound,
+                        UpperBound    = res.UpperBound,
+                        Unit          = res.Unit,
+                        IsAnomaly     = res.IsAnomaly,
+                        RecordedAt    = res.RecordedAt
+                    }).ToList() ?? new(),
+                    IsPerishable       = deadline?.IsPerishable ?? false,
+                    ExpiryDate         = deadline?.ExpiryDate,
+                    UrgencyLevel       = deadline?.UrgencyLevel ?? "Normal",
+                    UrgencyDescription = deadline?.UrgencyDescription ?? string.Empty
+                };
             }).ToList() ?? new()
         };
-
-        private async Task<bool> CheckDuplicateAsync(
-            string clientId, CreateRequestDto dto)
-        {
-            // Récupérer les demandes actives du même client pour le même labo
-            var existingRequests = await _context.AnalysisRequests
-                .Include(r => r.Samples)
-                    .ThenInclude(s => s.Results)
-                .Where(r =>
-                    r.ClientId     == clientId &&
-                    r.LaboratoryId == dto.LaboratoryId &&
-                    r.Status != RequestStatus.Draft &&      // Ignorer les brouillons
-                    r.Status != RequestStatus.Closed &&
-                    r.Status != RequestStatus.Validated)
-                .ToListAsync();
-
-            foreach (var existing in existingRequests)
-            {
-                if (existing.Samples.Count != dto.Samples.Count) continue;
-
-                bool isDuplicate = true;
-                for (int i = 0; i < dto.Samples.Count; i++)
-                {
-                    var dtoSample      = dto.Samples[i];
-                    var existingSample = existing.Samples.ElementAtOrDefault(i);
-
-                    if (existingSample == null) { isDuplicate = false; break; }
-
-                    // Comparer uniquement type, caractéristiques, quantité, unité
-                    // ← Ne pas comparer les notes
-                    if (existingSample.Type            != dtoSample.Type ||
-                        existingSample.Characteristics != dtoSample.Characteristics ||
-                        existingSample.Quantity        != dtoSample.Quantity ||
-                        existingSample.Unit            != dtoSample.Unit)
-                    {
-                        isDuplicate = false;
-                        break;
-                    }
-
-                    // Comparer les types d'analyses
-                    var existingTypeIds = existingSample.Results
-                        .Select(r => r.AnalysisName).OrderBy(x => x).ToList();
-                    var dtoTypeIds = dtoSample.AnalysisNames.OrderBy(x => x).ToList();
-
-                    if (!existingTypeIds.SequenceEqual(dtoTypeIds))
-                    {
-                        isDuplicate = false;
-                        break;
-                    }
-                }
-
-                if (isDuplicate) return true;
-            }
-
-            return false;
-        }
     }
 }

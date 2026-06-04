@@ -8,5 +8,11 @@ namespace PouleLabApp.API.DTOs.Request
         public string Notes { get; set; } = string.Empty;
         public bool IsDraft { get; set; }
         public List<CreateSampleDto> Samples { get; set; } = new();
+
+        // Urgence & péremption
+        public bool      IsPerishable       { get; set; } = false;
+        public DateTime? ExpiryDate         { get; set; }
+        public string    UrgencyLevel       { get; set; } = "Normal";
+        public string    UrgencyDescription { get; set; } = string.Empty;
     }
 }

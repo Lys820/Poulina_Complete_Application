@@ -21,15 +21,20 @@ namespace PouleLabApp.API.DTOs.Request
         public List<SampleDetailDto> Samples { get; set; } = new();
     }
 
-    // Détail d'un échantillon dans la vue complète
     public class SampleDetailDto
     {
-        public int Id { get; set; }
-        public string Type { get; set; } = string.Empty;
+        public int    Id              { get; set; }
+        public string Type            { get; set; } = string.Empty;
         public string Characteristics { get; set; } = string.Empty;
-        public double Quantity { get; set; }
-        public string Unit { get; set; } = string.Empty;
+        public double Quantity        { get; set; }
+        public string Unit            { get; set; } = string.Empty;
         public List<AnalysisResultDetailDto> Results { get; set; } = new();
+
+        // Urgence associée
+        public bool      IsPerishable       { get; set; }
+        public DateTime? ExpiryDate         { get; set; }
+        public string    UrgencyLevel       { get; set; } = "Normal";
+        public string    UrgencyDescription { get; set; } = string.Empty;
     }
 
     // Détail d'un résultat d'analyse dans la vue complète
