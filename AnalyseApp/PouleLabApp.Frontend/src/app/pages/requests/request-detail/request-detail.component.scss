@@ -233,32 +233,34 @@
 }
 
 // =============================================
-// ÉCHÉANCES
+// URGENCE & PÉREMPTION
 // =============================================
-.deadline-form {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.sample-deadline-card,
-.sample-deadlines-card {
+.urgency-card {
   border: 1px solid var(--border-color);
   border-radius: 10px;
-  overflow: hidden;
-  margin-bottom: 12px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  position: relative;
+  transition: box-shadow 0.2s;
+
+  &:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  }
   &:last-child {
     margin-bottom: 0;
   }
 }
 
-.sample-deadline-header {
+.urgency-sample-name {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 14px;
-  background: linear-gradient(135deg, rgba(115, 102, 255, 0.06), rgba(115, 102, 255, 0.02));
-  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 8px;
+
+  strong {
+    font-size: 13px;
+    color: var(--dark);
+  }
 
   .sample-dot {
     width: 8px;
@@ -267,116 +269,71 @@
     background: var(--primary);
     flex-shrink: 0;
   }
-
-  strong {
-    font-size: 13px;
-    color: var(--dark);
-  }
 }
 
-// Formulaire d'échéances — disposition verticale
-.sample-deadline-card {
-  .deadline-form-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    padding: 12px;
-  }
-
-  .deadline-field {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-}
-
-.alert-chrono {
-  margin: 0 12px 8px;
-  padding: 8px 12px;
-  background: #fff3cd;
-  border: 1px solid #ffeaa7;
-  border-radius: 6px;
-  font-size: 12px;
-  color: #856404;
-}
-
-.phase-order {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  background: var(--primary);
-  color: white;
-  border-radius: 50%;
-  font-size: 10px;
-  font-weight: 700;
-  margin-right: 4px;
-}
-
-// Affichage des phases
-.deadline-phases {
-  padding: 8px 12px;
-}
-
-.sample-deadlines-group {
-  margin-bottom: 16px;
-  &:last-child {
-    margin-bottom: 0;
-  }
-}
-
-.deadline-phase-row {
+.urgency-row {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 6px;
-  border-bottom: 1px solid var(--border-color);
-  border-radius: 6px;
-  transition: background 0.15s;
+  margin-bottom: 6px;
+}
 
-  &:last-child {
-    border-bottom: none;
+.urgency-badge {
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+
+  &.urgency-normal {
+    background: #ecfdf5;
+    color: #10b981;
   }
-  &:hover {
-    background: var(--light);
+  &.urgency-urgent {
+    background: #fffbeb;
+    color: #f59e0b;
   }
-  &.overdue {
-    background: #fff8f8;
+  &.urgency-tresurgent,
+  &.urgency-tr-surgent {
+    background: #fef2f2;
+    color: #ef4444;
   }
-  &.completed {
-    opacity: 0.7;
+  &.urgency-critique {
+    background: #f5f3ff;
+    color: #7c3aed;
+  }
+}
+
+.urgency-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.expiry-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--danger);
+
+  &.not-perishable {
+    color: var(--success);
+    font-size: 11px;
   }
 
-  .phase-info {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-
-    .phase-name {
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--dark);
-    }
-
-    .phase-date {
-      font-size: 11px;
-      color: var(--text-muted);
-    }
-  }
-
-  .phase-status-actions {
-    display: flex;
-    align-items: center;
-    gap: 12px;
+  svg {
+    flex-shrink: 0;
   }
 }
 
 .delete-deadline-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
   background: none;
   border: none;
   padding: 2px;
-  margin-left: 10px;
   cursor: pointer;
   color: var(--text-muted);
   opacity: 0.4;
@@ -387,33 +344,5 @@
   &:hover {
     opacity: 1;
     color: var(--danger);
-  }
-
-  &:focus {
-    outline: none;
-  }
-}
-
-.brand-tag {
-  padding: 3px 10px;
-  border-radius: 20px;
-  font-size: 11px;
-  font-weight: 700;
-
-  &-dick {
-    background: #fee2e2;
-    color: #991b1b;
-  }
-  &-sna {
-    background: #dbeafe;
-    color: #1e3a8a;
-  }
-  &-gipa {
-    background: #ede9fe;
-    color: #7c3aed;
-  }
-  &-medoil {
-    background: #fef3c7;
-    color: #b45309;
   }
 }

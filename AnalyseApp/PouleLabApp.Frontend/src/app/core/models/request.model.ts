@@ -82,10 +82,18 @@ export interface AuditLogDto {
 
 export interface DeadlineDto {
   id: number;
-  phase: string;
-  plannedDate: Date;
-  actualDate?: Date;
-  isOverdue: boolean;
-  sampleId?: number;
-  sampleType?: string;
+  sampleId: number;
+  sampleType: string;
+  isPerishable: boolean;
+  expiryDate?: Date;
+  urgencyLevel: string;
+  urgencyDescription: string;
+}
+
+export interface SetDeadlineDto {
+  sampleId: number;
+  isPerishable: boolean;
+  expiryDate?: string;
+  urgencyLevel: string;
+  urgencyDescription: string;
 }

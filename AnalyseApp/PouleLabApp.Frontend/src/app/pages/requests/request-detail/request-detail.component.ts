@@ -61,7 +61,7 @@ export class RequestDetailComponent implements OnInit {
     this.requestService.getById(this.requestId).subscribe({
       next: (data) => {
         this.request.set(data);
-        this.buildDeadlineForm(); // ← ICI seulement, après que data est disponible
+        this.buildDeadlineForm();
         this.isLoading.set(false);
         console.log('Status:', data.status);
         console.log('Samples:', data.samples);
@@ -339,15 +339,31 @@ export class RequestDetailComponent implements OnInit {
     return (status === 'Draft' || status === 'Submitted') && this.isCreator();
   }
 
+  readonly urgencyLevels = [
+    { value: 'Normal', label: 'Normal', color: '#10B981', bg: '#ECFDF5' },
+    { value: 'Urgent', label: 'Urgent', color: '#F59E0B', bg: '#FFFBEB' },
+    { value: 'TrèsUrgent', label: 'Très Urgent', color: '#EF4444', bg: '#FEF2F2' },
+    { value: 'Critique', label: 'Critique', color: '#7C3AED', bg: '#F5F3FF' },
+  ];
+
   buildDeadlineForm(): void {
-    // Un groupe par échantillon (les phases sont les mêmes pour chaque)
     const req = this.request();
-    if (!req) return; // ← sécurité
+    if (!req) return;
 
     const groups: any = {};
     req.samples.forEach((s) => {
-      groups[`sample_${s.id}`] = this.buildPhaseGroup();
+      // Chercher une échéance existante pour cet échantillon
+      const existing = this.deadlines().find((d) => d.sampleId === s.id);
+      groups[`sample_${s.id}`] = this.fb.group({
+        isPerishable: [existing?.isPerishable ?? false],
+        expiryDate: [
+          existing?.expiryDate ? new Date(existing.expiryDate).toISOString().slice(0, 16) : '',
+        ],
+        urgencyLevel: [existing?.urgencyLevel ?? 'Normal'],
+        urgencyDescription: [existing?.urgencyDescription ?? ''],
+      });
     });
+
     this.deadlineForm = this.fb.group(groups);
   }
 
@@ -368,91 +384,49 @@ export class RequestDetailComponent implements OnInit {
   }
 
   saveDeadlines(): void {
-    const dto: any[] = [];
     const req = this.request();
     if (!req) return;
 
-    const addPhases = (group: any, sampleId?: number) => {
-      const phases = [
-        { key: 'reception', phase: 'Reception' },
-        { key: 'assignment', phase: 'Assignment' },
-        { key: 'analysis', phase: 'Analysis' },
-        { key: 'validation', phase: 'Validation' },
-        { key: 'resultDelivery', phase: 'ResultDelivery' },
-      ];
-
-      phases.forEach((p) => {
-        if (group[p.key]) {
-          // Fix timezone — conserver l'heure locale
-          const local = new Date(group[p.key]);
-          const offset = local.getTimezoneOffset() * 60000;
-          const adjusted = new Date(local.getTime() - offset);
-
-          dto.push({
-            phase: p.phase,
-            plannedDate: adjusted.toISOString(),
-            sampleId: sampleId ?? null,
-          });
-        }
-      });
-    };
-
-    req.samples.forEach((s) => {
+    const dto = req.samples.map((s) => {
       const group = this.deadlineForm.get(`sample_${s.id}`)?.value;
-      if (group) addPhases(group, s.id);
+      return {
+        sampleId: s.id,
+        isPerishable: group.isPerishable,
+        expiryDate:
+          group.isPerishable && group.expiryDate ? new Date(group.expiryDate).toISOString() : null,
+        urgencyLevel: group.urgencyLevel,
+        urgencyDescription: group.urgencyDescription,
+      };
     });
-
-    if (dto.length === 0) {
-      this.showError('Renseignez au moins une échéance.');
-      return;
-    }
 
     this.actionLoading.set(true);
     this.requestService.setDeadlines(this.requestId, dto).subscribe({
       next: () => {
         this.loadDeadlines();
         this.showDeadlineForm.set(false);
-        this.showSuccess('Échéances enregistrées avec succès.');
+        this.showSuccess("Informations d'urgence enregistrées.");
         this.actionLoading.set(false);
       },
       error: (err) => {
-        // Afficher le message d'erreur du backend (ex: date passée)
-        const msg =
-          err.error?.message ??
-          err.error?.detail ??
-          "Erreur lors de l'enregistrement des échéances.";
-        this.showError(msg);
+        this.showError(err.error?.message ?? 'Erreur.');
         this.actionLoading.set(false);
       },
     });
   }
 
-  deleteDeadline(deadlineId: number): void {
-    if (!confirm('Supprimer cette échéance ?')) return;
+  getUrgencyConfig(level: string) {
+    return this.urgencyLevels.find((u) => u.value === level) ?? this.urgencyLevels[0];
+  }
 
-    // Trouver l'échéance à supprimer pour connaître sa phase et son sampleId
-    const deadline = this.deadlines().find((d) => d.id === deadlineId);
+  deleteDeadline(deadlineId: number): void {
+    if (!confirm("Supprimer cette information d'urgence ?")) return;
 
     this.requestService.deleteDeadline(this.requestId, deadlineId).subscribe({
       next: () => {
-        // Supprimer de la liste
         this.deadlines.update((list) => list.filter((d) => d.id !== deadlineId));
-
-        // Vider le champ correspondant dans le formulaire
-        if (deadline && this.deadlineForm) {
-          const phaseKeyMap: Record<string, string> = {
-            Reception: 'reception',
-            Assignment: 'assignment',
-            Analysis: 'analysis',
-            Validation: 'validation',
-            ResultDelivery: 'resultDelivery',
-          };
-          const key = phaseKeyMap[deadline.phase];
-          const sampleKey = `sample_${deadline.sampleId}`;
-          this.deadlineForm.get(`${sampleKey}.${key}`)?.setValue('');
-        }
-
-        this.showSuccess('Échéance supprimée.');
+        // Reconstruire le formulaire sans l'élément supprimé
+        this.buildDeadlineForm();
+        this.showSuccess('Information supprimée.');
       },
       error: (err) => this.showError(err.error?.message),
     });
@@ -460,7 +434,9 @@ export class RequestDetailComponent implements OnInit {
 
   // Calcul temps réel du retard
   isDeadlineOverdue(deadline: DeadlineDto): boolean {
-    return !deadline.actualDate && new Date(deadline.plannedDate) < new Date();
+    return (
+      deadline.isPerishable && !!deadline.expiryDate && new Date(deadline.expiryDate) < new Date()
+    );
   }
 
   // Noms des phases
@@ -502,23 +478,5 @@ export class RequestDetailComponent implements OnInit {
       }
     }
     return '';
-  }
-
-  readonly phaseList = [
-    { key: 'reception', label: 'Réception', order: 1 },
-    { key: 'assignment', label: 'Assignation', order: 2 },
-    { key: 'analysis', label: 'Analyse', order: 3 },
-    { key: 'validation', label: 'Validation', order: 4 },
-    { key: 'resultDelivery', label: 'Livraison résultats', order: 5 },
-  ];
-
-  getPhaseOrder(phase: string): number {
-    return (
-      this.phaseList.find(
-        (p) =>
-          p.key.toLowerCase() === phase.toLowerCase() ||
-          p.label.toLowerCase() === phase.toLowerCase(),
-      )?.order ?? 0
-    );
   }
 }
