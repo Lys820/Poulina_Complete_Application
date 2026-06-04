@@ -32,40 +32,17 @@
     @if (errorMessage()) {
       <div class="alert alert-danger mb-3">{{ errorMessage() }}</div>
     }
-  }
-  <!-- En-tête -->
-  <div class="detail-header">
-    <div>
-      <h4>Demande #{{ request()!.id }}</h4>
-      <span class="badge" [ngClass]="getStatusBadge(request()!.status)">
-        {{ getStatusLabel(request()!.status) }}
-      </span>
-    </div>
 
-    <!-- Actions PDF -->
-    <div class="pdf-actions">
-      <button class="btn btn-light btn-sm" (click)="downloadPdf()">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="14"
-          height="14"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          class="me-1"
-        >
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-          <polyline points="7 10 12 15 17 10" />
-          <line x1="12" y1="15" x2="12" y2="3" />
-        </svg>
-        Formulaire PDF
-      </button>
-
-      @if (request()!.status === 'Validated') {
-        <button class="btn btn-success btn-sm" (click)="downloadBulletin()">
+    <!-- En-tête -->
+    <div class="detail-header">
+      <div>
+        <h4>Demande #{{ request()?.id }}</h4>
+        <span class="badge" [ngClass]="getStatusBadge(request()!.status)">
+          {{ getStatusLabel(request()!.status) }}
+        </span>
+      </div>
+      <div class="pdf-actions">
+        <button class="btn btn-light btn-sm" (click)="downloadPdf()">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             width="14"
@@ -82,567 +59,169 @@
             <polyline points="7 10 12 15 17 10" />
             <line x1="12" y1="15" x2="12" y2="3" />
           </svg>
-          Bulletin d'analyses
+          Formulaire PDF
         </button>
-      }
-    </div>
-  </div>
-
-  <div class="row g-4">
-    <!-- Colonne gauche -->
-    <div class="col-lg-8">
-      <!-- Infos client -->
-      <div class="card mb-4">
-        <div class="card-header">Informations client</div>
-        <div class="card-body">
-          <div class="info-grid">
-            <div class="info-item">
-              <span class="info-label">Nom complet</span>
-              <span class="info-value">{{ request()!.clientName }}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Email</span>
-              <span class="info-value">{{ request()!.clientEmail }}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Marque</span>
-              <span class="info-value">
-                @if (request()!.brand) {
-                  <span class="brand-tag" [ngClass]="'brand-tag-' + request()!.brand.toLowerCase()">
-                    {{ request()!.brand }}
-                  </span>
-                }
-              </span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Laboratoire</span>
-              <span class="info-value lab-badge">{{ request()!.laboratoryName }}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Laborantin assigné</span>
-              <span class="info-value">
-                {{ request()!.assignedToName ?? 'Non assigné' }}
-              </span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Date de soumission</span>
-              <span class="info-value">
-                {{ request()!.submittedAt | date: 'dd/MM/yyyy HH:mm' }}
-              </span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Date de réception</span>
-              <span class="info-value">
-                {{
-                  request()!.receivedAt ? (request()!.receivedAt | date: 'dd/MM/yyyy HH:mm') : '—'
-                }}
-              </span>
-            </div>
-          </div>
-
-          @if (request()!.notes) {
-            <div class="notes-box"><strong>Notes :</strong> {{ request()!.notes }}</div>
-          }
-        </div>
+        @if (request()?.status === 'Validated') {
+          <button class="btn btn-success btn-sm" (click)="downloadBulletin()">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              class="me-1"
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            Bulletin d'analyses
+          </button>
+        }
       </div>
+    </div>
 
-      <!-- Échantillons et résultats -->
-      @for (sample of request()!.samples; track sample.id) {
-        <div class="card mb-3">
-          <div class="card-header">
-            Échantillon — {{ sample.type }}
-            <small class="text-muted ms-2">
-              {{ sample.quantity }} {{ sample.unit }} — {{ sample.characteristics }}
-            </small>
+    <div class="row g-4">
+      <!-- Colonne gauche -->
+      <div class="col-lg-8">
+        <!-- Infos client -->
+        <div class="card mb-4">
+          <div class="card-header">Informations client</div>
+          <div class="card-body">
+            <div class="info-grid">
+              <div class="info-item">
+                <span class="info-label">Nom complet</span>
+                <span class="info-value">{{ request()?.clientName }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Email</span>
+                <span class="info-value">{{ request()?.clientEmail }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Marque</span>
+                <span class="info-value">
+                  @if (request()?.brand) {
+                    <span
+                      class="brand-tag"
+                      [ngClass]="'brand-tag-' + request()!.brand.toLowerCase()"
+                    >
+                      {{ request()?.brand }}
+                    </span>
+                  }
+                </span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Laboratoire</span>
+                <span class="info-value lab-badge">{{ request()?.laboratoryName }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Laborantin assigné</span>
+                <span class="info-value">
+                  {{ request()?.assignedToName ?? 'Non assigné' }}
+                </span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Date de soumission</span>
+                <span class="info-value">
+                  {{ request()?.submittedAt | date: 'dd/MM/yyyy HH:mm' }}
+                </span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Date de réception</span>
+                <span class="info-value">
+                  {{
+                    request()?.receivedAt ? (request()?.receivedAt | date: 'dd/MM/yyyy HH:mm') : '—'
+                  }}
+                </span>
+              </div>
+            </div>
+            @if (request()?.notes) {
+              <div class="notes-box"><strong>Notes :</strong> {{ request()?.notes }}</div>
+            }
           </div>
-          <div class="card-body p-0">
-            <div class="table-responsive">
-              <table class="table mb-0">
-                <thead>
-                  <tr>
-                    <th>Analyse</th>
-                    <th>Valeur mesurée</th>
-                    @if (!authService.hasRole('Client')) {
-                      <th>Min référence</th>
-                      <th>Max référence</th>
-                    }
-                    <th>Unité</th>
-                    <th>Statut</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (result of sample.results; track result.id) {
-                    <tr [class.anomaly-row]="result.isAnomaly">
-                      <td>{{ result.analysisName }}</td>
-                      <td>
-                        <strong [class.text-danger]="result.isAnomaly">
-                          {{ result.measuredValue || '—' }}
-                        </strong>
-                      </td>
+        </div>
+
+        <!-- Échantillons et résultats -->
+        @for (sample of request()?.samples; track sample.id) {
+          <div class="card mb-3">
+            <div class="card-header">
+              Échantillon — {{ sample.type }}
+              <small class="text-muted ms-2">
+                {{ sample.quantity }} {{ sample.unit }} — {{ sample.characteristics }}
+              </small>
+            </div>
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="table mb-0">
+                  <thead>
+                    <tr>
+                      <th>Analyse</th>
+                      <th>Valeur mesurée</th>
                       @if (!authService.hasRole('Client')) {
-                        <td>{{ result.lowerBound }}</td>
-                        <td>{{ result.upperBound }}</td>
+                        <th>Min référence</th>
+                        <th>Max référence</th>
                       }
-                      <td>{{ result.unit }}</td>
-                      <td>
-                        @if (result.measuredValue === 0) {
-                          <span class="badge badge-draft">Non saisi</span>
-                        } @else if (result.isAnomaly) {
-                          <span class="badge badge-rejected">⚠ Anomalie</span>
-                        } @else {
-                          <span class="badge badge-validated">✓ Normal</span>
-                        }
-                      </td>
+                      <th>Unité</th>
+                      <th>Statut</th>
                     </tr>
-                  }
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      }
-    </div>
-
-    <!-- Section Urgence & Péremption -->
-    <div class="card mb-4">
-      <div class="card-header d-flex align-items-center justify-content-between">
-        <span>Urgence & Péremption des échantillons</span>
-        @if (canEditDeadlines()) {
-          <button class="btn btn-light btn-sm" (click)="showDeadlineForm.update((v) => !v)">
-            {{
-              showDeadlineForm() ? 'Annuler' : deadlines().length > 0 ? '✏️ Modifier' : '+ Définir'
-            }}
-          </button>
-        }
-      </div>
-      <div class="card-body">
-        <!-- Formulaire -->
-        @if (showDeadlineForm() && canEditDeadlines() && deadlineForm) {
-          @if (request()!.samples.length === 0) {
-            <div class="alert alert-warning mb-3">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                class="me-2"
-              >
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="8" x2="12" y2="12" />
-                <line x1="12" y1="16" x2="12.01" y2="16" />
-              </svg>
-              Ajoutez des échantillons à la demande avant de définir l'urgence.
-            </div>
-          } @else {
-            <form [formGroup]="deadlineForm" class="deadline-form">
-              @for (sample of request()!.samples; track sample.id) {
-                <div class="sample-deadline-card">
-                  <div class="sample-deadline-header">
-                    <span class="sample-dot"></span>
-                    <strong>{{ sample.type }}</strong>
-                    <small class="text-muted ms-2">{{ sample.quantity }} {{ sample.unit }}</small>
-                  </div>
-
-                  <div class="deadline-form-grid" [formGroupName]="'sample_' + sample.id">
-                    <!-- Niveau d'urgence -->
-                    <div class="deadline-field">
-                      <label class="form-label small" [for]="'urgency_' + sample.id">
-                        Niveau d'urgence
-                      </label>
-                      <select
-                        class="form-control form-control-sm"
-                        formControlName="urgencyLevel"
-                        [id]="'urgency_' + sample.id"
-                        title="Niveau d'urgence"
-                        aria-label="Niveau d'urgence"
-                      >
-                        @for (level of urgencyLevels; track level.value) {
-                          <option [value]="level.value">{{ level.label }}</option>
+                  </thead>
+                  <tbody>
+                    @for (result of sample.results; track result.id) {
+                      <tr [class.anomaly-row]="result.isAnomaly">
+                        <td>{{ result.analysisName }}</td>
+                        <td>
+                          <strong [class.text-danger]="result.isAnomaly">
+                            {{ result.measuredValue || '—' }}
+                          </strong>
+                        </td>
+                        @if (!authService.hasRole('Client')) {
+                          <td>{{ result.lowerBound }}</td>
+                          <td>{{ result.upperBound }}</td>
                         }
-                      </select>
-                    </div>
-
-                    <!-- Description de l'urgence -->
-                    <div class="deadline-field">
-                      <label class="form-label small" [for]="'desc_' + sample.id">
-                        Description de l'urgence
-                      </label>
-                      <input
-                        type="text"
-                        class="form-control form-control-sm"
-                        formControlName="urgencyDescription"
-                        [id]="'desc_' + sample.id"
-                        placeholder="Ex: Péremption proche, Maladie contagieuse..."
-                        [attr.title]="'Description pour ' + sample.type"
-                        [attr.aria-label]="'Description pour ' + sample.type"
-                      />
-                    </div>
-
-                    <!-- Périmable -->
-                    <div class="deadline-field">
-                      <div class="form-check mt-1">
-                        <input
-                          type="checkbox"
-                          class="form-check-input"
-                          formControlName="isPerishable"
-                          [id]="'perish_' + sample.id"
-                        />
-                        <label class="form-check-label small" [for]="'perish_' + sample.id">
-                          Échantillon périmable
-                        </label>
-                      </div>
-                    </div>
-
-                    <!-- Date de péremption — visible si périmable -->
-                    @if (deadlineForm.get('sample_' + sample.id + '.isPerishable')?.value) {
-                      <div class="deadline-field">
-                        <label class="form-label small" [for]="'expiry_' + sample.id">
-                          Date de péremption
-                        </label>
-                        <input
-                          type="datetime-local"
-                          class="form-control form-control-sm"
-                          formControlName="expiryDate"
-                          [id]="'expiry_' + sample.id"
-                          [title]="'Date de péremption pour ' + sample.type"
-                        />
-                      </div>
+                        <td>{{ result.unit }}</td>
+                        <td>
+                          @if (result.measuredValue === 0) {
+                            <span class="badge badge-draft">Non saisi</span>
+                          } @else if (result.isAnomaly) {
+                            <span class="badge badge-rejected">⚠ Anomalie</span>
+                          } @else {
+                            <span class="badge badge-validated">✓ Normal</span>
+                          }
+                        </td>
+                      </tr>
                     }
-                  </div>
-                </div>
-              }
-
-              <div class="d-flex gap-2 mt-3">
-                <button
-                  type="button"
-                  class="btn btn-primary btn-sm"
-                  (click)="saveDeadlines()"
-                  [disabled]="actionLoading()"
-                >
-                  @if (actionLoading()) {
-                    <span class="spinner-border spinner-border-sm me-1"></span>
-                  }
-                  Enregistrer
-                </button>
-                <button
-                  type="button"
-                  class="btn btn-light btn-sm"
-                  (click)="showDeadlineForm.set(false)"
-                >
-                  Annuler
-                </button>
+                  </tbody>
+                </table>
               </div>
-            </form>
-          }
-        }
-
-        <!-- Affichage -->
-        @if (deadlines().length === 0) {
-          <p class="text-muted small mb-0">Aucune information d'urgence définie.</p>
-        } @else {
-          @for (deadline of deadlines(); track deadline.id) {
-            <div class="urgency-card">
-              <!-- En-tête échantillon -->
-              <div class="urgency-sample-name">
-                <span class="sample-dot"></span>
-                <strong>{{ deadline.sampleType }}</strong>
-              </div>
-
-              <!-- Badge urgence -->
-              <div class="urgency-row">
-                <span
-                  class="urgency-badge"
-                  [class]="'urgency-' + deadline.urgencyLevel.toLowerCase().replace('è', 'e')"
-                >
-                  {{ getUrgencyConfig(deadline.urgencyLevel).label }}
-                </span>
-                @if (deadline.urgencyDescription) {
-                  <span class="urgency-desc">{{ deadline.urgencyDescription }}</span>
-                }
-              </div>
-
-              <!-- Péremption -->
-              @if (deadline.isPerishable) {
-                <div class="expiry-row">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="13"
-                    height="13"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
-                    <circle cx="12" cy="12" r="10" />
-                    <polyline points="12 6 12 12 16 14" />
-                  </svg>
-                  <span
-                    >Périmable — expire le
-                    {{ deadline.expiryDate | date: 'dd/MM/yyyy HH:mm' }}
-                  </span>
-                </div>
-              } @else {
-                <div class="expiry-row not-perishable">
-                  <span>Non périmable</span>
-                </div>
-              }
-
-              <!-- Bouton supprimer -->
-              @if (canEditDeadlines()) {
-                <span
-                  class="delete-deadline-btn"
-                  (click)="deleteDeadline(deadline.id)"
-                  role="button"
-                  tabindex="0"
-                  title="Supprimer"
-                  (keydown.enter)="deleteDeadline(deadline.id)"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="13"
-                    height="13"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
-                    <polyline points="3 6 5 6 21 6" />
-                    <path d="M19 6l-1 14H6L5 6" />
-                    <path d="M10 11v6" />
-                    <path d="M14 11v6" />
-                    <path d="M9 6V4h6v2" />
-                  </svg>
-                </span>
-              }
             </div>
-          }
+          </div>
         }
-      </div>
-    </div>
 
-    <!-- Colonne droite — Actions -->
-    <div class="col-lg-4">
-      <!-- Actions selon rôle et statut -->
-      <div class="card mb-4">
-        <div class="card-header">Actions disponibles</div>
-        <div class="card-body actions-panel">
-          <!-- Réceptionniste -->
-          @if (authService.hasRole('Receptionist')) {
-            @if (request()!.status === 'Submitted') {
-              <button
-                class="btn btn-primary w-100 mb-2"
-                (click)="receive()"
-                [disabled]="actionLoading()"
-              >
-                Réceptionner la demande
+        <!-- Section Urgence & Péremption -->
+        <div class="card mb-4">
+          <div class="card-header d-flex align-items-center justify-content-between">
+            <span>Urgence & Péremption des échantillons</span>
+            @if (canEditDeadlines()) {
+              <button class="btn btn-light btn-sm" (click)="showDeadlineForm.update((v) => !v)">
+                {{
+                  showDeadlineForm()
+                    ? 'Annuler'
+                    : deadlines().length > 0
+                      ? '✏️ Modifier'
+                      : '+ Définir'
+                }}
               </button>
-            }
-            @if (request()!.status === 'Received') {
-              <button class="btn btn-primary w-100 mb-2" (click)="openAssignModal()">
-                Assigner à un laborantin
-              </button>
-            }
-          }
-
-          <!-- Client / Admin — Brouillon -->
-          @if (authService.hasAnyRole(['Administrator', 'Manager', 'Client'])) {
-            @if (request()!.status === 'Draft') {
-              <button
-                class="btn btn-primary w-100 mb-2"
-                (click)="submitDraft()"
-                [disabled]="actionLoading()"
-              >
-                ✓ Soumettre la demande
-              </button>
-              <button class="btn btn-light w-100 mb-2" (click)="editRequest()">
-                ✏️ Modifier la demande
-              </button>
-              <button class="btn btn-danger w-100 mb-2" (click)="deleteRequest()">
-                🗑 Supprimer le brouillon
-              </button>
-            }
-          }
-
-          <!-- Laborantin -->
-          @if (authService.hasRole('Analyst') && isCurrentAnalyst()) {
-            @if (request()!.status === 'Assigned') {
-              <button
-                class="btn btn-success w-100 mb-2"
-                (click)="analystAccept()"
-                [disabled]="actionLoading()"
-              >
-                ✓ Accepter la demande
-              </button>
-              <button class="btn btn-danger w-100 mb-2" (click)="showRejectModal.set(true)">
-                ✗ Refuser la demande
-              </button>
-            }
-            @if (request()!.status === 'InProgress') {
-              <a
-                [routerLink]="'/app/requests/' + request()!.id + '/results'"
-                class="btn btn-primary w-100 mb-2"
-              >
-                Saisir les résultats
-              </a>
-              <button
-                class="btn btn-warning w-100 mb-2"
-                (click)="completeAnalysis()"
-                [disabled]="actionLoading()"
-              >
-                Terminer les analyses
-              </button>
-            }
-          }
-
-          <!-- Chef de labo -->
-          @if (authService.hasRole('LabChief')) {
-            @if (request()!.status === 'InReview') {
-              <button
-                class="btn btn-success w-100 mb-2"
-                (click)="validate()"
-                [disabled]="actionLoading()"
-              >
-                ✓ Valider les résultats
-              </button>
-              <button class="btn btn-danger w-100 mb-2" (click)="showInvalidateModal.set(true)">
-                ✗ Rejeter et renvoyer
-              </button>
-            }
-          }
-
-          <!-- Aucune action disponible -->
-          @if (
-            request()!.status === 'Validated' ||
-            request()!.status === 'Closed' ||
-            request()!.status === 'Submitted'
-          ) {
-            <p class="text-muted small text-center mb-0">
-              Aucune action disponible pour ce statut.
-            </p>
-          }
-        </div>
-      </div>
-
-      <!-- Historique -->
-      @if (history().length > 0) {
-        <div class="card">
-          <div class="card-header">Historique de la demande</div>
-          <div class="card-body p-0">
-            @for (log of history(); track log.id) {
-              <div class="history-item">
-                <div class="history-action">{{ log.action }}</div>
-                <div class="history-meta">
-                  {{ log.performedBy }} — {{ log.performedAt | date: 'dd/MM/yyyy HH:mm' }}
-                </div>
-                @if (log.oldValue && log.newValue) {
-                  <div class="history-change">{{ log.oldValue }} → {{ log.newValue }}</div>
-                }
-              </div>
             }
           </div>
-        </div>
-      }
-    </div>
-  </div>
-
-  <!-- Modal Refus laborantin -->
-  @if (showRejectModal()) {
-    <div class="modal-overlay">
-      <div class="modal-box">
-        <h5>Refuser la demande</h5>
-        <p class="text-muted small">La demande sera clôturée et le client sera notifié.</p>
-        <textarea
-          class="form-control mb-3"
-          rows="3"
-          placeholder="Raison du refus (obligatoire)"
-          [(ngModel)]="rejectReason"
-          aria-label="Raison du refus"
-        ></textarea>
-        <div class="d-flex gap-2">
-          <button
-            class="btn btn-danger flex-fill"
-            (click)="analystReject()"
-            [disabled]="!rejectReason() || actionLoading()"
-          >
-            Confirmer le refus
-          </button>
-          <button class="btn btn-light flex-fill" (click)="showRejectModal.set(false)">
-            Annuler
-          </button>
-        </div>
-      </div>
-    </div>
-  }
-
-  <!-- Modal Rejet chef de labo -->
-  @if (showInvalidateModal()) {
-    <div class="modal-overlay">
-      <div class="modal-box">
-        <h5>Rejeter les résultats</h5>
-        <p class="text-muted small">La demande sera renvoyée au laborantin pour correction.</p>
-        <textarea
-          class="form-control mb-3"
-          rows="3"
-          placeholder="Raison du rejet (obligatoire)"
-          [(ngModel)]="invalidateReason"
-          aria-label="Raison du rejet"
-        ></textarea>
-        <div class="d-flex gap-2">
-          <button
-            class="btn btn-danger flex-fill"
-            (click)="invalidate()"
-            [disabled]="!invalidateReason() || actionLoading()"
-          >
-            Confirmer le rejet
-          </button>
-          <button class="btn btn-light flex-fill" (click)="showInvalidateModal.set(false)">
-            Annuler
-          </button>
-        </div>
-      </div>
-    </div>
-  }
-
-  <!-- Modal Assignation -->
-  @if (showAssignModal()) {
-    <div class="modal-overlay">
-      <div class="modal-box">
-        <h5>Assigner à un laborantin</h5>
-        <p class="text-muted small mb-3">Sélectionnez le laborantin qui traitera cette demande.</p>
-
-        @if (analysts().length === 0) {
-          <div class="text-center py-3">
-            <div class="spinner-border spinner-border-sm text-primary"></div>
-          </div>
-        } @else {
-          <div class="analysts-list">
-            @for (analyst of analysts(); track analyst.id) {
-              <div
-                class="analyst-item"
-                [class.selected]="assignAnalystId() === analyst.id"
-                (click)="assignAnalystId.set(analyst.id)"
-                role="button"
-                [attr.aria-pressed]="assignAnalystId() === analyst.id ? 'true' : 'false'"
-                tabindex="0"
-                (keydown.enter)="assignAnalystId.set(analyst.id)"
-              >
-                <div class="analyst-avatar">
-                  {{ analyst.fullName[0] }}
-                </div>
-                <div class="analyst-info">
-                  <strong>{{ analyst.fullName }}</strong>
-                  <small>{{ analyst.email }}</small>
-                </div>
-                @if (assignAnalystId() === analyst.id) {
+          <div class="card-body">
+            <!-- Formulaire -->
+            @if (showDeadlineForm() && canEditDeadlines() && deadlineForm) {
+              @if (request()!.samples.length === 0) {
+                <div class="alert alert-warning mb-3">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     width="16"
@@ -650,35 +229,454 @@
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
-                    stroke-width="2.5"
+                    stroke-width="2"
                     stroke-linecap="round"
                     stroke-linejoin="round"
-                    class="check-icon"
+                    class="me-2"
                   >
-                    <polyline points="20 6 9 17 4 12" />
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
                   </svg>
-                }
-              </div>
+                  Ajoutez des échantillons à la demande avant de définir l'urgence.
+                </div>
+              } @else {
+                <form [formGroup]="deadlineForm" class="deadline-form">
+                  @for (sample of request()?.samples; track sample.id) {
+                    <div class="sample-deadline-card">
+                      <div class="sample-deadline-header">
+                        <span class="sample-dot"></span>
+                        <strong>{{ sample.type }}</strong>
+                        <small class="text-muted ms-2">
+                          {{ sample.quantity }} {{ sample.unit }}
+                        </small>
+                      </div>
+                      <div class="deadline-form-grid" [formGroupName]="'sample_' + sample.id">
+                        <!-- Niveau d'urgence -->
+                        <div class="deadline-field">
+                          <label class="form-label small" [for]="'urgency_' + sample.id">
+                            Niveau d'urgence
+                          </label>
+                          <select
+                            class="form-control form-control-sm"
+                            formControlName="urgencyLevel"
+                            [id]="'urgency_' + sample.id"
+                            title="Niveau d'urgence"
+                            aria-label="Niveau d'urgence"
+                          >
+                            @for (level of urgencyLevels; track level.value) {
+                              <option [value]="level.value">{{ level.label }}</option>
+                            }
+                          </select>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="deadline-field">
+                          <label class="form-label small" [for]="'desc_' + sample.id">
+                            Description de l'urgence
+                          </label>
+                          <input
+                            type="text"
+                            class="form-control form-control-sm"
+                            formControlName="urgencyDescription"
+                            [id]="'desc_' + sample.id"
+                            placeholder="Ex: Péremption proche, Maladie contagieuse..."
+                            [attr.title]="'Description pour ' + sample.type"
+                            [attr.aria-label]="'Description pour ' + sample.type"
+                          />
+                        </div>
+
+                        <!-- Périmable -->
+                        <div class="deadline-field">
+                          <div class="form-check mt-1">
+                            <input
+                              type="checkbox"
+                              class="form-check-input"
+                              formControlName="isPerishable"
+                              [id]="'perish_' + sample.id"
+                            />
+                            <label class="form-check-label small" [for]="'perish_' + sample.id">
+                              Échantillon périmable
+                            </label>
+                          </div>
+                        </div>
+
+                        <!-- Date péremption -->
+                        @if (deadlineForm.get('sample_' + sample.id + '.isPerishable')?.value) {
+                          <div class="deadline-field">
+                            <label class="form-label small" [for]="'expiry_' + sample.id">
+                              Date de péremption
+                            </label>
+                            <input
+                              type="date"
+                              class="form-control form-control-sm"
+                              formControlName="expiryDate"
+                              [id]="'expiry_' + sample.id"
+                              [title]="'Date de péremption pour ' + sample.type"
+                            />
+                          </div>
+                        }
+                      </div>
+                    </div>
+                  }
+
+                  <div class="d-flex gap-2 mt-3">
+                    <button
+                      type="button"
+                      class="btn btn-primary btn-sm"
+                      (click)="saveDeadlines()"
+                      [disabled]="actionLoading()"
+                    >
+                      @if (actionLoading()) {
+                        <span class="spinner-border spinner-border-sm me-1"></span>
+                      }
+                      Enregistrer
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-light btn-sm"
+                      (click)="showDeadlineForm.set(false)"
+                    >
+                      Annuler
+                    </button>
+                  </div>
+                </form>
+              }
+            }
+
+            <!-- Affichage -->
+            @if (deadlines().length === 0) {
+              <p class="text-muted small mb-0">Aucune information d'urgence définie.</p>
+            } @else {
+              @for (deadline of deadlines(); track deadline.id) {
+                <div class="urgency-card">
+                  <div class="urgency-sample-name">
+                    <span class="sample-dot"></span>
+                    <strong>{{ deadline.sampleType }}</strong>
+                  </div>
+                  <div class="urgency-row">
+                    <span
+                      class="urgency-badge"
+                      [class]="'urgency-' + deadline.urgencyLevel.toLowerCase().replace('è', 'e')"
+                    >
+                      {{ getUrgencyConfig(deadline.urgencyLevel).label }}
+                    </span>
+                    @if (deadline.urgencyDescription) {
+                      <span class="urgency-desc">{{ deadline.urgencyDescription }}</span>
+                    }
+                  </div>
+                  @if (deadline.isPerishable) {
+                    <div class="expiry-row">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="13"
+                        height="13"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
+                        <circle cx="12" cy="12" r="10" />
+                        <polyline points="12 6 12 12 16 14" />
+                      </svg>
+                      <span
+                        >Périmable — expire le
+                        {{ deadline.expiryDate | date: 'dd/MM/yyyy HH:mm' }}
+                      </span>
+                    </div>
+                  } @else {
+                    <div class="expiry-row not-perishable">
+                      <span>Non périmable</span>
+                    </div>
+                  }
+                  @if (canEditDeadlines()) {
+                    <span
+                      class="delete-deadline-btn"
+                      (click)="deleteDeadline(deadline.id)"
+                      role="button"
+                      tabindex="0"
+                      title="Supprimer"
+                      (keydown.enter)="deleteDeadline(deadline.id)"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="13"
+                        height="13"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
+                        <polyline points="3 6 5 6 21 6" />
+                        <path d="M19 6l-1 14H6L5 6" />
+                        <path d="M10 11v6" />
+                        <path d="M14 11v6" />
+                        <path d="M9 6V4h6v2" />
+                      </svg>
+                    </span>
+                  }
+                </div>
+              }
             }
           </div>
-        }
-
-        <div class="d-flex gap-2 mt-3">
-          <button
-            class="btn btn-primary flex-fill"
-            (click)="assign()"
-            [disabled]="!assignAnalystId() || actionLoading()"
-          >
-            @if (actionLoading()) {
-              <span class="spinner-border spinner-border-sm me-1"></span>
-            }
-            Assigner
-          </button>
-          <button class="btn btn-light flex-fill" (click)="showAssignModal.set(false)">
-            Annuler
-          </button>
         </div>
       </div>
+
+      <!-- Colonne droite — Actions -->
+      <div class="col-lg-4">
+        <div class="card mb-4">
+          <div class="card-header">Actions disponibles</div>
+          <div class="card-body actions-panel">
+            <!-- Réceptionniste -->
+            @if (authService.hasRole('Receptionist')) {
+              @if (request()?.status === 'Submitted') {
+                <button
+                  class="btn btn-primary w-100 mb-2"
+                  (click)="receive()"
+                  [disabled]="actionLoading()"
+                >
+                  Réceptionner la demande
+                </button>
+              }
+              @if (request()?.status === 'Received') {
+                <button class="btn btn-primary w-100 mb-2" (click)="openAssignModal()">
+                  Assigner à un laborantin
+                </button>
+              }
+            }
+
+            <!-- Client / Admin — Brouillon -->
+            @if (authService.hasAnyRole(['Administrator', 'Manager', 'Client'])) {
+              @if (request()?.status === 'Draft') {
+                <button
+                  class="btn btn-primary w-100 mb-2"
+                  (click)="submitDraft()"
+                  [disabled]="actionLoading()"
+                >
+                  ✓ Soumettre la demande
+                </button>
+                <button class="btn btn-light w-100 mb-2" (click)="editRequest()">
+                  ✏️ Modifier la demande
+                </button>
+                <button class="btn btn-danger w-100 mb-2" (click)="deleteRequest()">
+                  🗑 Supprimer le brouillon
+                </button>
+              }
+            }
+
+            <!-- Laborantin -->
+            @if (authService.hasRole('Analyst') && isCurrentAnalyst()) {
+              @if (request()?.status === 'Assigned') {
+                <button
+                  class="btn btn-success w-100 mb-2"
+                  (click)="analystAccept()"
+                  [disabled]="actionLoading()"
+                >
+                  ✓ Accepter la demande
+                </button>
+                <button class="btn btn-danger w-100 mb-2" (click)="showRejectModal.set(true)">
+                  ✗ Refuser la demande
+                </button>
+              }
+              @if (request()?.status === 'InProgress') {
+                <a
+                  [routerLink]="'/app/requests/' + request()?.id + '/results'"
+                  class="btn btn-primary w-100 mb-2"
+                >
+                  Saisir les résultats
+                </a>
+                <button
+                  class="btn btn-warning w-100 mb-2"
+                  (click)="completeAnalysis()"
+                  [disabled]="actionLoading()"
+                >
+                  Terminer les analyses
+                </button>
+              }
+            }
+
+            <!-- Chef de labo -->
+            @if (authService.hasRole('LabChief')) {
+              @if (request()?.status === 'InReview') {
+                <button
+                  class="btn btn-success w-100 mb-2"
+                  (click)="validate()"
+                  [disabled]="actionLoading()"
+                >
+                  ✓ Valider les résultats
+                </button>
+                <button class="btn btn-danger w-100 mb-2" (click)="showInvalidateModal.set(true)">
+                  ✗ Rejeter et renvoyer
+                </button>
+              }
+            }
+
+            <!-- Aucune action -->
+            @if (
+              request()?.status === 'Validated' ||
+              request()?.status === 'Closed' ||
+              request()?.status === 'Submitted'
+            ) {
+              <p class="text-muted small text-center mb-0">
+                Aucune action disponible pour ce statut.
+              </p>
+            }
+          </div>
+        </div>
+
+        <!-- Historique -->
+        @if (history().length > 0) {
+          <div class="card">
+            <div class="card-header">Historique de la demande</div>
+            <div class="card-body p-0">
+              @for (log of history(); track log.id) {
+                <div class="history-item">
+                  <div class="history-action">{{ log.action }}</div>
+                  <div class="history-meta">
+                    {{ log.performedBy }} —
+                    {{ log.performedAt | date: 'dd/MM/yyyy HH:mm' }}
+                  </div>
+                  @if (log.oldValue && log.newValue) {
+                    <div class="history-change">{{ log.oldValue }} → {{ log.newValue }}</div>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+        }
+      </div>
     </div>
+
+    <!-- Modal Refus laborantin -->
+    @if (showRejectModal()) {
+      <div class="modal-overlay">
+        <div class="modal-box">
+          <h5>Refuser la demande</h5>
+          <p class="text-muted small">La demande sera clôturée et le client sera notifié.</p>
+          <textarea
+            class="form-control mb-3"
+            rows="3"
+            placeholder="Raison du refus (obligatoire)"
+            [(ngModel)]="rejectReason"
+            aria-label="Raison du refus"
+          >
+          </textarea>
+          <div class="d-flex gap-2">
+            <button
+              class="btn btn-danger flex-fill"
+              (click)="analystReject()"
+              [disabled]="!rejectReason() || actionLoading()"
+            >
+              Confirmer le refus
+            </button>
+            <button class="btn btn-light flex-fill" (click)="showRejectModal.set(false)">
+              Annuler
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Modal Rejet chef de labo -->
+    @if (showInvalidateModal()) {
+      <div class="modal-overlay">
+        <div class="modal-box">
+          <h5>Rejeter les résultats</h5>
+          <p class="text-muted small">La demande sera renvoyée au laborantin pour correction.</p>
+          <textarea
+            class="form-control mb-3"
+            rows="3"
+            placeholder="Raison du rejet (obligatoire)"
+            [(ngModel)]="invalidateReason"
+            aria-label="Raison du rejet"
+          >
+          </textarea>
+          <div class="d-flex gap-2">
+            <button
+              class="btn btn-danger flex-fill"
+              (click)="invalidate()"
+              [disabled]="!invalidateReason() || actionLoading()"
+            >
+              Confirmer le rejet
+            </button>
+            <button class="btn btn-light flex-fill" (click)="showInvalidateModal.set(false)">
+              Annuler
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Modal Assignation -->
+    @if (showAssignModal()) {
+      <div class="modal-overlay">
+        <div class="modal-box">
+          <h5>Assigner à un laborantin</h5>
+          <p class="text-muted small mb-3">
+            Sélectionnez le laborantin qui traitera cette demande.
+          </p>
+          @if (analysts().length === 0) {
+            <div class="text-center py-3">
+              <div class="spinner-border spinner-border-sm text-primary"></div>
+            </div>
+          } @else {
+            <div class="analysts-list">
+              @for (analyst of analysts(); track analyst.id) {
+                <div
+                  class="analyst-item"
+                  [class.selected]="assignAnalystId() === analyst.id"
+                  (click)="assignAnalystId.set(analyst.id)"
+                  role="button"
+                  [attr.aria-pressed]="assignAnalystId() === analyst.id ? 'true' : 'false'"
+                  tabindex="0"
+                  (keydown.enter)="assignAnalystId.set(analyst.id)"
+                >
+                  <div class="analyst-avatar">{{ analyst.fullName[0] }}</div>
+                  <div class="analyst-info">
+                    <strong>{{ analyst.fullName }}</strong>
+                    <small>{{ analyst.email }}</small>
+                  </div>
+                  @if (assignAnalystId() === analyst.id) {
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      class="check-icon"
+                    >
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  }
+                </div>
+              }
+            </div>
+          }
+          <div class="d-flex gap-2 mt-3">
+            <button
+              class="btn btn-primary flex-fill"
+              (click)="assign()"
+              [disabled]="!assignAnalystId() || actionLoading()"
+            >
+              @if (actionLoading()) {
+                <span class="spinner-border spinner-border-sm me-1"></span>
+              }
+              Assigner
+            </button>
+            <button class="btn btn-light flex-fill" (click)="showAssignModal.set(false)">
+              Annuler
+            </button>
+          </div>
+        </div>
+      </div>
+    }
   }
 </div>

@@ -335,8 +335,7 @@ export class RequestDetailComponent implements OnInit {
 
   // Vérifier si les échéances peuvent être modifiées
   canEditDeadlines(): boolean {
-    const status = this.request()?.status;
-    return (status === 'Draft' || status === 'Submitted') && this.isCreator();
+    return this.request()?.status === 'Draft' && this.isCreator();
   }
 
   readonly urgencyLevels = [
@@ -357,7 +356,7 @@ export class RequestDetailComponent implements OnInit {
       groups[`sample_${s.id}`] = this.fb.group({
         isPerishable: [existing?.isPerishable ?? false],
         expiryDate: [
-          existing?.expiryDate ? new Date(existing.expiryDate).toISOString().slice(0, 16) : '',
+          existing?.expiryDate ? new Date(existing.expiryDate).toISOString().slice(0, 10) : '',
         ],
         urgencyLevel: [existing?.urgencyLevel ?? 'Normal'],
         urgencyDescription: [existing?.urgencyDescription ?? ''],

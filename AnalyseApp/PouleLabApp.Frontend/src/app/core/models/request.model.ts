@@ -35,6 +35,10 @@ export interface SampleDetailDto {
   quantity: number;
   unit: string;
   results: AnalysisResultDetailDto[];
+  isPerishable: boolean;
+  expiryDate?: Date;
+  urgencyLevel: string;
+  urgencyDescription: string;
 }
 
 export interface AnalysisResultDetailDto {
@@ -61,6 +65,10 @@ export interface CreateSampleDto {
   quantity: number;
   unit: string;
   analysisNames: string[];
+  isPerishable: boolean;
+  expiryDate?: string;
+  urgencyLevel: string;
+  urgencyDescription: string;
 }
 
 export interface SaveResultDto {

@@ -198,7 +198,6 @@ export class RequestFormComponent implements OnInit {
   // -------------------------------------------------------
   // Validation
   // -------------------------------------------------------
-  // ← MIS À JOUR — vérifie aussi la marque
   isFormCompleteForSubmit(): boolean {
     if (!this.form.get('laboratoryId')!.value) return false;
     if (!this.selectedBrand()) return false;
@@ -209,8 +208,9 @@ export class RequestFormComponent implements OnInit {
         s.get('characteristics')!.value?.trim() &&
         s.get('quantity')!.value > 0 &&
         s.get('unit')!.value?.trim() &&
-        names.some((n) => n.value?.trim())
-      );
+        names.some((n) => n.value?.trim()) &&
+        s.get('urgencyLevel')!.value
+      ); // ← urgence obligatoire
     });
   }
 
@@ -274,6 +274,10 @@ export class RequestFormComponent implements OnInit {
           quantity: s.quantity ?? 0,
           unit: s.unit || '',
           analysisNames: (s.analysisNames || []).filter((n: string) => n?.trim()),
+          urgencyLevel: 'Normal',
+          urgencyDescription: '',
+          isPerishable: false,
+          expiryDate: null,
         })),
     };
 
