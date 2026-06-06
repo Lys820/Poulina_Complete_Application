@@ -12,6 +12,13 @@ export const routes: Routes = [
     loadChildren: () => import('./pages/auth/auth.routes').then((m) => m.AUTH_ROUTES),
   },
 
+  // ← Register — avant le wildcard
+  {
+    path: 'register',
+    loadComponent: () =>
+      import('./pages/auth/register/register.component').then((m) => m.RegisterComponent),
+  },
+
   // App principale — protégée par authGuard
   {
     path: 'app',
@@ -27,6 +34,6 @@ export const routes: Routes = [
       import('./pages/forbidden/forbidden.component').then((m) => m.ForbiddenComponent),
   },
 
-  // Wildcard
+  // Wildcard — toujours en dernier
   { path: '**', redirectTo: '/auth/login' },
 ];

@@ -1,0 +1,303 @@
+<div class="register-page">
+  <div class="register-card">
+    <!-- Logo -->
+    <div class="register-logo">
+      <h2><span>Poulina</span>Lab</h2>
+      <p>Créer un nouveau compte</p>
+    </div>
+
+    @if (errorMessage()) {
+      <div class="alert alert-danger">{{ errorMessage() }}</div>
+    }
+
+    <form [formGroup]="form" (ngSubmit)="submit()">
+      <!-- Nom & Prénom -->
+      <div class="row g-3 mb-3">
+        <div class="col-6">
+          <label class="form-label">Prénom *</label>
+          <input
+            type="text"
+            class="form-control"
+            formControlName="firstName"
+            placeholder="Jean"
+            [class.is-invalid]="
+              hasError('firstName', 'required') || hasError('firstName', 'minlength')
+            "
+          />
+          @if (hasError('firstName', 'required')) {
+            <div class="invalid-feedback">Prénom obligatoire.</div>
+          }
+        </div>
+        <div class="col-6">
+          <label class="form-label">Nom *</label>
+          <input
+            type="text"
+            class="form-control"
+            formControlName="lastName"
+            placeholder="Dupont"
+            [class.is-invalid]="
+              hasError('lastName', 'required') || hasError('lastName', 'minlength')
+            "
+          />
+          @if (hasError('lastName', 'required')) {
+            <div class="invalid-feedback">Nom obligatoire.</div>
+          }
+        </div>
+      </div>
+
+      <!-- Email -->
+      <div class="mb-3">
+        <label class="form-label">Adresse email *</label>
+        <input
+          type="email"
+          class="form-control"
+          formControlName="email"
+          placeholder="jean.dupont@email.com"
+          [class.is-invalid]="hasError('email', 'required') || hasError('email', 'email')"
+        />
+        @if (hasError('email', 'required')) {
+          <div class="invalid-feedback">Email obligatoire.</div>
+        }
+        @if (hasError('email', 'email')) {
+          <div class="invalid-feedback">Email invalide.</div>
+        }
+      </div>
+
+      <!-- Téléphone -->
+      <div class="mb-3">
+        <label class="form-label">Téléphone</label>
+        <input
+          type="tel"
+          class="form-control"
+          formControlName="phoneNumber"
+          placeholder="+216 XX XXX XXX"
+          [class.is-invalid]="hasError('phoneNumber', 'pattern')"
+        />
+        @if (hasError('phoneNumber', 'pattern')) {
+          <div class="invalid-feedback">Numéro de téléphone invalide.</div>
+        }
+      </div>
+
+      <!-- Rôle -->
+      <div class="mb-3">
+        <label class="form-label">Rôle *</label>
+        <div class="select-wrapper">
+          <select
+            class="form-control custom-select"
+            formControlName="role"
+            title="Rôle"
+            aria-label="Rôle"
+          >
+            @for (role of roles; track role.value) {
+              <option [value]="role.value">{{ role.label }}</option>
+            }
+          </select>
+          <span class="select-arrow">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </span>
+        </div>
+      </div>
+
+      <!-- Filiale — seulement pour Client -->
+      @if (isClientRole()) {
+        <div class="mb-3">
+          <label class="form-label">Filiale / Société</label>
+          <div class="select-wrapper">
+            <select
+              class="form-control custom-select"
+              formControlName="filialeName"
+              title="Filiale"
+              aria-label="Filiale"
+            >
+              <option value="">— Sélectionner —</option>
+              @for (brand of brands; track brand) {
+                <option [value]="'Poulina ' + brand">Poulina {{ brand }}</option>
+              }
+            </select>
+            <span class="select-arrow">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </span>
+          </div>
+        </div>
+      }
+
+      <!-- Mot de passe -->
+      <div class="mb-2">
+        <label class="form-label">Mot de passe *</label>
+        <div class="password-field">
+          <input
+            [type]="showPassword() ? 'text' : 'password'"
+            class="form-control"
+            formControlName="password"
+            placeholder="Minimum 8 caractères"
+            [class.is-invalid]="
+              hasError('password', 'required') || hasError('password', 'weakPassword')
+            "
+          />
+          <button
+            type="button"
+            class="password-toggle"
+            (click)="showPassword.update((v) => !v)"
+            title="Afficher/masquer"
+          >
+            @if (showPassword()) {
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path
+                  d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
+                />
+                <line x1="1" y1="1" x2="23" y2="23" />
+              </svg>
+            } @else {
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+            }
+          </button>
+        </div>
+
+        <!-- Indicateur de force -->
+        @if (form.get('password')?.value) {
+          <div class="password-strength mt-2">
+            <div class="strength-bar">
+              @for (i of [1, 2, 3, 4, 5]; track i) {
+                <div
+                  class="strength-segment"
+                  [style.background]="i <= passwordStrength ? strengthColor : '#E5E7EB'"
+                ></div>
+              }
+            </div>
+            <span class="strength-label" [style.color]="strengthColor">
+              {{ strengthLabel }}
+            </span>
+          </div>
+          <div class="password-rules mt-1">
+            <span [class.valid]="/[A-Z]/.test(form.get('password')?.value)"> ✓ Majuscule </span>
+            <span [class.valid]="/[a-z]/.test(form.get('password')?.value)"> ✓ Minuscule </span>
+            <span [class.valid]="/[0-9]/.test(form.get('password')?.value)"> ✓ Chiffre </span>
+            <span [class.valid]="/[!@#$%^&*(),.?&quot;:{}|<>]/.test(form.get('password')?.value)">
+              ✓ Caractère spécial
+            </span>
+            <span [class.valid]="form.get('password')?.value?.length >= 8">
+              ✓ 8 caractères min
+            </span>
+          </div>
+        }
+      </div>
+
+      <!-- Confirmation -->
+      <div class="mb-4">
+        <label class="form-label">Confirmer le mot de passe *</label>
+        <div class="password-field">
+          <input
+            [type]="showConfirm() ? 'text' : 'password'"
+            class="form-control"
+            formControlName="confirmPassword"
+            placeholder="Répéter le mot de passe"
+            [class.is-invalid]="form.get('confirmPassword')?.touched && form.errors?.['mismatch']"
+          />
+          <button
+            type="button"
+            class="password-toggle"
+            (click)="showConfirm.update((v) => !v)"
+            title="Afficher/masquer"
+          >
+            @if (showConfirm()) {
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path
+                  d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
+                />
+                <line x1="1" y1="1" x2="23" y2="23" />
+              </svg>
+            } @else {
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+            }
+          </button>
+        </div>
+        @if (form.get('confirmPassword')?.touched && form.errors?.['mismatch']) {
+          <div class="text-danger small mt-1">Les mots de passe ne correspondent pas.</div>
+        }
+      </div>
+
+      <!-- Bouton -->
+      <button type="submit" class="btn btn-primary w-100" [disabled]="isLoading()">
+        @if (isLoading()) {
+          <span class="spinner-border spinner-border-sm me-2"></span>
+        }
+        Créer mon compte
+      </button>
+
+      <p class="text-center text-muted small mt-3 mb-0">
+        Déjà un compte ?
+        <a routerLink="/login">Se connecter</a>
+      </p>
+    </form>
+  </div>
+</div>
