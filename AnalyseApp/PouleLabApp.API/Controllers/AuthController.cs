@@ -4,6 +4,7 @@ using PouleLabApp.API.DTOs.Auth;
 using PouleLabApp.API.Models;
 using PouleLabApp.API.Services.Interfaces;
 using PouleLabApp.API.DTOs;
+using Microsoft.AspNetCore.Authorization;
 
 namespace PouleLabApp.API.Controllers
 {
@@ -38,62 +39,43 @@ namespace PouleLabApp.API.Controllers
         // Crée un nouveau compte utilisateur
         // -------------------------------------------------------
         [HttpPost("register")]
+        [AllowAnonymous]
         public async Task<IActionResult> Register([FromBody] RegisterDto dto)
         {
-            // Vérifier si l'email est déjà utilisé
-            var existingUser = await _userManager.FindByEmailAsync(dto.Email);
-            if (existingUser != null)
-            {
-                // 400 Bad Request avec message d'erreur explicite
-                return BadRequest(new { message = "Un compte avec cet email existe déjà." });
-            }
+            // Vérifier que le rôle est valide
+            var validRoles = new[] {
+                "Client", "Receptionist", "Analyst", "LabChief", "Manager", "Administrator"
+            };
+            if (!validRoles.Contains(dto.Role))
+                return BadRequest(new { message = "Rôle invalide." });
 
-            // Créer l'objet utilisateur à partir du DTO
+            // Vérifier si l'email existe déjà
+            var existing = await _userManager.FindByEmailAsync(dto.Email);
+            if (existing != null)
+                return BadRequest(new { message = "Cet email est déjà utilisé." });
+
             var user = new ApplicationUser
             {
-                UserName = dto.Email,           // Identity utilise UserName comme identifiant
-                Email = dto.Email,
-                FirstName = dto.FirstName,
-                LastName = dto.LastName,
-                FilialeName = dto.FilialeName,
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow
+                UserName    = dto.Email,
+                Email       = dto.Email,
+                FirstName   = dto.FirstName,
+                LastName    = dto.LastName,
+                PhoneNumber = dto.PhoneNumber,
+                FilialeName = dto.FilialeName ?? string.Empty,
+                IsActive    = true,
+                CreatedAt   = DateTime.UtcNow
             };
 
-            // Identity hash automatiquement le mot de passe — on ne le stocke jamais en clair
             var result = await _userManager.CreateAsync(user, dto.Password);
-
             if (!result.Succeeded)
             {
-                // Retourner toutes les erreurs de validation Identity (ex: mot de passe trop court)
                 var errors = result.Errors.Select(e => e.Description);
-                return BadRequest(new { message = "Erreur lors de la création du compte.", errors });
+                return BadRequest(new { message = string.Join(" ", errors) });
             }
 
-            // Vérifier que le rôle demandé est valide, sinon utiliser "Client" par défaut
-            var validRoles = new[] { "Administrator", "Manager", "Receptionist", "Analyst", "LabChief", "Client" };
-            var roleToAssign = validRoles.Contains(dto.Role) ? dto.Role : "Client";
+            await _userManager.AddToRoleAsync(user, dto.Role);
 
-            // Assigner le rôle à l'utilisateur
-            await _userManager.AddToRoleAsync(user, roleToAssign);
-
-            // Générer le JWT et le refresh token immédiatement après l'inscription
-            var roles = await _userManager.GetRolesAsync(user);
-            var token = _jwtTokenService.GenerateToken(user, roles);
-            var refreshToken = _jwtTokenService.GenerateRefreshToken();
-
-            // 201 Created avec le token dans la réponse
-            return StatusCode(201, new AuthResponseDto
-            {
-                Token = token,
-                RefreshToken = refreshToken,
-                ExpiresAt = DateTime.UtcNow.AddHours(2),
-                UserId = user.Id,
-                Email = user.Email!,
-                FirstName = user.FirstName,
-                LastName = user.LastName,
-                Role = roleToAssign
-            });
+            return Ok(new { message = "Compte créé avec succès." });
         }
 
         // -------------------------------------------------------
