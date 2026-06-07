@@ -295,5 +295,26 @@ namespace PouleLabApp.API.Controllers
 
             return Ok(new { message = "Profil mis à jour avec succès." });
         }
+
+        // -------------------------------------------------------
+        // DELETE /api/user/me — Supprimer son propre compte
+        // -------------------------------------------------------
+        [HttpDelete("me")]
+        public async Task<IActionResult> DeleteMyAccount()
+        {
+            var userId = _userManager.GetUserId(User);
+            var user   = await _userManager.FindByIdAsync(userId!);
+            if (user == null)
+                return NotFound(new { message = "Utilisateur introuvable." });
+
+            var result = await _userManager.DeleteAsync(user);
+            if (!result.Succeeded)
+                return BadRequest(new {
+                    message = string.Join(" ",
+                        result.Errors.Select(e => e.Description))
+                });
+
+            return Ok(new { message = "Compte supprimé avec succès." });
+        }
     }
 }
