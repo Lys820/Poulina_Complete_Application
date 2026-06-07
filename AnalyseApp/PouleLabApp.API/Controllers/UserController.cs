@@ -39,6 +39,7 @@ namespace PouleLabApp.API.Controllers
                     FirstName   = user.FirstName,
                     LastName    = user.LastName,
                     Email       = user.Email ?? "",
+                    PhoneNumber = user.PhoneNumber,
                     FilialeName = user.FilialeName,
                     IsActive    = user.IsActive,
                     CreatedAt   = user.CreatedAt,
@@ -150,15 +151,28 @@ namespace PouleLabApp.API.Controllers
             if (user == null)
                 return NotFound(new { message = "Utilisateur introuvable." });
 
-            user.FirstName  = dto.FirstName;
-            user.LastName   = dto.LastName;
-            user.FilialeName = dto.FilialeName;
-            user.IsActive   = dto.IsActive;
+            // Vérifier si le nouvel email est déjà pris par quelqu'un d'autre
+            if (!string.IsNullOrEmpty(dto.Email) && dto.Email != user.Email)
+            {
+                var existing = await _userManager.FindByEmailAsync(dto.Email);
+                if (existing != null && existing.Id != id)
+                    return BadRequest(new { message = "Cet email est déjà utilisé." });
+
+                user.Email    = dto.Email;
+                user.UserName = dto.Email;
+            }
+
+            user.FirstName   = dto.FirstName;
+            user.LastName    = dto.LastName;
+            user.PhoneNumber = dto.PhoneNumber;
+            user.FilialeName = dto.FilialeName ?? string.Empty;
+            user.IsActive    = dto.IsActive;
 
             var updateResult = await _userManager.UpdateAsync(user);
             if (!updateResult.Succeeded)
                 return BadRequest(new { message = "Erreur lors de la mise à jour." });
 
+            // Mettre à jour le rôle si nécessaire
             var currentRoles = await _userManager.GetRolesAsync(user);
             if (!currentRoles.Contains(dto.Role))
             {
@@ -213,6 +227,73 @@ namespace PouleLabApp.API.Controllers
 
             var status = user.IsActive ? "activé" : "désactivé";
             return Ok(new { message = $"Compte {status} avec succès." });
+        }
+
+        // -------------------------------------------------------
+        // GET /api/user/me — Récupérer son propre profil
+        // -------------------------------------------------------
+        [HttpGet("me")]
+        public async Task<IActionResult> GetMyProfile()
+        {
+            var userId = _userManager.GetUserId(User);
+            var user   = await _userManager.FindByIdAsync(userId!);
+            if (user == null)
+                return NotFound(new { message = "Utilisateur introuvable." });
+
+            var roles = await _userManager.GetRolesAsync(user);
+            return Ok(new UserDto
+            {
+                Id          = user.Id,
+                FirstName   = user.FirstName,
+                LastName    = user.LastName,
+                Email       = user.Email ?? "",
+                FilialeName = user.FilialeName,
+                PhoneNumber = user.PhoneNumber ?? "",
+                IsActive    = user.IsActive,
+                CreatedAt   = user.CreatedAt,
+                Role        = roles.FirstOrDefault() ?? "Client"
+            });
+        }
+
+        // -------------------------------------------------------
+        // PUT /api/user/me — Modifier son propre profil
+        // -------------------------------------------------------
+        [HttpPut("me")]
+        public async Task<IActionResult> UpdateMyProfile([FromBody] UpdateProfileDto dto)
+        {
+            var userId = _userManager.GetUserId(User);
+            var user   = await _userManager.FindByIdAsync(userId!);
+            if (user == null)
+                return NotFound(new { message = "Utilisateur introuvable." });
+
+            user.FirstName   = dto.FirstName;
+            user.LastName    = dto.LastName;
+            user.PhoneNumber = dto.PhoneNumber;
+            user.FilialeName = dto.FilialeName ?? string.Empty;
+
+            // Changement de mot de passe optionnel
+            if (!string.IsNullOrEmpty(dto.NewPassword))
+            {
+                if (string.IsNullOrEmpty(dto.CurrentPassword))
+                    return BadRequest(new {
+                        message = "Le mot de passe actuel est requis."
+                    });
+
+                var passwordResult = await _userManager.ChangePasswordAsync(
+                    user, dto.CurrentPassword, dto.NewPassword);
+
+                if (!passwordResult.Succeeded)
+                    return BadRequest(new {
+                        message = string.Join(" ",
+                            passwordResult.Errors.Select(e => e.Description))
+                    });
+            }
+
+            var result = await _userManager.UpdateAsync(user);
+            if (!result.Succeeded)
+                return BadRequest(new { message = "Erreur lors de la mise à jour." });
+
+            return Ok(new { message = "Profil mis à jour avec succès." });
         }
     }
 }
