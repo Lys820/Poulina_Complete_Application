@@ -9,6 +9,7 @@ import {
 } from '@angular/forms';
 import { UserService } from '../../core/services/user.service';
 import { AuthService } from '../../core/services/auth.service';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-profile',
@@ -27,6 +28,7 @@ export class ProfileComponent implements OnInit {
   showNew = signal(false);
   showConfirm = signal(false);
   changePassword = signal(false);
+  showDeleteModal = signal(false);
 
   readonly brands = ['DICK', 'SNA', 'GIPA', 'MEDOIL'];
 
@@ -34,6 +36,7 @@ export class ProfileComponent implements OnInit {
     private fb: FormBuilder,
     private userService: UserService,
     public authService: AuthService,
+    private router: Router,
   ) {}
 
   ngOnInit(): void {
@@ -162,6 +165,18 @@ export class ProfileComponent implements OnInit {
       error: (err) => {
         this.isSaving.set(false);
         this.errorMsg.set(err.error?.message ?? 'Erreur lors de la mise à jour.');
+      },
+    });
+  }
+
+  deleteAccount(): void {
+    this.userService.deleteMyAccount().subscribe({
+      next: () => {
+        this.authService.logout(); // vider le token
+        this.router.navigate(['/login']);
+      },
+      error: (err) => {
+        this.errorMsg.set(err.error?.message ?? 'Erreur lors de la suppression.');
       },
     });
   }

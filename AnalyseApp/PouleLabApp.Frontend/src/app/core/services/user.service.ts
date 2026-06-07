@@ -58,4 +58,8 @@ export class UserService {
   updateMyProfile(dto: any): Observable<any> {
     return this.http.put(`${this.url}/me`, dto);
   }
+
+  deleteMyAccount(): Observable<any> {
+    return this.http.delete(`${this.url}/me`);
+  }
 }
