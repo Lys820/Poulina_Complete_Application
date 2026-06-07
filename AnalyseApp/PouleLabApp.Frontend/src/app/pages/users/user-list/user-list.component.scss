@@ -155,3 +155,9 @@
     margin: 0;
   }
 }
+
+.modal-box-large {
+  max-width: 560px;
+  max-height: 90vh;
+  overflow-y: auto;
+}

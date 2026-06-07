@@ -4,11 +4,13 @@ import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup } from '@angul
 import { UserService } from '../../../core/services/user.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { UserDto } from '../../../core/models/user.model';
+import { RegisterComponent } from '../../auth/register/register.component';
+import { RegisterFormComponent } from '../../auth/register/register-form.component';
 
 @Component({
   selector: 'app-user-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, NgClass],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, NgClass, RegisterFormComponent],
   templateUrl: './user-list.component.html',
   styleUrls: ['./user-list.component.scss'],
 })
@@ -25,6 +27,9 @@ export class UserListComponent implements OnInit {
   showEditModal = signal(false);
   editingUser = signal<UserDto | null>(null);
   editForm!: FormGroup;
+  showCreateModal = signal(false);
+  deleteUserId = signal<string | null>(null);
+  deleteUserName = signal('');
 
   readonly roles = ['Administrator', 'Manager', 'Receptionist', 'Analyst', 'LabChief', 'Client'];
 
@@ -97,16 +102,13 @@ export class UserListComponent implements OnInit {
     });
   }
 
-  // Désactiver un compte
-  deactivate(user: UserDto): void {
-    if (!confirm(`Désactiver le compte de ${user.firstName} ${user.lastName} ?`)) return;
+  deactivate(user: any): void {
+    const action = user.isActive ? 'désactiver' : 'réactiver';
+    if (!confirm(`Voulez-vous ${action} le compte de ${user.firstName} ${user.lastName} ?`)) return;
 
-    this.userService.deactivate(user.id).subscribe({
-      next: () => {
-        this.loadUsers();
-        this.showSuccess('Compte désactivé.');
-      },
-      error: (err) => this.showError(err.error?.message),
+    this.userService.toggleStatus(user.id).subscribe({
+      next: () => this.loadUsers(),
+      error: (err) => this.errorMsg.set(err.error?.message ?? 'Erreur.'),
     });
   }
 
@@ -130,5 +132,30 @@ export class UserListComponent implements OnInit {
   private showError(msg: string): void {
     this.errorMsg.set(msg ?? 'Une erreur est survenue.');
     setTimeout(() => this.errorMsg.set(''), 4000);
+  }
+
+  // Créer un utilisateur (depuis le modal)
+  onUserCreated(): void {
+    this.showCreateModal.set(false);
+    this.loadUsers();
+  }
+
+  // Confirmer suppression
+  confirmDelete(user: any): void {
+    this.deleteUserId.set(user.id);
+    this.deleteUserName.set(`${user.firstName} ${user.lastName}`);
+  }
+
+  deleteUser(): void {
+    const id = this.deleteUserId();
+    if (!id) return;
+
+    this.userService.deleteUser(id).subscribe({
+      next: () => {
+        this.deleteUserId.set(null);
+        this.loadUsers();
+      },
+      error: (err) => alert(err.error?.message ?? 'Erreur.'),
+    });
   }
 }

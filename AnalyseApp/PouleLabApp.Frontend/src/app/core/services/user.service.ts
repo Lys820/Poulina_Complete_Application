@@ -22,8 +22,9 @@ export class UserService {
     return this.http.put<void>(`${this.url}/${id}`, dto);
   }
 
-  deactivate(id: string): Observable<void> {
-    return this.http.delete<void>(`${this.url}/${id}`);
+  // Activer/désactiver un compte
+  toggleStatus(id: string): Observable<any> {
+    return this.http.patch(`${this.url}/${id}/status`, {});
   }
 
   getRoles(): Observable<{ id: string; name: string }[]> {
@@ -40,5 +41,13 @@ export class UserService {
 
   getAnalysts(): Observable<AnalystDto[]> {
     return this.http.get<AnalystDto[]>(`${this.url}/analysts`);
+  }
+
+  createUser(dto: any): Observable<any> {
+    return this.http.post(`${this.url}`, dto);
+  }
+
+  deleteUser(id: string): Observable<any> {
+    return this.http.delete(`${this.url}/${id}`);
   }
 }
