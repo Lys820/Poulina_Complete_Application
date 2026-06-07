@@ -26,10 +26,30 @@ export class RequestFormComponent implements OnInit {
   showBrandError = signal(false);
 
   readonly brands = [
-    { value: 'DICK', label: 'DICK', color: '#991B1B', icon: '🔴' },
-    { value: 'SNA', label: 'SNA', color: '#1E3A8A', icon: '🔵' },
-    { value: 'GIPA', label: 'GIPA', color: '#7C3AED', icon: '🟣' },
-    { value: 'MEDOIL', label: 'MEDOIL', color: '#B45309', icon: '🟠' },
+    {
+      value: 'DICK',
+      label: 'DICK',
+      subtitle: 'Analyses vétérinaires',
+      color: '#991b1b',
+    },
+    {
+      value: 'SNA',
+      label: 'SNA',
+      subtitle: 'Analyses industrielles',
+      color: '#1e3a8a',
+    },
+    {
+      value: 'GIPA',
+      label: 'GIPA',
+      subtitle: 'Analyses lubrifiants',
+      color: '#7c3aed',
+    },
+    {
+      value: 'MEDOIL',
+      label: 'MEDOIL',
+      subtitle: 'Analyses alimentaires',
+      color: '#b45309',
+    },
   ];
 
   private readonly brandConfig: Record<

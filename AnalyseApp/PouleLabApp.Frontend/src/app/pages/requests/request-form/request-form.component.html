@@ -99,44 +99,19 @@
             <p class="text-muted small mb-2">
               Sélectionnez la marque à laquelle appartiennent vos échantillons
             </p>
-            <div class="brand-selector" [class]="'brand-' + selectedBrand()">
+            <div class="brand-selector">
               @for (brand of brands; track brand.value) {
-                <div
-                  class="brand-choice"
-                  [class.brand-choice-active]="selectedBrand() === brand.value"
+                <button
+                  type="button"
+                  class="brand-pill"
+                  [class.brand-pill-active]="selectedBrand() === brand.value"
+                  [attr.data-brand]="brand.value"
                   (click)="selectBrand(brand.value)"
-                  role="button"
-                  tabindex="0"
-                  [attr.aria-pressed]="selectedBrand() === brand.value ? 'true' : 'false'"
-                  (keydown.enter)="selectBrand(brand.value)"
                 >
-                  <span class="brand-icon">{{ brand.icon }}</span>
-                  <span
-                    class="brand-name"
-                    [class.brand-name-active]="selectedBrand() === brand.value"
-                  >
-                    {{ brand.label }}
-                  </span>
-                  @if (selectedBrand() === brand.value) {
-                    <svg
-                      class="brand-check"
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2.5"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    >
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  }
-                </div>
+                  {{ brand.label }}
+                </button>
               }
             </div>
-
             @if (showBrandError()) {
               <p class="text-danger small mt-2">
                 ⚠ Veuillez sélectionner un laboratoire et une marque pour continuer.
@@ -161,176 +136,193 @@
 
     <!-- ÉTAPE 2 — Échantillons -->
     @if (currentStep() === 2) {
-      <div formArrayName="samples">
-        @for (sample of samples.controls; track $index; let i = $index) {
-          <div class="card mb-3" [formGroupName]="i">
-            <div class="card-header d-flex align-items-center justify-content-between">
-              <span>Échantillon {{ i + 1 }}</span>
-              @if (samples.length > 1) {
-                <button
-                  type="button"
-                  class="btn btn-icon btn-danger btn-sm"
-                  (click)="removeSample(i)"
-                  title="Supprimer"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
-                    <line x1="18" y1="6" x2="6" y2="18" />
-                    <line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
-                </button>
-              }
-            </div>
-            <div class="card-body">
-              <div class="row g-3">
-                <!-- Type — label dynamique selon la marque -->
-                <div class="col-md-6">
-                  <label class="form-label" [for]="'type_' + i">
-                    {{ getFieldConfig().sampleTypeLabel }}
-                  </label>
-                  <input
-                    type="text"
-                    class="form-control"
-                    formControlName="type"
-                    [id]="'type_' + i"
-                    [placeholder]="getFieldConfig().sampleTypePlaceholder"
-                    [title]="getFieldConfig().sampleTypeLabel"
-                  />
-                </div>
-
-                <!-- Caractéristiques — label dynamique -->
-                <div class="col-md-6">
-                  <label class="form-label" [for]="'char_' + i">
-                    {{ getFieldConfig().characteristicsLabel }}
-                  </label>
-                  <input
-                    type="text"
-                    class="form-control"
-                    formControlName="characteristics"
-                    [id]="'char_' + i"
-                    [placeholder]="getFieldConfig().characteristicsPlaceholder"
-                    [title]="getFieldConfig().characteristicsLabel"
-                  />
-                </div>
-
-                <!-- Quantité -->
-                <div class="col-md-6">
-                  <label class="form-label" [for]="'qty_' + i">Quantité *</label>
-                  <input
-                    type="number"
-                    class="form-control"
-                    formControlName="quantity"
-                    [id]="'qty_' + i"
-                    placeholder="Ex: 500"
-                    title="Quantité"
-                  />
-                </div>
-
-                <!-- Unité -->
-                <div class="col-md-6">
-                  <label class="form-label">Unité *</label>
-                  <div class="select-wrapper">
-                    <select
-                      class="form-control custom-select"
-                      formControlName="unit"
-                      aria-label="Unité de mesure"
-                      title="Unité de mesure"
-                    >
-                      <option value="">— Sélectionner —</option>
-                      <option value="L">L — Litre</option>
-                      <option value="mL">mL — Millilitre</option>
-                      <option value="cL">cL — Centilitre</option>
-                      <option value="m³">m³ — Mètre cube</option>
-                      <option value="kg">kg — Kilogramme</option>
-                      <option value="g">g — Gramme</option>
-                      <option value="mg">mg — Milligramme</option>
-                      <option value="t">t — Tonne</option>
-                      <option value="unité">Unité</option>
-                      <option value="échantillon">Échantillon</option>
-                    </select>
-                    <span class="select-arrow">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2.5"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      >
-                        <polyline points="6 9 12 15 18 9" />
-                      </svg>
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        }
-
-        <button type="button" class="btn btn-light w-100 add-sample-btn" (click)="addSample()">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            class="me-2"
-          >
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-          Ajouter un échantillon
-        </button>
-      </div>
-    }
-
-    <!-- ÉTAPE 3 — Analyses à effectuer -->
-    @if (currentStep() === 3) {
-      <div [class]="'brand-' + selectedBrand()">
+      <div>
+        <!-- Indicateur marque — légèrement plus visible qu'étape 3 -->
         @if (selectedBrand()) {
-          <div class="brand-indicator brand-indicator-wrap mb-3">
-            <span class="brand-dot brand-dot-color"></span>
-            <span class="brand-label-color">
-              Formulaire d'analyses — <strong>{{ getBrandConfig().label }}</strong>
-            </span>
+          <div
+            class="brand-badge-indicator brand-badge-lg mb-3"
+            [attr.data-brand]="selectedBrand()"
+          >
+            <span class="brand-badge-dot"></span>
+            Échantillons — {{ getBrandConfig().label }}
           </div>
         }
 
         <div formArrayName="samples">
           @for (sample of samples.controls; track $index; let i = $index) {
-            <div class="card mb-3 brand-card">
-              <div class="card-header brand-card-header">
-                <span class="brand-header-text">
-                  Analyses — {{ sample.get('type')!.value || 'Échantillon ' + (i + 1) }}
-                </span>
+            <div
+              class="card mb-3 sample-card"
+              [attr.data-brand]="selectedBrand()"
+              [formGroupName]="i"
+            >
+              <div class="card-header d-flex align-items-center justify-content-between">
+                <span>Échantillon {{ i + 1 }}</span>
+                @if (samples.length > 1) {
+                  <button
+                    type="button"
+                    class="btn btn-icon btn-danger btn-sm"
+                    (click)="removeSample(i)"
+                    title="Supprimer"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                }
               </div>
+              <div class="card-body">
+                <div class="row g-3">
+                  <!-- Type -->
+                  <div class="col-md-6">
+                    <label class="form-label" [for]="'type_' + i">
+                      {{ getFieldConfig().sampleTypeLabel }}
+                    </label>
+                    <input
+                      type="text"
+                      class="form-control"
+                      formControlName="type"
+                      [id]="'type_' + i"
+                      [placeholder]="getFieldConfig().sampleTypePlaceholder"
+                      [title]="getFieldConfig().sampleTypeLabel"
+                    />
+                  </div>
 
-              <div class="card-body brand-card-body">
+                  <!-- Caractéristiques -->
+                  <div class="col-md-6">
+                    <label class="form-label" [for]="'char_' + i">
+                      {{ getFieldConfig().characteristicsLabel }}
+                    </label>
+                    <input
+                      type="text"
+                      class="form-control"
+                      formControlName="characteristics"
+                      [id]="'char_' + i"
+                      [placeholder]="getFieldConfig().characteristicsPlaceholder"
+                      [title]="getFieldConfig().characteristicsLabel"
+                    />
+                  </div>
+
+                  <!-- Quantité -->
+                  <div class="col-md-6">
+                    <label class="form-label" [for]="'qty_' + i">Quantité *</label>
+                    <input
+                      type="number"
+                      class="form-control"
+                      formControlName="quantity"
+                      [id]="'qty_' + i"
+                      placeholder="Ex: 500"
+                      title="Quantité"
+                    />
+                  </div>
+
+                  <!-- Unité -->
+                  <div class="col-md-6">
+                    <label class="form-label">Unité *</label>
+                    <div class="select-wrapper">
+                      <select
+                        class="form-control custom-select"
+                        formControlName="unit"
+                        aria-label="Unité de mesure"
+                        title="Unité de mesure"
+                      >
+                        <option value="">— Sélectionner —</option>
+                        <option value="L">L — Litre</option>
+                        <option value="mL">mL — Millilitre</option>
+                        <option value="cL">cL — Centilitre</option>
+                        <option value="m³">m³ — Mètre cube</option>
+                        <option value="kg">kg — Kilogramme</option>
+                        <option value="g">g — Gramme</option>
+                        <option value="mg">mg — Milligramme</option>
+                        <option value="t">t — Tonne</option>
+                        <option value="unité">Unité</option>
+                        <option value="échantillon">Échantillon</option>
+                      </select>
+                      <span class="select-arrow">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2.5"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        >
+                          <polyline points="6 9 12 15 18 9" />
+                        </svg>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          }
+
+          <button type="button" class="btn btn-light w-100 add-sample-btn" (click)="addSample()">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              class="me-2"
+            >
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Ajouter un échantillon
+          </button>
+        </div>
+      </div>
+    }
+
+    @if (currentStep() === 3) {
+      <div>
+        @if (selectedBrand()) {
+          <div
+            class="brand-badge-indicator brand-badge-lg mb-3"
+            [attr.data-brand]="selectedBrand()"
+          >
+            <span class="brand-badge-dot"></span>
+            Analyses — {{ getBrandConfig().label }}
+          </div>
+        }
+
+        <div formArrayName="samples">
+          @for (sample of samples.controls; track $index; let i = $index) {
+            <div
+              class="card mb-3 sample-card"
+              [attr.data-brand]="selectedBrand()"
+              [formGroupName]="i"
+            >
+              <div class="card-header">
+                Analyses — {{ sample.get('type')!.value || 'Échantillon ' + (i + 1) }}
+              </div>
+              <div class="card-body">
                 <p class="text-muted small mb-3">Renseignez les types d'analyses à effectuer :</p>
-
                 <div [formGroupName]="i">
                   <div formArrayName="analysisNames">
                     @for (ctrl of getAnalysisNames(i).controls; track $index; let j = $index) {
                       <div class="analysis-name-row mb-2">
                         <input
                           type="text"
-                          class="form-control brand-input"
+                          class="form-control"
                           [formControlName]="j"
                           placeholder="Ex: pH, Viscosité, Bactériologie..."
                           [id]="'analysis_' + i + '_' + j"
@@ -365,7 +357,6 @@
                     }
                   </div>
                 </div>
-
                 <button
                   type="button"
                   class="btn btn-sm mt-2 add-analysis-btn"
@@ -373,7 +364,6 @@
                 >
                   + Ajouter une analyse
                 </button>
-
                 @if (hasNoAnalysisNames(i)) {
                   <p class="text-danger small mt-2">Ajoutez au moins un type d'analyse.</p>
                 }
@@ -392,7 +382,6 @@
     } @else {
       <div></div>
     }
-
     <div class="d-flex gap-2">
       @if (currentStep() < totalSteps) {
         <button type="button" class="btn btn-primary" (click)="nextStep()">Suivant →</button>
