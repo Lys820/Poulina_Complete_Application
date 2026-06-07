@@ -97,94 +97,151 @@
         color: var(--text-muted);
       }
     }
+
+    .chevron {
+      transition: transform 0.2s;
+      color: var(--text-muted);
+      &.rotated {
+        transform: rotate(180deg);
+      }
+    }
   }
 
+  // =============================================
+  // DROPDOWN
+  // =============================================
   .profile-dropdown {
     position: absolute;
-    top: 50px;
+    top: calc(100% + 10px);
     right: 0;
     background: white;
-    border-radius: 12px;
+    border-radius: 14px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-    padding: 12px;
-    min-width: 200px;
+    min-width: 220px;
     z-index: 1000;
-    animation: fadeIn 0.15s ease;
+    overflow: hidden;
+    animation: dropdownIn 0.15s ease;
 
-    @keyframes fadeIn {
+    @keyframes dropdownIn {
       from {
         opacity: 0;
-        transform: translateY(-8px);
+        transform: translateY(-6px);
       }
       to {
         opacity: 1;
         transform: translateY(0);
       }
     }
+  }
 
-    .dropdown-header {
+  // En-tête du dropdown
+  .dropdown-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    background: var(--light);
+  }
+
+  .dropdown-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 700;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  .dropdown-user-info {
+    strong {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--dark);
+    }
+  }
+
+  .dropdown-role {
+    display: inline-block;
+    margin-top: 3px;
+    font-size: 11px;
+    font-weight: 500;
+    color: white;
+    background: var(--primary);
+    padding: 1px 8px;
+    border-radius: 20px;
+  }
+
+  .dropdown-divider {
+    height: 1px;
+    background: var(--border-color);
+    margin: 0;
+  }
+
+  .dropdown-menu-items {
+    padding: 6px;
+  }
+
+  .dropdown-item-custom {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 9px 12px;
+    border-radius: 8px;
+    border: none;
+    background: none;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--dark);
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.15s;
+    text-align: left;
+
+    &:hover {
+      background: var(--light);
+      color: var(--dark);
+      text-decoration: none;
+    }
+
+    .item-icon {
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      background: var(--light);
       display: flex;
       align-items: center;
-      gap: 10px;
-      padding: 4px 0 8px;
-
-      .avatar {
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
-        background: var(--primary);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-weight: 700;
-        font-size: 13px;
-      }
-
-      strong {
-        display: block;
-        font-size: 13px;
-        color: var(--dark);
-      }
-      small {
-        font-size: 11px;
-        color: var(--text-muted);
-      }
+      justify-content: center;
+      flex-shrink: 0;
+      color: var(--text-muted);
+      transition: all 0.15s;
     }
 
-    hr {
-      margin: 8px 0;
-      border-color: var(--border-color);
+    &:hover .item-icon {
+      background: white;
+      color: var(--primary);
     }
 
-    .nav-badge {
-      margin-left: auto !important;
-      background: #f73164 !important;
-      color: white !important;
-      border-radius: 50% !important;
-      min-width: 20px !important;
-      height: 20px !important;
-      padding: 0 4px !important;
-      font-size: 10px !important;
-      font-weight: 700 !important;
-      display: inline-flex !important;
-      align-items: center !important;
-      justify-content: center !important;
-      flex-shrink: 0 !important;
-      line-height: 1 !important;
-      box-shadow: 0 2px 6px rgba(247, 49, 100, 0.5) !important;
-      animation: pulse 2s infinite !important;
-    }
+    // Item danger — Déconnexion
+    &.item-danger {
+      color: #dc2626;
 
-    @keyframes pulse {
-      0% {
-        box-shadow: 0 0 0 0 rgba(247, 49, 100, 0.5);
+      .item-icon {
+        color: #dc2626;
       }
-      70% {
-        box-shadow: 0 0 0 6px rgba(247, 49, 100, 0);
-      }
-      100% {
-        box-shadow: 0 0 0 0 rgba(247, 49, 100, 0);
+
+      &:hover {
+        background: #fef2f2;
+        .item-icon {
+          background: white;
+          color: #dc2626;
+        }
       }
     }
   }

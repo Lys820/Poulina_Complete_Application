@@ -1,5 +1,4 @@
 <header class="top-header">
-  <!-- Gauche — Titre de page -->
   <div class="header-left">
     <div class="page-title">
       <h6>Poulina Group Holding</h6>
@@ -7,7 +6,6 @@
     </div>
   </div>
 
-  <!-- Droite — Notifications + Profil -->
   <div class="header-right">
     <!-- Cloche notifications -->
     <a [routerLink]="'/app/notifications'" class="notification-badge">
@@ -47,6 +45,8 @@
         stroke-width="2"
         stroke-linecap="round"
         stroke-linejoin="round"
+        class="chevron"
+        [class.rotated]="showDropdown"
       >
         <polyline points="6 9 12 15 18 9" />
       </svg>
@@ -55,49 +55,62 @@
     <!-- Dropdown profil -->
     @if (showDropdown) {
       <div class="profile-dropdown">
+        <!-- En-tête utilisateur -->
         <div class="dropdown-header">
-          <div class="avatar">{{ userInitials }}</div>
-          <div>
+          <div class="dropdown-avatar">{{ userInitials }}</div>
+          <div class="dropdown-user-info">
             <strong>{{ userName }}</strong>
-            <small>{{ userRole }}</small>
+            <span class="dropdown-role">{{ userRole }}</span>
           </div>
         </div>
-        <hr />
-        <a routerLink="/app/profile" class="dropdown-item" (click)="showDropdown = false">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-            <circle cx="12" cy="7" r="4" />
-          </svg>
-          Mon profil
-        </a>
-        <button class="dropdown-item" (click)="logout()">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-            <polyline points="16 17 21 12 16 7" />
-            <line x1="21" y1="12" x2="9" y2="12" />
-          </svg>
-          Déconnexion
-        </button>
+
+        <div class="dropdown-divider"></div>
+
+        <!-- Items -->
+        <div class="dropdown-menu-items">
+          <a routerLink="/app/profile" class="dropdown-item-custom" (click)="showDropdown = false">
+            <div class="item-icon">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+            </div>
+            <span>Mon profil</span>
+          </a>
+
+          <div class="dropdown-divider"></div>
+
+          <button class="dropdown-item-custom item-danger" (click)="logout()">
+            <div class="item-icon">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+            </div>
+            <span>Déconnexion</span>
+          </button>
+        </div>
       </div>
     }
   </div>

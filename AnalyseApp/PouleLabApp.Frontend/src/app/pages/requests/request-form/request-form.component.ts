@@ -228,9 +228,8 @@ export class RequestFormComponent implements OnInit {
         s.get('characteristics')!.value?.trim() &&
         s.get('quantity')!.value > 0 &&
         s.get('unit')!.value?.trim() &&
-        names.some((n) => n.value?.trim()) &&
-        s.get('urgencyLevel')!.value
-      ); // ← urgence obligatoire
+        names.some((n) => n.value?.trim())
+      );
     });
   }
 
