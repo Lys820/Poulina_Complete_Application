@@ -3,10 +3,11 @@ export interface UserDto {
   firstName: string;
   lastName: string;
   email: string;
-  filialeName: string;
+  phoneNumber?: string;
+  filialeName?: string;
   isActive: boolean;
-  createdAt: Date;
   role: string;
+  createdAt: string;
 }
 
 export interface UpdateUserDto {

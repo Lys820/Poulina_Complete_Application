@@ -50,4 +50,12 @@ export class UserService {
   deleteUser(id: string): Observable<any> {
     return this.http.delete(`${this.url}/${id}`);
   }
+
+  getMyProfile(): Observable<any> {
+    return this.http.get(`${this.url}/me`);
+  }
+
+  updateMyProfile(dto: any): Observable<any> {
+    return this.http.put(`${this.url}/me`, dto);
+  }
 }

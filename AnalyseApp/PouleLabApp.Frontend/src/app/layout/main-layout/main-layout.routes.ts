@@ -60,6 +60,11 @@ export const LAYOUT_ROUTES: Routes = [
             (m) => m.UserListComponent,
           ),
       },
+      {
+        path: 'profile',
+        loadComponent: () =>
+          import('../../pages/profile/profile.component').then((m) => m.ProfileComponent),
+      },
     ],
   },
 ];

@@ -1,6 +1,12 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule, NgClass } from '@angular/common';
-import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup } from '@angular/forms';
+import {
+  FormsModule,
+  ReactiveFormsModule,
+  FormBuilder,
+  FormGroup,
+  Validators,
+} from '@angular/forms';
 import { UserService } from '../../../core/services/user.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { UserDto } from '../../../core/models/user.model';
@@ -46,8 +52,18 @@ export class UserListComponent implements OnInit {
     private userService: UserService,
     private fb: FormBuilder,
     public authService: AuthService,
-  ) {}
-
+  ) {
+    // ← Initialiser editForm ici
+    this.editForm = this.fb.group({
+      firstName: ['', Validators.required],
+      lastName: ['', Validators.required],
+      email: ['', [Validators.required, Validators.email]],
+      phoneNumber: [''],
+      filialeName: [''],
+      role: ['', Validators.required],
+      isActive: [true],
+    });
+  }
   ngOnInit(): void {
     this.loadUsers();
   }
@@ -69,14 +85,16 @@ export class UserListComponent implements OnInit {
   }
 
   // Ouvrir modal édition
-  openEdit(user: UserDto): void {
+  openEdit(user: any): void {
     this.editingUser.set(user);
-    this.editForm = this.fb.group({
-      firstName: [user.firstName],
-      lastName: [user.lastName],
-      filialeName: [user.filialeName],
-      isActive: [user.isActive],
-      role: [user.role],
+    this.editForm.patchValue({
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email, // ← nouveau
+      phoneNumber: user.phoneNumber, // ← nouveau
+      filialeName: user.filialeName,
+      role: user.role,
+      isActive: user.isActive,
     });
     this.showEditModal.set(true);
   }
