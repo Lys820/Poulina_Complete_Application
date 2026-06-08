@@ -1,5 +1,8 @@
 """
-Database Service — SQL Server
+Database Service — SQL Server (PouleLabDB)
+Connecté à la BD de l'AnalyseApp (.NET / ASP.NET Identity)
+Les tables auth (users, roles, sessions) viennent de PouleLabDB.
+Les données métier (analyses, labos) viennent de la même BD via les vues/tables POULINA.
 """
 from __future__ import annotations
 import logging
@@ -64,6 +67,133 @@ class SQLServerDB:
                 return None
             cols = [desc[0].lower() for desc in cursor.description]
             return dict(zip(cols, row))
+        finally:
+            cursor.close()
+
+    # ── Auth — lecture sur PouleLabDB (ASP.NET Identity) ────────────────────
+
+    def get_utilisateur_par_email(self, email: str) -> Optional[dict]:
+        """
+        Lit depuis les tables ASP.NET Identity de PouleLabDB.
+        Retourne un dict compatible avec l'existant du chatbot :
+          id_utilisateur, password_hash, nom, prenom, actif, nom_role, permissions
+        """
+        query = """
+        SELECT
+            u.Id                AS id_utilisateur,
+            u.PasswordHash      AS password_hash,
+            u.LastName          AS nom,
+            u.FirstName         AS prenom,
+            u.IsActive          AS actif,
+            r.Name              AS nom_role
+        FROM dbo.AspNetUsers u
+        LEFT JOIN dbo.AspNetUserRoles ur ON ur.UserId = u.Id
+        LEFT JOIN dbo.AspNetRoles r      ON r.Id = ur.RoleId
+        WHERE u.Email = ?
+          AND u.IsActive = 1
+        """
+        cursor = self._conn.cursor()
+        try:
+            cursor.execute(query, (email,))
+            row = cursor.fetchone()
+            if not row:
+                return None
+            cols = [desc[0].lower() for desc in cursor.description]
+            result = dict(zip(cols, row))
+            # Permissions : basées sur le rôle (mapping statique)
+            result["permissions"] = _role_to_permissions(result.get("nom_role", ""))
+            return result
+        finally:
+            cursor.close()
+
+    # ── Sessions chat — tables gardées dans PouleLabDB ──────────────────────
+    # On crée session_chat et message_chat dans PouleLabDB si elles n'existent pas.
+
+    def ensure_chat_tables(self) -> None:
+        """Crée les tables session_chat / message_chat dans PouleLabDB si absentes."""
+        cursor = self._conn.cursor()
+        try:
+            cursor.execute("""
+                IF OBJECT_ID('dbo.session_chat','U') IS NULL
+                CREATE TABLE dbo.session_chat (
+                    id_session              NVARCHAR(64) PRIMARY KEY,
+                    user_id                 NVARCHAR(450) NOT NULL,  -- FK AspNetUsers.Id
+                    date_debut              DATETIME2 DEFAULT GETDATE(),
+                    date_derniere_activite  DATETIME2 DEFAULT GETDATE(),
+                    actif                   BIT DEFAULT 1,
+                    contexte_json           NVARCHAR(MAX) DEFAULT '{}'
+                )
+            """)
+            cursor.execute("""
+                IF OBJECT_ID('dbo.message_chat','U') IS NULL
+                CREATE TABLE dbo.message_chat (
+                    id_message   INT IDENTITY(1,1) PRIMARY KEY,
+                    id_session   NVARCHAR(64) NOT NULL,
+                    role         NVARCHAR(20) NOT NULL CHECK (role IN ('user','assistant')),
+                    contenu      NVARCHAR(MAX) NOT NULL,
+                    date_message DATETIME2 DEFAULT GETDATE()
+                )
+            """)
+            self._conn.commit()
+        finally:
+            cursor.close()
+
+    def get_session(self, session_id: str) -> Optional[dict]:
+        cursor = self._conn.cursor()
+        try:
+            cursor.execute(
+                "SELECT id_session, user_id, actif FROM session_chat WHERE id_session = ?",
+                (session_id,))
+            row = cursor.fetchone()
+            if not row:
+                return None
+            # Rétro-compatibilité : renommer user_id en id_utilisateur
+            return {"id_session": row[0], "id_utilisateur": row[1], "actif": row[2]}
+        finally:
+            cursor.close()
+
+    def create_session(self, session_id: str, user_id: str) -> None:
+        """user_id est maintenant un GUID string (AspNetUsers.Id)."""
+        cursor = self._conn.cursor()
+        try:
+            cursor.execute(
+                "INSERT INTO session_chat (id_session, user_id, date_debut, "
+                "date_derniere_activite, actif, contexte_json) "
+                "VALUES (?, ?, GETDATE(), GETDATE(), 1, '{}')",
+                (session_id, user_id))
+            self._conn.commit()
+        finally:
+            cursor.close()
+
+    def get_messages(self, session_id: str, limit: int = 20) -> list[dict]:
+        cursor = self._conn.cursor()
+        try:
+            cursor.execute(
+                "SELECT TOP (?) role, contenu FROM message_chat "
+                "WHERE id_session = ? ORDER BY date_message ASC",
+                (limit, session_id))
+            return [{"role": r[0], "content": r[1]} for r in cursor.fetchall()]
+        finally:
+            cursor.close()
+
+    def add_message(self, session_id: str, role: str, content: str) -> None:
+        cursor = self._conn.cursor()
+        try:
+            cursor.execute(
+                "INSERT INTO message_chat (id_session, role, contenu, date_message) "
+                "VALUES (?, ?, ?, GETDATE())", (session_id, role, content))
+            cursor.execute(
+                "UPDATE session_chat SET date_derniere_activite=GETDATE() WHERE id_session=?",
+                (session_id,))
+            self._conn.commit()
+        finally:
+            cursor.close()
+
+    def update_session_inactive(self, session_id: str) -> None:
+        cursor = self._conn.cursor()
+        try:
+            cursor.execute("UPDATE session_chat SET actif=0 WHERE id_session=?", (session_id,))
+            self._conn.commit()
         finally:
             cursor.close()
 
@@ -155,15 +285,13 @@ class SQLServerDB:
                 WHEN ROUND(8.0+(COALESCE(ROUND(AVG(sl.taux_conformite),1),95)/100.0)*1.5,1)>=8.0 THEN 'Bon'
                 ELSE 'Passable'
             END AS tier_labo,
-            'Prive'                         AS type_laboratoire,
-            'PCR, Virologie, Bacteriologie' AS specialites_principales,
-            'Salmonelle, Newcastle, Gumboro' AS maladies_avicoles_traitees
+            'Prive' AS type_laboratoire
         FROM laboratoire l
-        LEFT JOIN laborantin lab     ON l.id_labo         = lab.id_labo
-        LEFT JOIN stat_laborantin sl ON lab.id_laborantin = sl.id_laborantin
+        LEFT JOIN laborantin lab ON lab.id_labo = l.id_labo
+        LEFT JOIN stats_labo sl  ON sl.id_labo  = l.id_labo
         WHERE l.actif = 1
-        GROUP BY l.id_labo,l.nom_labo,l.gouvernorat,l.latitude,l.longitude,l.telephone,l.email,l.actif
-        ORDER BY score_global DESC
+        GROUP BY l.id_labo, l.nom_labo, l.gouvernorat, l.latitude, l.longitude,
+                 l.telephone, l.email, l.actif
         """
         try:
             return _query_to_df(self._conn, query)
@@ -171,175 +299,37 @@ class SQLServerDB:
             log.error("Erreur get_labos_data: %s", e, exc_info=True)
             return pd.DataFrame()
 
-    def get_centres(self, filters=None) -> pd.DataFrame:
-        where = ["ce.actif = 1"]
-        if filters:
-            if getattr(filters, "gouvernorat", None):
-                where.append(f"ce.gouvernorat = '{filters.gouvernorat}'")
-            if getattr(filters, "type_production", None):
-                where.append(f"ce.type_production = '{filters.type_production}'")
-        query = f"""
-        SELECT ce.id_centre, ce.nom_centre, ce.localisation,
-               ce.gouvernorat, ce.type_production, ce.capacite_totale,
-               ce.date_creation, ce.actif,
-               m.nom_marque, f.nom_filiale
-        FROM centre_elevage ce
-        JOIN marque m  ON ce.id_marque = m.id_marque
-        JOIN filiale f ON m.id_filiale = f.id_filiale
-        WHERE {' AND '.join(where)}
-        ORDER BY ce.nom_centre
-        """
-        try:
-            return _query_to_df(self._conn, query)
-        except Exception as e:
-            log.error("Erreur get_centres: %s", e)
-            return pd.DataFrame()
-
-    def get_labos(self, filters=None) -> pd.DataFrame:
-        where = ["l.actif = 1"]
-        if filters:
-            if getattr(filters, "gouvernorat", None):
-                where.append(f"l.gouvernorat = '{filters.gouvernorat}'")
-            if getattr(filters, "accepte_urgence", None) is not None:
-                val = 1 if filters.accepte_urgence else 0
-                where.append(f"1 = {val}")   # colonne calculée, filtre approximatif
-        query = f"""
-        SELECT l.id_labo, l.nom_labo AS nom_laboratoire,
-               l.gouvernorat AS ville, l.gouvernorat AS region,
-               l.latitude, l.longitude, l.telephone, l.email, l.actif,
-               3   AS delai_standard_jours,
-               18  AS delai_urgence_heures,
-               1   AS accepte_urgence,
-               1   AS certifie_iso,
-               9.0 AS score_global,
-               'Bon' AS tier_labo,
-               95.0  AS taux_reussite_pct,
-               150.0 AS cout_analyse_moyen_tnd,
-               'PCR, Virologie'        AS specialites_principales,
-               'Salmonelle, Newcastle' AS maladies_avicoles_traitees
-        FROM laboratoire l
-        WHERE {' AND '.join(where)}
-        ORDER BY l.nom_labo
-        """
-        try:
-            return _query_to_df(self._conn, query)
-        except Exception as e:
-            log.error("Erreur get_labos: %s", e)
-            return pd.DataFrame()
-
-    def get_souches(self, filters=None) -> pd.DataFrame:
-        where = ["1=1"]
-        if filters:
-            if getattr(filters, "type_produit_final", None):
-                where.append(f"s.type_produit_final = '{filters.type_produit_final}'")
-            if getattr(filters, "fertilite_min", None) is not None:
-                where.append(f"s.fertilite_score >= {filters.fertilite_min}")
-            if getattr(filters, "taux_mortalite_max", None) is not None:
-                where.append(f"s.taux_mortalite <= {filters.taux_mortalite_max}")
-        query = f"""
-        SELECT s.id_souche, s.nom_souche, s.type_produit_final,
-               s.fertilite_score, s.taux_mortalite, s.resistance_maladies,
-               s.cout_unitaire, s.notes,
-               p.nom_pays AS pays_origine
-        FROM souche s
-        LEFT JOIN pays p ON s.id_pays_origine = p.id_pays
-        WHERE {' AND '.join(where)}
-        ORDER BY s.fertilite_score DESC
-        """
-        try:
-            return _query_to_df(self._conn, query)
-        except Exception as e:
-            log.error("Erreur get_souches: %s", e)
-            return pd.DataFrame()
-
-    def get_utilisateur_par_email(self, email: str) -> Optional[dict]:
-        query = """
-        SELECT u.id_utilisateur, u.password_hash, u.nom, u.prenom, u.actif,
-               r.nom_role,
-               STRING_AGG(p.code, ',') AS permissions
-        FROM utilisateur u
-        JOIN role r                  ON u.id_role          = r.id_role
-        LEFT JOIN role_permission rp ON r.id_role          = rp.id_role
-        LEFT JOIN permission p       ON rp.id_permission   = p.id_permission
-        WHERE u.email = ? AND u.actif = 1
-        GROUP BY u.id_utilisateur, u.password_hash, u.nom, u.prenom, u.actif, r.nom_role
-        """
-        cursor = self._conn.cursor()
-        try:
-            cursor.execute(query, (email,))
-            row = cursor.fetchone()
-            if not row:
-                return None
-            cols = [desc[0].lower() for desc in cursor.description]
-            return dict(zip(cols, row))
-        finally:
-            cursor.close()
-
-    def get_session(self, session_id: str) -> Optional[dict]:
-        cursor = self._conn.cursor()
-        try:
-            cursor.execute(
-                "SELECT id_session, id_utilisateur, actif FROM session_chat WHERE id_session = ?",
-                (session_id,))
-            row = cursor.fetchone()
-            return {"id_session": row[0], "id_utilisateur": row[1], "actif": row[2]} if row else None
-        finally:
-            cursor.close()
-
-    def create_session(self, session_id: str, user_id: int) -> None:
-        cursor = self._conn.cursor()
-        try:
-            cursor.execute(
-                "INSERT INTO session_chat (id_session,id_utilisateur,date_debut,"
-                "date_derniere_activite,actif,contexte_json) VALUES (?,?,GETDATE(),GETDATE(),1,'{}')",
-                (session_id, user_id))
-            self._conn.commit()
-        finally:
-            cursor.close()
-
-    def get_messages(self, session_id: str, limit: int = 20) -> list[dict]:
-        cursor = self._conn.cursor()
-        try:
-            cursor.execute(
-                "SELECT TOP (?) role, contenu FROM message_chat "
-                "WHERE id_session = ? ORDER BY date_message ASC",
-                (limit, session_id))
-            return [{"role": r[0], "content": r[1]} for r in cursor.fetchall()]
-        finally:
-            cursor.close()
-
-    def add_message(self, session_id: str, role: str, content: str) -> None:
-        cursor = self._conn.cursor()
-        try:
-            cursor.execute(
-                "INSERT INTO message_chat (id_session,role,contenu,date_message) "
-                "VALUES (?,?,?,GETDATE())", (session_id, role, content))
-            cursor.execute(
-                "UPDATE session_chat SET date_derniere_activite=GETDATE() WHERE id_session=?",
-                (session_id,))
-            self._conn.commit()
-        finally:
-            cursor.close()
-
-    def update_session_inactive(self, session_id: str) -> None:
-        cursor = self._conn.cursor()
-        try:
-            cursor.execute("UPDATE session_chat SET actif=0 WHERE id_session=?", (session_id,))
-            self._conn.commit()
-        finally:
-            cursor.close()
-
     def get_all_data(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
         if not self._conn:
             self.connect()
         return self.get_analyses_data(), self.get_labos_data()
 
 
+# ── Mapping rôles → permissions ──────────────────────────────────────────────
+
+def _role_to_permissions(role: str) -> str:
+    """
+    Convertit un rôle ASP.NET Identity en liste de permissions chatbot.
+    Adapte selon les rôles définis dans DataSeeder.cs :
+    Administrator, Manager, Receptionist, Analyst, LabChief, Client
+    """
+    mapping = {
+        "Administrator": "CHAT_READ,CHAT_ML,ADMIN_TRAIN,ANALYSE_READ,ANALYSE_WRITE",
+        "Manager":       "CHAT_READ,CHAT_ML,ADMIN_TRAIN,ANALYSE_READ",
+        "LabChief":      "CHAT_READ,CHAT_ML,ANALYSE_READ,ANALYSE_WRITE",
+        "Analyst":       "CHAT_READ,ANALYSE_READ,ANALYSE_WRITE",
+        "Receptionist":  "CHAT_READ,ANALYSE_READ",
+        "Client":        "CHAT_READ",
+    }
+    return mapping.get(role, "CHAT_READ")
+
+
 # ── Dépendance FastAPI ────────────────────────────────────────────────────────
+
 def get_db(settings=None) -> SQLServerDB:
     """
     Utilisable comme Depends(get_db) dans FastAPI.
-    FastAPI injecte settings automatiquement si déclaré dans la signature de l'endpoint.
+    Pointe désormais vers PouleLabDB (BD de l'AnalyseApp .NET).
     """
     from app.core.config import get_settings
     if settings is None:

@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     SQLSERVER_DRIVER: str = "ODBC Driver 17 for SQL Server"
     SQLSERVER_USER: str = ""
     SQLSERVER_PASSWORD: str = ""
-    SQLSERVER_TRUSTED: str = "no"
+    SQLSERVER_TRUSTED: str = "yes"
 
     # Redis
     REDIS_URL: str = ""
