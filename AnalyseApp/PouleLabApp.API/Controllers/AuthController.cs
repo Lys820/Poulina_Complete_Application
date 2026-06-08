@@ -42,14 +42,12 @@ namespace PouleLabApp.API.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> Register([FromBody] RegisterDto dto)
         {
-            // Vérifier que le rôle est valide
-            var validRoles = new[] {
-                "Client", "Receptionist", "Analyst", "LabChief", "Manager", "Administrator"
-            };
-            if (!validRoles.Contains(dto.Role))
-                return BadRequest(new { message = "Rôle invalide." });
+            // ← Forcer le rôle Client, ignorer ce qui est envoyé
+            dto.Role = "Client";
 
-            // Vérifier si l'email existe déjà
+            if (string.IsNullOrEmpty(dto.FilialeName))
+                return BadRequest(new { message = "Veuillez sélectionner votre filiale." });
+
             var existing = await _userManager.FindByEmailAsync(dto.Email);
             if (existing != null)
                 return BadRequest(new { message = "Cet email est déjà utilisé." });
@@ -61,22 +59,22 @@ namespace PouleLabApp.API.Controllers
                 FirstName   = dto.FirstName,
                 LastName    = dto.LastName,
                 PhoneNumber = dto.PhoneNumber,
-                FilialeName = dto.FilialeName ?? string.Empty,
+                FilialeName = dto.FilialeName,
                 IsActive    = true,
                 CreatedAt   = DateTime.UtcNow
             };
 
             var result = await _userManager.CreateAsync(user, dto.Password);
             if (!result.Succeeded)
-            {
-                var errors = result.Errors.Select(e => e.Description);
-                return BadRequest(new { message = string.Join(" ", errors) });
-            }
+                return BadRequest(new {
+                    message = string.Join(" ", result.Errors.Select(e => e.Description))
+                });
 
-            await _userManager.AddToRoleAsync(user, dto.Role);
+            await _userManager.AddToRoleAsync(user, "Client");
 
             return Ok(new { message = "Compte créé avec succès." });
         }
+                
 
         // -------------------------------------------------------
         // POST /api/auth/login

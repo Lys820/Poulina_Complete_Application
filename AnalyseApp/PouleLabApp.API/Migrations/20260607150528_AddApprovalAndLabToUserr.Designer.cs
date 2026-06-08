@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PouleLabApp.API.Data;
 
@@ -11,9 +12,11 @@ using PouleLabApp.API.Data;
 namespace PouleLabApp.API.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260607150528_AddApprovalAndLabToUserr")]
+    partial class AddApprovalAndLabToUserr
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -205,7 +208,7 @@ namespace PouleLabApp.API.Migrations
 
                     b.HasIndex("LaboratoryId");
 
-                    b.ToTable("AnalysisRequests", (string)null);
+                    b.ToTable("AnalysisRequests");
                 });
 
             modelBuilder.Entity("PouleLabApp.API.Models.AnalysisResult", b =>
@@ -251,7 +254,7 @@ namespace PouleLabApp.API.Migrations
 
                     b.HasIndex("SampleId");
 
-                    b.ToTable("AnalysisResults", (string)null);
+                    b.ToTable("AnalysisResults");
                 });
 
             modelBuilder.Entity("PouleLabApp.API.Models.ApplicationUser", b =>
@@ -383,7 +386,7 @@ namespace PouleLabApp.API.Migrations
 
                     b.HasIndex("RequestId");
 
-                    b.ToTable("AuditLogs", (string)null);
+                    b.ToTable("AuditLogs");
                 });
 
             modelBuilder.Entity("PouleLabApp.API.Models.Deadline", b =>
@@ -420,7 +423,7 @@ namespace PouleLabApp.API.Migrations
 
                     b.HasIndex("SampleId");
 
-                    b.ToTable("Deadlines", (string)null);
+                    b.ToTable("Deadlines");
                 });
 
             modelBuilder.Entity("PouleLabApp.API.Models.Laboratory", b =>
@@ -451,7 +454,7 @@ namespace PouleLabApp.API.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Laboratories", (string)null);
+                    b.ToTable("Laboratories");
                 });
 
             modelBuilder.Entity("PouleLabApp.API.Models.Notification", b =>
@@ -485,7 +488,7 @@ namespace PouleLabApp.API.Migrations
 
                     b.HasIndex("RequestId");
 
-                    b.ToTable("Notifications", (string)null);
+                    b.ToTable("Notifications");
                 });
 
             modelBuilder.Entity("PouleLabApp.API.Models.Sample", b =>
@@ -518,7 +521,7 @@ namespace PouleLabApp.API.Migrations
 
                     b.HasIndex("RequestId");
 
-                    b.ToTable("Samples", (string)null);
+                    b.ToTable("Samples");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>

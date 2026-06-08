@@ -55,6 +55,13 @@ namespace PouleLabApp.API.Data
                 .WithMany(s => s.Deadlines)
                 .HasForeignKey(d => d.SampleId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // Relation User → Laboratory (nullable, un user appartient à un labo ou pas)
+            builder.Entity<ApplicationUser>()
+            .HasOne(u => u.Laboratory)
+            .WithMany()
+            .HasForeignKey(u => u.LaboratoryId)
+            .OnDelete(DeleteBehavior.SetNull); // ← si le labo est supprimé, LaboratoryId = null                
         }
     }
 }

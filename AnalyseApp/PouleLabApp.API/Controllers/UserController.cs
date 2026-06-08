@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using PouleLabApp.API.DTOs.Auth;
 using PouleLabApp.API.DTOs.User;
 using PouleLabApp.API.Models;
+using PouleLabApp.API.Data;
 
 namespace PouleLabApp.API.Controllers
 {
@@ -14,10 +15,14 @@ namespace PouleLabApp.API.Controllers
     public class UserController : ControllerBase
     {
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly ApplicationDbContext _context;
 
-        public UserController(UserManager<ApplicationUser> userManager)
+        public UserController(
+            UserManager<ApplicationUser> userManager,
+            ApplicationDbContext context) // ← ajouter
         {
             _userManager = userManager;
+            _context     = context;
         }
 
         // -------------------------------------------------------
@@ -113,20 +118,42 @@ namespace PouleLabApp.API.Controllers
             if (!validRoles.Contains(dto.Role))
                 return BadRequest(new { message = "Rôle invalide." });
 
+            // ← Vérifier labo obligatoire pour les rôles staff
+            var staffRoles = new[] { "Receptionist", "Analyst", "LabChief" };
+            if (staffRoles.Contains(dto.Role))
+            {
+                if (dto.LaboratoryId == null || dto.LaboratoryId == 0)
+                    return BadRequest(new {
+                        message = "Un laboratoire doit être assigné pour ce rôle."
+                    });
+
+                var labExists = await _context.Laboratories
+                    .AnyAsync(l => l.Id == dto.LaboratoryId);
+                if (!labExists)
+                    return BadRequest(new { message = "Laboratoire introuvable." });
+            }
+
             var existing = await _userManager.FindByEmailAsync(dto.Email);
             if (existing != null)
                 return BadRequest(new { message = "Cet email est déjà utilisé." });
 
+            // Filiale par défaut pour Admin/Manager
+            var adminRoles = new[] { "Administrator", "Manager" };
+            var filiale = adminRoles.Contains(dto.Role)
+                ? "Poulina Group Holding"
+                : dto.FilialeName ?? string.Empty;
+
             var user = new ApplicationUser
             {
-                UserName    = dto.Email,
-                Email       = dto.Email,
-                FirstName   = dto.FirstName,
-                LastName    = dto.LastName,
-                PhoneNumber = dto.PhoneNumber,
-                FilialeName = dto.FilialeName ?? string.Empty,
-                IsActive    = true,
-                CreatedAt   = DateTime.UtcNow
+                UserName     = dto.Email,
+                Email        = dto.Email,
+                FirstName    = dto.FirstName,
+                LastName     = dto.LastName,
+                PhoneNumber  = dto.PhoneNumber,
+                FilialeName  = filiale,
+                LaboratoryId = staffRoles.Contains(dto.Role) ? dto.LaboratoryId : null,
+                IsActive     = true,
+                CreatedAt    = DateTime.UtcNow
             };
 
             var result = await _userManager.CreateAsync(user, dto.Password);
