@@ -1,0 +1,142 @@
+<div class="chat-root">
+
+  <!-- Header -->
+  <div class="chat-header">
+    <div class="header-left">
+      <div class="avatar-ai">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10" />
+          <line x1="12" y1="8" x2="12" y2="16" />
+          <line x1="8" y1="12" x2="16" y2="12" />
+        </svg>
+      </div>
+      <div>
+        <div class="header-title">Assistant IA Poulina</div>
+        <div class="header-sub">
+          <span class="online-dot"></span>
+          En ligne · Gemini
+        </div>
+      </div>
+    </div>
+
+    <div class="header-right">
+      <input
+        class="filter-input"
+        placeholder="Filtrer par ville…"
+        [(ngModel)]="ville"
+      />
+      <button class="icon-btn" title="Nouvelle conversation" (click)="reset()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+          <path d="M3 3v5h5" />
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Messages -->
+  <div class="messages" #messagesContainer>
+
+    <ng-container *ngFor="let msg of messages">
+      <div class="bubble-row" [class.bubble-row-user]="msg.role === 'user'"
+        [class.bubble-row-ai]="msg.role === 'assistant'">
+
+        <!-- AI avatar -->
+        <div class="avatar-ai" *ngIf="msg.role === 'assistant'">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="16" />
+            <line x1="8" y1="12" x2="16" y2="12" />
+          </svg>
+        </div>
+
+        <div class="bubble-content">
+          <!-- Typing dots -->
+          <div class="bubble bubble-ai" *ngIf="msg.role === 'assistant' && msg.content === null">
+            <span class="dots">
+              <span class="dot" style="animation-delay:0s"></span>
+              <span class="dot" style="animation-delay:0.18s"></span>
+              <span class="dot" style="animation-delay:0.36s"></span>
+            </span>
+          </div>
+
+          <!-- User bubble -->
+          <div class="bubble bubble-user" *ngIf="msg.role === 'user'">
+            {{ msg.content }}
+          </div>
+
+          <!-- AI bubble -->
+          <div class="bubble bubble-ai"
+            *ngIf="msg.role === 'assistant' && msg.content !== null">
+            {{ msg.content }}
+          </div>
+
+          <!-- Sources / ML metadata -->
+          <div class="meta-row" *ngIf="hasMeta(msg)">
+            <span class="tag tag-green" *ngIf="msg.meta?.souche_prediction">
+              ML · {{ msg.meta?.souche_prediction?.souche }} · {{ msg.meta?.souche_prediction?.confiance_pct }}%
+            </span>
+            <ng-container *ngFor="let r of msg.meta?.retrieved_analyses?.slice(0,2); let i = index">
+              <span class="tag tag-gray">Analyse {{ i + 1 }} · {{ (r.score * 100).toFixed(0) }}%</span>
+            </ng-container>
+            <ng-container *ngFor="let r of msg.meta?.retrieved_labos?.slice(0,2)">
+              <span class="tag tag-gray">{{ r.nom || 'Labo' }}</span>
+            </ng-container>
+            <span class="tag tag-time">{{ msg.meta?.model_used }} · {{ msg.meta?.execution_time_ms }}ms</span>
+          </div>
+
+          <!-- Timestamp -->
+          <div class="ts" [class.ts-right]="msg.role === 'user'" [class.ts-left]="msg.role === 'assistant'">
+            {{ formatTime(msg.ts) }}
+          </div>
+        </div>
+
+      </div>
+    </ng-container>
+
+  </div>
+
+  <!-- Suggestion chips -->
+  <div class="chips" *ngIf="showSuggestions">
+    <button class="chip" *ngFor="let s of suggestions" (click)="send(s)">
+      {{ s }}
+    </button>
+  </div>
+
+  <!-- Input bar -->
+  <div class="input-bar">
+    <textarea
+      #textarea
+      class="chat-textarea"
+      rows="1"
+      placeholder="Votre question… (Entrée pour envoyer, Shift+Entrée pour saut de ligne)"
+      [(ngModel)]="input"
+      (keydown)="onKeyDown($event)"
+      (input)="autoResize($event)"
+    ></textarea>
+
+    <button
+      class="send-btn"
+      [class.send-btn-active]="!loading && input.trim()"
+      [disabled]="loading || !input.trim()"
+      (click)="send()"
+      aria-label="Envoyer"
+    >
+      <span class="spinner" *ngIf="loading"></span>
+      <svg *ngIf="!loading" width="16" height="16" viewBox="0 0 24 24" fill="none"
+        stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="19" x2="12" y2="5" />
+        <polyline points="5 12 12 5 19 12" />
+      </svg>
+    </button>
+  </div>
+
+  <!-- Footer -->
+  <div class="chat-footer">
+    Session : {{ sessionShort }}
+  </div>
+
+</div>

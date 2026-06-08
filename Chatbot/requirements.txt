@@ -1,0 +1,34 @@
+fastapi
+uvicorn[standard]
+pydantic
+pydantic-settings
+pandas
+numpy
+scikit-learn
+mistralai
+anthropic
+openai
+google-genai
+python-dotenv
+
+# SQL Server Driver
+pyodbc
+PyJWT
+
+
+# Optional ML
+xgboost
+
+# Optional embeddings
+sentence-transformers
+
+# Testing
+pytest
+pytest-asyncio
+httpx
+python-multipart
+
+#memoire
+redis>=4.5.0
+fastapi-sessions
+python-jose[cryptography]

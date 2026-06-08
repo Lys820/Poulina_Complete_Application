@@ -65,6 +65,11 @@ export const LAYOUT_ROUTES: Routes = [
         loadComponent: () =>
           import('../../pages/profile/profile.component').then((m) => m.ProfileComponent),
       },
+      {
+        path: 'chat',
+        loadComponent: () =>
+          import('../../pages/chat/chat.component').then((m) => m.ChatComponent),
+      },
     ],
   },
 ];

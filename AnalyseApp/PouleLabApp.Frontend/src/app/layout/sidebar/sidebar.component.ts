@@ -26,6 +26,12 @@ export class SidebarComponent {
   // Navigation — filtrée selon le rôle de l'utilisateur connecté
   navItems: NavItem[] = [
     {
+      label: 'Assistant IA',
+      icon: 'message-circle',  // icône Feather existante
+      route: '/app/chat',
+      roles: ['Administrator', 'Manager', 'Receptionist', 'Analyst', 'LabChief'],
+    },
+    {
       label: 'Tableau de bord',
       icon: 'grid',
       route: '/app/dashboard',
