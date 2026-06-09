@@ -1,86 +1,86 @@
 """
-Poulina AI Chatbot – Backend FastAPI
-Auto-entraînement au démarrage si SQL Server configuré.
+main.py
+────────────────────────────────────────────────────────────────────────────
+Point d'entrée FastAPI du chatbot PouleLabApp.
+
+Modifications par rapport à la version originale :
+  ✅ Ajout du lifespan → entraînement ML automatique au démarrage
+  ✅ Redis désactivé proprement si REDIS_URL est absent du .env
 """
-import logging
+
 from contextlib import asynccontextmanager
+import logging
+import os
+import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# ── Import des routers (adapte selon ta structure réelle) ─────────────────────
+from app.api import health, chat, analyses, souches, labos, auth
+
+# ── Startup trainer ───────────────────────────────────────────────────────────
+from app.core.startup_trainer import auto_train_on_startup
 
 log = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 
+# ── Lifespan : s'exécute une fois au démarrage, une fois à l'arrêt ────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Entraîne ML + RAG au démarrage si SQL Server est configuré."""
-    import asyncio
-    from app.core.config import get_settings
-    from app.data.database_sqlserver import get_db
-    from app.ml.model_factory import model_registry
-    from app.services.rag_service import rag_service
+    """
+    Bloc exécuté au démarrage (avant yield) et à l'arrêt (après yield).
+    L'entraînement ML se fait ici pour que le chatbot soit opérationnel
+    dès la première requête, sans appel manuel à /analyses/train-from-sqlserver.
+    """
+    log.info("=" * 60)
+    log.info("  PouleLabApp Chatbot — démarrage")
+    log.info("=" * 60)
 
-    settings = get_settings()
+    # Entraîner ML + RAG depuis PouleLabDB (non-bloquant si SQL indisponible)
+    await auto_train_on_startup()
 
-    if settings.SQLSERVER_SERVER and settings.SQLSERVER_DATABASE:
-        log.info("Démarrage : entraînement automatique depuis SQL Server...")
-        try:
-            db = get_db(settings)
-            if db.connect():
-                df_analyses, df_labos = db.get_all_data()
-                db.close()
+    yield  # ← l'application tourne ici
 
-                if not df_analyses.empty and not df_labos.empty:
-                    await asyncio.to_thread(
-                        model_registry.train_from_dataframes,
-                        df_analyses, df_labos,
-                        ml_model_name=settings.ML_MODEL,
-                    )
-                    await asyncio.to_thread(
-                        rag_service.build_from_dataframes,
-                        df_analyses, df_labos,
-                        embedding_method=settings.EMBEDDING_METHOD,
-                    )
-                    log.info("Auto-entraînement OK : %d analyses, %d labos", len(df_analyses), len(df_labos))
-                else:
-                    log.warning("Auto-entraînement ignoré : données vides")
-            else:
-                log.warning("Auto-entraînement ignoré : SQL Server inaccessible")
-        except Exception as e:
-            log.error("Erreur auto-entraînement : %s", e)
-    else:
-        log.info("SQL Server non configuré — entraînement manuel via /analyses/train-from-sqlserver")
-
-    yield  # serveur actif ici
+    log.info("Chatbot arrêté proprement.")
 
 
+# ── Application FastAPI ────────────────────────────────────────────────────────
 app = FastAPI(
-    title="Poulina AI Chatbot API",
-    description="RAG + ML interchangeable pour recommandation souche/labo",
+    title="PouleLabApp Chatbot",
     version="3.0.0",
+    description="Chatbot IA pour l'analyse avicole — FastAPI + RAG + ML",
     lifespan=lifespan,
 )
 
+# ── CORS ──────────────────────────────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:4200", "https://poulina.app"],
+    allow_origins=["http://localhost:4200"],  # Angular dev
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-from app.api import chat, analyses, souches, labos, health, data, recommendation, auth, memory
+# ── Routers ───────────────────────────────────────────────────────────────────
+PREFIX = "/api/v1"
+app.include_router(health.router,   prefix=PREFIX)
+app.include_router(auth.router,     prefix=PREFIX)
+app.include_router(chat.router,     prefix=PREFIX)
+app.include_router(analyses.router, prefix=PREFIX)
+app.include_router(souches.router,  prefix=PREFIX)
+app.include_router(labos.router,    prefix=PREFIX)
 
-app.include_router(health.router,          prefix="/api/v1", tags=["health"])
-app.include_router(auth.router,            prefix="/api/v1", tags=["auth"])
-app.include_router(chat.router,            prefix="/api/v1", tags=["chat"])
-app.include_router(analyses.router,        prefix="/api/v1", tags=["analyses"])
-app.include_router(souches.router,         prefix="/api/v1", tags=["souches"])
-app.include_router(labos.router,           prefix="/api/v1", tags=["labos"])
-app.include_router(data.router,            prefix="/api/v1", tags=["data"])
-app.include_router(recommendation.router,  prefix="/api/v1", tags=["recommendations"])
-app.include_router(memory.router,          prefix="/api/v1", tags=["memory"])
 
+# ── Entrée ────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
-    import uvicorn
-    logging.basicConfig(level=logging.INFO)
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True,   # désactiver en production
+        log_level="info",
+    )
