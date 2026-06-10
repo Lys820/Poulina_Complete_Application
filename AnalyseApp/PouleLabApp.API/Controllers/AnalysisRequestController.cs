@@ -68,16 +68,25 @@ namespace PouleLabApp.API.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAll([FromQuery] string? status = null)
         {
-            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
-                ?? User.FindFirst("sub")?.Value;
+            var userId = _userManager.GetUserId(User);
+            var user   = await _userManager.FindByIdAsync(userId!);
 
+            // Admin et Manager voient tout
+            var isAdminOrManager = User.IsInRole("Administrator") ||
+                                User.IsInRole("Manager");
+
+            // Client voit uniquement ses propres demandes
             if (User.IsInRole("Client"))
             {
                 var clientRequests = await _requestService.GetByClientAsync(userId!);
                 return Ok(clientRequests);
             }
 
-            var requests = await _requestService.GetAllAsync(status);
+            // Réceptionniste, Laborantin, Chef de labo →
+            // uniquement les demandes de leur labo
+            int? laboratoryId = isAdminOrManager ? null : user?.LaboratoryId;
+
+            var requests = await _requestService.GetAllAsync(status, userId, laboratoryId);
             return Ok(requests);
         }
 

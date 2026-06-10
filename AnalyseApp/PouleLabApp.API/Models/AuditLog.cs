@@ -10,7 +10,7 @@ namespace PouleLabApp.API.Models
         public string? NewValue { get; set; }
         public DateTime PerformedAt { get; set; } = DateTime.UtcNow;
 
-        public string PerformedById { get; set; } = string.Empty;
+        public string? PerformedById { get; set; }
         public ApplicationUser PerformedBy { get; set; } = null!;
 
         public int RequestId { get; set; }

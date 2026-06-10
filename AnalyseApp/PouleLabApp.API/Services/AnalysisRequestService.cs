@@ -44,11 +44,19 @@ namespace PouleLabApp.API.Services
         }
 
         private async Task NotifyRoleAsync(
-            string role, int requestId, string message)
+            string role, int requestId, string message,
+            int? laboratoryId = null) // ← paramètre optionnel
         {
             var users = await _userManager.GetUsersInRoleAsync(role);
+
             foreach (var user in users.Where(u => u.IsActive))
+            {
+                // ← Si un labo est précisé, ne notifier que les membres de ce labo
+                if (laboratoryId.HasValue && user.LaboratoryId != laboratoryId)
+                    continue;
+
                 await CreateNotificationAsync(user.Id, requestId, message);
+            }
         }
 
         // -------------------------------------------------------
@@ -173,7 +181,8 @@ namespace PouleLabApp.API.Services
                         client.Email!, client.FirstName, request.Id);
 
                 await NotifyRoleAsync("Receptionist", request.Id,
-                    $"Nouvelle demande #{request.Id} soumise par {client?.FirstName} {client?.LastName}.");
+                    $"Nouvelle demande #{request.Id} soumise par {client?.FirstName} {client?.LastName}.",
+                    request.LaboratoryId);
                 await NotifyRoleAsync("Administrator", request.Id,
                     $"Nouvelle demande #{request.Id} soumise.");
                 await NotifyRoleAsync("Manager", request.Id,
@@ -229,7 +238,8 @@ namespace PouleLabApp.API.Services
                 request.Client.Email!, request.Client.FirstName, requestId);
 
             await NotifyRoleAsync("Receptionist", requestId,
-                $"Nouvelle demande #{requestId} soumise par {request.Client.FirstName} {request.Client.LastName}.");
+                $"Nouvelle demande #{requestId} soumise par {request.Client.FirstName} {request.Client.LastName}.",
+                request.LaboratoryId);
             await NotifyRoleAsync("Administrator", requestId,
                 $"Nouvelle demande #{requestId} soumise.");
             await NotifyRoleAsync("Manager", requestId,
@@ -251,6 +261,7 @@ namespace PouleLabApp.API.Services
                 .Include(r => r.Samples)
                     .ThenInclude(s => s.Results)
                 .Include(r => r.Deadlines) // ← inclure les deadlines
+                .AsSplitQuery()
                 .FirstOrDefaultAsync(r => r.Id == requestId);
 
             if (request == null) return null;
@@ -260,7 +271,8 @@ namespace PouleLabApp.API.Services
         // -------------------------------------------------------
         // Récupérer toutes les demandes
         // -------------------------------------------------------
-        public async Task<List<RequestListDto>> GetAllAsync(string? status = null)
+        public async Task<List<RequestListDto>> GetAllAsync(string? status = null, string? userId = null,
+            int? laboratoryId = null)
         {
             var query = _context.AnalysisRequests
                 .Include(r => r.Client)
@@ -271,6 +283,10 @@ namespace PouleLabApp.API.Services
             if (!string.IsNullOrEmpty(status) &&
                 Enum.TryParse<RequestStatus>(status, true, out var parsedStatus))
                 query = query.Where(r => r.Status == parsedStatus);
+
+            // ← Filtrer par labo si un labo est précisé
+            if (laboratoryId.HasValue)
+                query = query.Where(r => r.LaboratoryId == laboratoryId);
 
             var requests = await query
                 .OrderByDescending(r => r.CreatedAt)
@@ -448,7 +464,8 @@ namespace PouleLabApp.API.Services
                 RequestStatus.InReview.ToString());
 
             await NotifyRoleAsync("LabChief", requestId,
-                $"La demande #{requestId} est prête pour validation.");
+                $"La demande #{requestId} est prête pour validation.",
+                request.LaboratoryId);
 
             return await GetByIdAsync(requestId)
                 ?? throw new Exception("Erreur lors de la récupération de la demande.");
@@ -612,7 +629,8 @@ namespace PouleLabApp.API.Services
             await CreateNotificationAsync(request.ClientId, requestId,
                 $"Votre demande #{requestId} a été refusée par le laborantin : {reason}.");
             await NotifyRoleAsync("Receptionist", requestId,
-                $"La demande #{requestId} a été refusée par le laborantin. Une réassignation peut être nécessaire.");
+            $"La demande #{requestId} a été refusée par le laborantin. Une réassignation peut être nécessaire.",
+            request.LaboratoryId);
 
             return await GetByIdAsync(requestId)
                 ?? throw new Exception("Erreur lors de la récupération de la demande.");
@@ -789,23 +807,20 @@ namespace PouleLabApp.API.Services
                     });
                 }
 
-                // ← Urgence : utiliser celle du DTO, ou restaurer l'ancienne
-                var existingUrgency = urgencyByType.GetValueOrDefault(sampleDto.Type.ToLower());
+                // ← Toujours restaurer l'urgence existante (par type d'échantillon)
+                // Si l'échantillon est nouveau → urgence Normal par défaut
+                // Si l'échantillon existait → on remet son urgence
+                var existingUrgency = urgencyByType.GetValueOrDefault(
+                    sampleDto.Type.ToLower().Trim());
+
                 _context.Deadlines.Add(new Deadline
                 {
                     RequestId          = requestId,
                     SampleId           = sample.Id,
-                    IsPerishable       = sampleDto.IsPerishable != default
-                                          ? sampleDto.IsPerishable
-                                          : existingUrgency?.IsPerishable ?? false,
-                    ExpiryDate         = sampleDto.ExpiryDate
-                                          ?? existingUrgency?.ExpiryDate,
-                    UrgencyLevel       = !string.IsNullOrEmpty(sampleDto.UrgencyLevel)
-                                          ? sampleDto.UrgencyLevel
-                                          : existingUrgency?.UrgencyLevel ?? "Normal",
-                    UrgencyDescription = !string.IsNullOrEmpty(sampleDto.UrgencyDescription)
-                                          ? sampleDto.UrgencyDescription
-                                          : existingUrgency?.UrgencyDescription ?? string.Empty
+                    IsPerishable       = existingUrgency?.IsPerishable ?? false,
+                    ExpiryDate         = existingUrgency?.ExpiryDate,
+                    UrgencyLevel       = existingUrgency?.UrgencyLevel ?? "Normal",
+                    UrgencyDescription = existingUrgency?.UrgencyDescription ?? string.Empty
                 });
             }
 
