@@ -58,37 +58,26 @@ export class RequestDetailComponent implements OnInit {
 
   loadRequest(): void {
     this.isLoading.set(true);
+
+    // Historique — un seul appel
+    this.requestService.getHistory(this.requestId).subscribe({
+      next: (data) => this.history.set(data),
+    });
+
     this.requestService.getById(this.requestId).subscribe({
       next: (data) => {
         this.request.set(data);
-        this.buildDeadlineForm();
         this.isLoading.set(false);
-        console.log('Status:', data.status);
-        console.log('Samples:', data.samples);
-        console.log('canEditDeadlines:', this.canEditDeadlines());
-        console.log('isCreator:', this.isCreator());
-        console.log('deadlineForm:', this.deadlineForm);
 
-        // Marquer les notifications liées à cette demande comme lues
+        // ← loadDeadlines appelle buildDeadlineForm en interne
+        // Ne pas appeler buildDeadlineForm ici directement
+        this.loadDeadlines();
+
         this.notificationService.markAsReadByRequestId(this.requestId);
-        // Rafraîchir le badge dans la sidebar/header
         setTimeout(() => this.badgeService.refresh(), 500);
       },
       error: () => this.isLoading.set(false),
     });
-
-    this.requestService.getHistory(this.requestId).subscribe({
-      next: (data) => this.history.set(data),
-    });
-
-    this.loadDeadlines();
-
-    // Charger l'historique pour tous les rôles
-    this.requestService.getHistory(this.requestId).subscribe({
-      next: (data) => this.history.set(data),
-    });
-
-    this.loadDeadlines();
   }
 
   // -------------------------------------------------------
@@ -368,7 +357,11 @@ export class RequestDetailComponent implements OnInit {
 
   loadDeadlines(): void {
     this.requestService.getDeadlines(this.requestId).subscribe({
-      next: (data) => this.deadlines.set(data),
+      next: (data) => {
+        this.deadlines.set(data);
+        // ← Construire le formulaire APRÈS que les deadlines sont chargées
+        this.buildDeadlineForm();
+      },
     });
   }
 

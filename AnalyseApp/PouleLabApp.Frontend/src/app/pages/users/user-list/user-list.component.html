@@ -190,8 +190,8 @@
 
   <!-- Modal édition -->
   @if (showEditModal() && editingUser()) {
-    <div class="modal-overlay">
-      <div class="modal-box">
+    <div class="modal-overlay" (click)="showEditModal.set(false)">
+      <div class="modal-box" (click)="$event.stopPropagation()">
         <div class="modal-header-custom">
           <h5>Modifier l'utilisateur</h5>
           <button class="modal-close" (click)="showEditModal.set(false)" aria-label="Fermer">
@@ -298,8 +298,9 @@
 
   <!-- Modal création -->
   @if (showCreateModal()) {
-    <div class="modal-overlay">
-      <div class="modal-box modal-box-large">
+    <div class="modal-overlay" (click)="showCreateModal.set(false)">
+      <div class="modal-box modal-box-large" (click)="$event.stopPropagation()">
+        <!-- ← stopper la propagation -->
         <div class="modal-header-custom mb-3">
           <h5 class="mb-0">Créer un utilisateur</h5>
           <button class="modal-close" (click)="showCreateModal.set(false)" aria-label="Fermer">
@@ -326,8 +327,8 @@
 
   <!-- Modal confirmation suppression -->
   @if (deleteUserId()) {
-    <div class="modal-overlay">
-      <div class="modal-box">
+    <div class="modal-overlay" (click)="deleteUserId.set(null)">
+      <div class="modal-box" (click)="$event.stopPropagation()">
         <h5>Supprimer le compte</h5>
         <p class="text-muted">
           Êtes-vous sûr de vouloir supprimer le compte de

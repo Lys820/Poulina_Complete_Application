@@ -25,6 +25,7 @@ export class RegisterFormComponent {
   errorMessage = signal('');
   showPassword = signal(false);
   showConfirm = signal(false);
+  laboratories = signal<any[]>([]);
 
   readonly roles = [
     { value: 'Client', label: 'Client' },
@@ -36,6 +37,8 @@ export class RegisterFormComponent {
   ];
 
   readonly brands = ['DICK', 'SNA', 'GIPA', 'MEDOIL'];
+
+  readonly staffRoles = ['Receptionist', 'Analyst', 'LabChief'];
 
   constructor(
     private fb: FormBuilder,
@@ -49,6 +52,7 @@ export class RegisterFormComponent {
         phoneNumber: ['', [Validators.pattern(/^[+]?[\d\s\-().]{8,15}$/)]],
         filialeName: [''],
         role: ['Client', Validators.required],
+        laboratoryId: [null],
         password: [
           '',
           [Validators.required, Validators.minLength(8), this.passwordStrengthValidator],
@@ -57,6 +61,32 @@ export class RegisterFormComponent {
       },
       { validators: this.passwordMatchValidator },
     );
+
+    // ← URL correcte
+    this.http.get<any[]>(`${environment.apiUrl}/laboratories`).subscribe({
+      next: (labs) => this.laboratories.set(labs),
+      error: () => {},
+    });
+
+    // ← Rendre laboratoryId obligatoire dynamiquement selon le rôle
+    this.form.get('role')?.valueChanges.subscribe((role) => {
+      const labCtrl = this.form.get('laboratoryId');
+      if (this.staffRoles.includes(role)) {
+        labCtrl?.setValidators(Validators.required);
+      } else {
+        labCtrl?.clearValidators();
+        labCtrl?.setValue(null);
+      }
+      labCtrl?.updateValueAndValidity();
+    });
+  }
+
+  isStaffRole(): boolean {
+    return this.staffRoles.includes(this.form.get('role')?.value);
+  }
+
+  isClientRole(): boolean {
+    return this.form.get('role')?.value === 'Client';
   }
 
   passwordStrengthValidator(control: AbstractControl) {
@@ -101,10 +131,6 @@ export class RegisterFormComponent {
     return '#059669';
   }
 
-  isClientRole(): boolean {
-    return this.form.get('role')?.value === 'Client';
-  }
-
   hasError(field: string, error: string): boolean {
     const ctrl = this.form.get(field);
     return !!(ctrl?.touched && ctrl?.errors?.[error]);
@@ -115,14 +141,17 @@ export class RegisterFormComponent {
       this.form.markAllAsTouched();
       return;
     }
+
     this.isLoading.set(true);
     this.errorMessage.set('');
+
     const { confirmPassword, ...dto } = this.form.value;
 
-    this.http.post(`${environment.apiUrl}/auth/register`, dto).subscribe({
+    // ← Appel à /user (endpoint admin) et non /auth/register
+    this.http.post(`${environment.apiUrl}/user`, dto).subscribe({
       next: () => {
         this.isLoading.set(false);
-        this.onCreated.emit(); // ← notifie le parent au lieu de naviguer
+        this.onCreated.emit();
       },
       error: (err) => {
         this.isLoading.set(false);

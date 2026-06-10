@@ -96,8 +96,8 @@ export class RequestFormComponent implements OnInit {
   }
 
   loadData(): void {
-    this.labService.getLaboratories().subscribe({
-      next: (labs) => {
+    this.labService.getAll().subscribe({
+      next: (labs: any[]) => {
         this.laboratories.set(labs);
         if (this.isEditMode() && this.requestId()) {
           this.loadExistingRequest(this.requestId()!);
