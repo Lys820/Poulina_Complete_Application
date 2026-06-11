@@ -1,232 +1,368 @@
 """
 app/data/database_sqlserver.py
-────────────────────────────────────────────────────────────────────────────
-Accès à la base PouleLabDB (partagée avec l'API .NET / ASP.NET Identity).
+Couche d'accès aux données — base PouleLabDB (VICTUSL\\SQLEXPRESS)
 
-⚠️  CHANGEMENTS MAJEURS par rapport à l'ancienne base POULINA :
-  - Base         : POULINA           → PouleLabDB
-  - Table users  : dbo.utilisateur   → dbo.AspNetUsers
-  - Colonne ID   : id_utilisateur (int) → Id (nvarchar GUID)
-  - Colonne email: email             → Email (+ NormalizedEmail)
-  - Colonne mdp  : password_hash     → PasswordHash (Base64 PBKDF2-v3)
-  - Colonne actif: actif (bit)       → IsActive (bit)
-  - Rôles        : colonne nom_role  → table AspNetUserRoles + AspNetRoles
+Tables ciblées (schéma EF Core / ASP.NET Identity) :
+  - AspNetUsers / AspNetRoles / AspNetUserRoles  → authentification
+  - Laboratories                                  → labos d'analyse
+  - AnalysisRequests                              → demandes
+  - Samples                                       → échantillons
+  - AnalysisResults                               → résultats
 """
-
 from __future__ import annotations
 
-import os
 import logging
+import os
 from typing import Optional
 
+import pandas as pd
 import pyodbc
 from dotenv import load_dotenv
 
 load_dotenv()
+
 log = logging.getLogger(__name__)
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Configuration
-# ──────────────────────────────────────────────────────────────────────────────
-
-def _build_connection_string() -> str:
-    server   = os.getenv("SQLSERVER_SERVER", r"localhost\SQLEXPRESS")
-    database = os.getenv("SQLSERVER_DATABASE", "PouleLabDB")   # ✅ défaut corrigé
-    driver   = os.getenv("SQLSERVER_DRIVER", "ODBC Driver 17 for SQL Server")
-    trusted  = os.getenv("SQLSERVER_TRUSTED", "yes").lower() == "yes"
-    user     = os.getenv("SQLSERVER_USER", "")
-    password = os.getenv("SQLSERVER_PASSWORD", "")
-
-    base = (
-        f"DRIVER={{{driver}}};"
-        f"SERVER={server};"
-        f"DATABASE={database};"
-        "TrustServerCertificate=yes;"
-    )
-
-    if trusted or not user:
-        return base + "Trusted_Connection=yes;"
-    else:
-        return base + f"UID={user};PWD={password};"
-
-
-# ──────────────────────────────────────────────────────────────────────────────
-# Classe principale
-# ──────────────────────────────────────────────────────────────────────────────
-
 class SqlServerDatabase:
     """
-    Accès à PouleLabDB.
-    Les IDs utilisateurs sont des GUIDs (string), pas des entiers.
+    Connexion Windows Authentication à PouleLabDB.
+    Toutes les requêtes ciblent les tables générées par EF Core.
     """
 
-    def __init__(self):
-        self._conn_str = _build_connection_string()
+    def __init__(
+        self,
+        server: Optional[str] = None,
+        database: Optional[str] = None,
+        driver: Optional[str] = None,
+    ) -> None:
+        self._server = server or os.getenv("SQLSERVER_SERVER", r"VICTUSL\SQLEXPRESS")
+        self._database = database or os.getenv("SQLSERVER_DATABASE", "PouleLabDB")
+        self._driver = driver or os.getenv(
+            "SQLSERVER_DRIVER", "ODBC Driver 17 for SQL Server"
+        )
+        self._conn_str = (
+            f"DRIVER={{{self._driver}}};"
+            f"SERVER={self._server};"
+            f"DATABASE={self._database};"
+            "Trusted_Connection=yes;"
+            "TrustServerCertificate=yes;"
+        )
         self._conn: Optional[pyodbc.Connection] = None
 
-    # ── Connexion ──────────────────────────────────────────────────────────────
+    # ------------------------------------------------------------------
+    # Connexion
+    # ------------------------------------------------------------------
 
     def connect(self) -> bool:
         try:
-            self._conn = pyodbc.connect(self._conn_str, timeout=5)
-            log.info("✅ Connecté à PouleLabDB")
+            self._conn = pyodbc.connect(self._conn_str, timeout=10)
+            log.info("Connexion PouleLabDB OK (%s / %s)", self._server, self._database)
             return True
-        except pyodbc.Error as e:
-            log.error(f"❌ Connexion PouleLabDB échouée : {e}")
+        except Exception as exc:
+            log.error("Connexion PouleLabDB échouée : %s", exc)
+            self._conn = None
             return False
 
-    def disconnect(self):
+    def close(self) -> None:
         if self._conn:
-            self._conn.close()
+            try:
+                self._conn.close()
+            except Exception:
+                pass
             self._conn = None
 
-    def _cursor(self):
-        if not self._conn:
-            self.connect()
-        return self._conn.cursor()
+    def _ensure_connected(self) -> bool:
+        if self._conn is None:
+            return self.connect()
+        return True
 
-    # ── Utilisateurs (ASP.NET Identity) ───────────────────────────────────────
+    # ------------------------------------------------------------------
+    # Authentification  (AspNetUsers + AspNetRoles)
+    # ------------------------------------------------------------------
 
     def get_utilisateur_par_email(self, email: str) -> Optional[dict]:
         """
-        Recherche un utilisateur dans AspNetUsers.
-        Retourne un dict avec les champs nécessaires à l'authentification,
-        ou None si introuvable.
-
-        ✅ Id est un GUID string (ex: "a1b2c3d4-e5f6-...")
-        ✅ Rôle récupéré via AspNetUserRoles + AspNetRoles
+        Retourne un dict avec les champs attendus par app/api/auth.py.
+        Jointure : AspNetUsers → AspNetUserRoles → AspNetRoles.
         """
+        if not self._ensure_connected():
+            return None
         try:
-            cur = self._cursor()
-
-            # NormalizedEmail est stocké en majuscules par ASP.NET Identity
-            normalized = email.upper()
-
-            cur.execute("""
+            cursor = self._conn.cursor()
+            cursor.execute(
+                """
                 SELECT
-                    u.Id,
-                    u.Email,
-                    u.PasswordHash,
-                    u.IsActive,
-                    u.FirstName,
-                    u.LastName,
-                    r.Name AS RoleName
-                FROM dbo.AspNetUsers u
-                LEFT JOIN dbo.AspNetUserRoles ur ON ur.UserId = u.Id
-                LEFT JOIN dbo.AspNetRoles r      ON r.Id = ur.RoleId
+                    u.Id                AS id_utilisateur,
+                    u.PasswordHash      AS password_hash,
+                    u.LastName          AS nom,
+                    u.FirstName         AS prenom,
+                    u.FilialeName       AS filiale,
+                    u.IsActive          AS actif,
+                    ISNULL(r.Name, '')  AS nom_role,
+                    NULL                AS permissions
+                FROM AspNetUsers u
+                LEFT JOIN AspNetUserRoles ur ON ur.UserId = u.Id
+                LEFT JOIN AspNetRoles r      ON r.Id      = ur.RoleId
                 WHERE u.NormalizedEmail = ?
-            """, normalized)
-
-            row = cur.fetchone()
+                """,
+                email.upper(),
+            )
+            row = cursor.fetchone()
             if row is None:
                 return None
-
             return {
-                "id_utilisateur": row.Id,          # GUID string
-                "email":          row.Email,
-                "password_hash":  row.PasswordHash, # Base64 PBKDF2-v3
-                "actif":          row.IsActive,
-                "nom":            row.LastName  or "",
-                "prenom":         row.FirstName or "",
-                "nom_role":       row.RoleName  or "Client",
-                # Permissions par défaut selon le rôle
-                "permissions":    _permissions_pour_role(row.RoleName),
+                "id_utilisateur": row.id_utilisateur,
+                "password_hash":  row.password_hash,
+                "nom":            row.nom,
+                "prenom":         row.prenom,
+                "filiale":        row.filiale,
+                "actif":          int(row.actif) if row.actif is not None else 0,
+                "nom_role":       row.nom_role,
+                "permissions":    row.permissions,
             }
-
-        except pyodbc.Error as e:
-            log.error(f"get_utilisateur_par_email({email}) : {e}")
+        except Exception as exc:
+            log.error("get_utilisateur_par_email(%s) : %s", email, exc)
             return None
 
-    # ── Données métier ─────────────────────────────────────────────────────────
+    # ------------------------------------------------------------------
+    # Données d'entraînement ML / RAG
+    # ------------------------------------------------------------------
 
-    def get_analyses(self, limit: int = 1000) -> list[dict]:
-        """Retourne les demandes d'analyse pour l'entraînement du modèle ML."""
+    def get_analyses(self) -> pd.DataFrame:
+        """
+        Retourne les analyses de PouleLabDB pour l'entraînement ML et le RAG.
+        Jointure : AnalysisRequests → Samples → AnalysisResults → Laboratories → AspNetUsers.
+        Retourne un DataFrame vide si la base ne contient pas encore de données.
+        """
+        if not self._ensure_connected():
+            return pd.DataFrame()
         try:
-            cur = self._cursor()
-            cur.execute(f"""
-                SELECT TOP {limit} *
-                FROM dbo.AnalysisRequests
-                ORDER BY CreatedAt DESC
-            """)
-            cols = [c[0] for c in cur.description]
-            return [dict(zip(cols, row)) for row in cur.fetchall()]
-        except pyodbc.Error as e:
-            log.error(f"get_analyses : {e}")
+            query = """
+                SELECT
+                    ar.Id               AS id_demande,
+                    ar.Status           AS statut,
+                    ar.Brand            AS marque,
+                    ar.Notes            AS notes,
+                    ar.CreatedAt        AS date_creation,
+                    ar.SubmittedAt      AS date_soumission,
+                    ar.ReceivedAt       AS date_reception,
+                    l.Name              AS nom_laboratoire,
+                    l.Address           AS adresse_labo,
+                    u.FilialeName       AS filiale_client,
+                    u.FirstName + ' ' + u.LastName  AS nom_client,
+                    s.Id                AS id_echantillon,
+                    s.Type              AS type_echantillon,
+                    s.Characteristics   AS caracteristiques,
+                    s.Quantity          AS quantite,
+                    s.Unit              AS unite,
+                    res.Id              AS id_resultat,
+                    res.AnalysisName    AS type_analyse,
+                    res.MeasuredValue   AS valeur_mesuree,
+                    res.LowerBound      AS borne_inf,
+                    res.UpperBound      AS borne_sup,
+                    res.IsAnomaly       AS est_anomalie,
+                    res.RecordedAt      AS date_resultat
+                FROM AnalysisRequests ar
+                INNER JOIN Laboratories l  ON l.Id  = ar.LaboratoryId
+                INNER JOIN AspNetUsers  u  ON u.Id  = ar.ClientId
+                LEFT  JOIN Samples      s  ON s.RequestId  = ar.Id
+                LEFT  JOIN AnalysisResults res ON res.SampleId = s.Id
+                WHERE ar.IsDraft = 0
+                ORDER BY ar.CreatedAt DESC
+            """
+            df = pd.read_sql(query, self._conn)
+            log.info("get_analyses : %d lignes chargées", len(df))
+            return df
+        except Exception as exc:
+            log.error("get_analyses : %s", exc)
+            return pd.DataFrame()
+
+    # Alias pour compatibilité avec l'ancien nom utilisé dans certains tests
+    def get_analyses_data(self) -> pd.DataFrame:
+        return self.get_analyses()
+
+    def get_labos(self) -> pd.DataFrame:
+        """
+        Retourne les laboratoires de PouleLabDB pour le RAG et le scoring.
+        Les colonnes calculées (score_global, tier_labo, etc.) sont fournies
+        avec des valeurs par défaut quand elles ne sont pas en base.
+        """
+        if not self._ensure_connected():
+            return pd.DataFrame()
+        try:
+            query = """
+                SELECT
+                    l.Id            AS id_laboratoire,
+                    l.Name          AS nom_laboratoire,
+                    l.Address       AS adresse,
+                    l.Description   AS description,
+                    l.TemplateType  AS template_type,
+                    l.CreatedAt     AS date_creation,
+                    -- Colonnes calculées/dérivées (valeurs par défaut)
+                    7.0             AS score_global,
+                    'B'             AS tier_labo,
+                    1               AS accepte_urgence,
+                    1               AS certifie_iso
+                FROM Laboratories l
+                ORDER BY l.Id
+            """
+            df = pd.read_sql(query, self._conn)
+            log.info("get_labos : %d laboratoires chargés", len(df))
+            return df
+        except Exception as exc:
+            log.error("get_labos : %s", exc)
+            return pd.DataFrame()
+
+    # Alias
+    def get_labos_data(self) -> pd.DataFrame:
+        return self.get_labos()
+
+    def get_all_data(self) -> tuple[pd.DataFrame, pd.DataFrame]:
+        """Retourne (df_analyses, df_labos) en une seule connexion."""
+        if not self._ensure_connected():
+            return pd.DataFrame(), pd.DataFrame()
+        return self.get_analyses(), self.get_labos()
+
+    # ------------------------------------------------------------------
+    # Données de référence pour les endpoints /data/*
+    # ------------------------------------------------------------------
+
+    def get_centres(self) -> list[dict]:
+        """
+        Les centres d'élevage sont les filiales des clients dans PouleLabDB.
+        Retourne les filiales distinctes des utilisateurs avec rôle Client.
+        """
+        if not self._ensure_connected():
+            return []
+        try:
+            cursor = self._conn.cursor()
+            cursor.execute(
+                """
+                SELECT DISTINCT
+                    u.FilialeName   AS nom_centre,
+                    COUNT(ar.Id)    AS nb_demandes
+                FROM AspNetUsers u
+                LEFT JOIN AspNetUserRoles ur ON ur.UserId = u.Id
+                LEFT JOIN AspNetRoles r      ON r.Id      = ur.RoleId
+                LEFT JOIN AnalysisRequests ar ON ar.ClientId = u.Id
+                WHERE r.NormalizedName = 'CLIENT'
+                  AND u.FilialeName IS NOT NULL
+                  AND u.FilialeName <> ''
+                GROUP BY u.FilialeName
+                ORDER BY nb_demandes DESC
+                """
+            )
+            rows = cursor.fetchall()
+            return [
+                {"nom_centre": row[0], "nb_demandes": row[1]}
+                for row in rows
+            ]
+        except Exception as exc:
+            log.error("get_centres : %s", exc)
             return []
 
-    def get_labos(self) -> list[dict]:
-        """Retourne les laboratoires actifs."""
+    def get_souches(self) -> list[dict]:
+        """
+        Les souches sont déduites des types d'échantillons et des analyses.
+        Retourne les combinaisons type_echantillon / type_analyse distinctes.
+        """
+        if not self._ensure_connected():
+            return []
         try:
-            cur = self._cursor()
-            cur.execute("""
-                SELECT *
-                FROM dbo.Laboratories
-                ORDER BY Name
-            """)
-            cols = [c[0] for c in cur.description]
-            return [dict(zip(cols, row)) for row in cur.fetchall()]
-        except pyodbc.Error as e:
-            log.error(f"get_labos : {e}")
+            cursor = self._conn.cursor()
+            cursor.execute(
+                """
+                SELECT DISTINCT
+                    s.Type          AS type_echantillon,
+                    res.AnalysisName AS type_analyse,
+                    COUNT(*)         AS nb_analyses
+                FROM Samples s
+                INNER JOIN AnalysisResults res ON res.SampleId = s.Id
+                GROUP BY s.Type, res.AnalysisName
+                ORDER BY nb_analyses DESC
+                """
+            )
+            rows = cursor.fetchall()
+            return [
+                {
+                    "type_echantillon": row[0],
+                    "type_analyse":     row[1],
+                    "nb_analyses":      row[2],
+                }
+                for row in rows
+            ]
+        except Exception as exc:
+            log.error("get_souches : %s", exc)
             return []
 
-    def get_centres(self, gouvernorat: Optional[str] = None) -> list[dict]:
-        """Retourne les centres d'élevage, avec filtre optionnel par gouvernorat."""
+    def get_count(self) -> dict:
+        """Compteurs globaux pour l'endpoint /data/count."""
+        if not self._ensure_connected():
+            return {"analyses": 0, "labos": 0, "souches": 0, "centres": 0}
         try:
-            cur = self._cursor()
-            if gouvernorat:
-                cur.execute(
-                    "SELECT * FROM dbo.Farms WHERE Gouvernorat = ? ORDER BY Name",
-                    gouvernorat
-                )
-            else:
-                cur.execute("SELECT * FROM dbo.Farms ORDER BY Name")
-            cols = [c[0] for c in cur.description]
-            return [dict(zip(cols, row)) for row in cur.fetchall()]
-        except pyodbc.Error as e:
-            log.error(f"get_centres : {e}")
-            return []
+            cursor = self._conn.cursor()
+            cursor.execute("SELECT COUNT(*) FROM AnalysisRequests WHERE IsDraft = 0")
+            nb_analyses = cursor.fetchone()[0]
+            cursor.execute("SELECT COUNT(*) FROM Laboratories")
+            nb_labos = cursor.fetchone()[0]
+            cursor.execute(
+                "SELECT COUNT(DISTINCT s.Type) FROM Samples s"
+            )
+            nb_souches = cursor.fetchone()[0]
+            cursor.execute(
+                "SELECT COUNT(DISTINCT u.FilialeName) "
+                "FROM AspNetUsers u "
+                "WHERE u.FilialeName IS NOT NULL AND u.FilialeName <> ''"
+            )
+            nb_centres = cursor.fetchone()[0]
+            return {
+                "analyses": nb_analyses,
+                "labos":    nb_labos,
+                "souches":  nb_souches,
+                "centres":  nb_centres,
+            }
+        except Exception as exc:
+            log.error("get_count : %s", exc)
+            return {"analyses": 0, "labos": 0, "souches": 0, "centres": 0}
 
-    # ── Health check ───────────────────────────────────────────────────────────
+    # ------------------------------------------------------------------
+    # Sessions de chat (compatibilité avec les anciens appels)
+    # ------------------------------------------------------------------
 
-    def ping(self) -> bool:
-        """Vérifie que la connexion est vivante."""
-        try:
-            cur = self._cursor()
-            cur.execute("SELECT 1")
-            return True
-        except Exception:
-            return False
+    def create_session(self, session_id: str, user_id: str) -> bool:
+        """Stub — les sessions sont en RAM dans cette version."""
+        return True
+
+    def save_message(
+        self, session_id: str, role: str, content: str
+    ) -> bool:
+        """Stub — les messages sont en RAM dans cette version."""
+        return True
+
+    def get_messages(
+        self, session_id: str, limit: int = 20
+    ) -> list[dict]:
+        """Stub — retourne une liste vide (mémoire RAM uniquement)."""
+        return []
+
+    def update_session_inactive(self, session_id: str) -> None:
+        """Stub."""
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Helpers
-# ──────────────────────────────────────────────────────────────────────────────
+# ------------------------------------------------------------------
+# Factory
+# ------------------------------------------------------------------
 
-def _permissions_pour_role(role: Optional[str]) -> list[str]:
+def get_db(settings=None) -> SqlServerDatabase:
     """
-    Mappe un rôle ASP.NET Identity vers des permissions Python.
-    Adapte selon les rôles définis dans DataSeeder.cs.
+    Retourne une instance de SqlServerDatabase.
+    Si settings est fourni (injection FastAPI), utilise ses attributs.
+    Sinon, lit les variables d'environnement.
     """
-    mapping = {
-        "Admin":    ["CHAT_READ", "CHAT_ML", "ADMIN", "DATA_WRITE"],
-        "Analyst":  ["CHAT_READ", "CHAT_ML", "DATA_WRITE"],
-        "Client":   ["CHAT_READ"],
-    }
-    return mapping.get(role or "", ["CHAT_READ"])
-
-
-# ──────────────────────────────────────────────────────────────────────────────
-# Singleton
-# ──────────────────────────────────────────────────────────────────────────────
-
-_db_instance: Optional[SqlServerDatabase] = None
-
-
-def get_db() -> SqlServerDatabase:
-    """Retourne l'instance singleton de la base de données."""
-    global _db_instance
-    if _db_instance is None:
-        _db_instance = SqlServerDatabase()
-        _db_instance.connect()
-    return _db_instance
+    if settings is not None:
+        server   = getattr(settings, "SQLSERVER_SERVER",   None)
+        database = getattr(settings, "SQLSERVER_DATABASE", None)
+        driver   = getattr(settings, "SQLSERVER_DRIVER",   None)
+        return SqlServerDatabase(server=server, database=database, driver=driver)
+    return SqlServerDatabase()
