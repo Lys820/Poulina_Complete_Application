@@ -10,9 +10,9 @@ namespace PouleLabApp.API.Data
         {
             var optionsBuilder = new DbContextOptionsBuilder<ApplicationDbContext>();
             optionsBuilder.UseSqlServer(
-                "Server=localhost;Database=PouleLabDB;Trusted_Connection=True;TrustServerCertificate=True"
+                "Server=VICTUSL\\SQLEXPRESS;Database=PouleLabDB;Trusted_Connection=True;TrustServerCertificate=True"
             );
-           return new ApplicationDbContext(optionsBuilder.Options);
+            return new ApplicationDbContext(optionsBuilder.Options);
         }
     }
 }

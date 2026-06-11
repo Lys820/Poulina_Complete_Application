@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\lysia\\Documents\\IUT1\\Stage\\Projet\\Poulina_Complete_Application\\AnalyseApp\\PouleLabApp.API\\PouleLabApp.API.csproj": {}
+    "C:\\Users\\lysia\\Documents\\IUT1\\Stage\\Projet\\Poulina_Complete_Application\\AnalyseApp\\pouleLabApp.Api\\PouleLabApp.API.csproj": {}
   },
   "projects": {
-    "C:\\Users\\lysia\\Documents\\IUT1\\Stage\\Projet\\Poulina_Complete_Application\\AnalyseApp\\PouleLabApp.API\\PouleLabApp.API.csproj": {
+    "C:\\Users\\lysia\\Documents\\IUT1\\Stage\\Projet\\Poulina_Complete_Application\\AnalyseApp\\pouleLabApp.Api\\PouleLabApp.API.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\lysia\\Documents\\IUT1\\Stage\\Projet\\Poulina_Complete_Application\\AnalyseApp\\PouleLabApp.API\\PouleLabApp.API.csproj",
+        "projectUniqueName": "C:\\Users\\lysia\\Documents\\IUT1\\Stage\\Projet\\Poulina_Complete_Application\\AnalyseApp\\pouleLabApp.Api\\PouleLabApp.API.csproj",
         "projectName": "PouleLabApp.API",
-        "projectPath": "C:\\Users\\lysia\\Documents\\IUT1\\Stage\\Projet\\Poulina_Complete_Application\\AnalyseApp\\PouleLabApp.API\\PouleLabApp.API.csproj",
+        "projectPath": "C:\\Users\\lysia\\Documents\\IUT1\\Stage\\Projet\\Poulina_Complete_Application\\AnalyseApp\\pouleLabApp.Api\\PouleLabApp.API.csproj",
         "packagesPath": "C:\\Users\\lysia\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\lysia\\Documents\\IUT1\\Stage\\Projet\\Poulina_Complete_Application\\AnalyseApp\\PouleLabApp.API\\obj\\",
+        "outputPath": "C:\\Users\\lysia\\Documents\\IUT1\\Stage\\Projet\\Poulina_Complete_Application\\AnalyseApp\\pouleLabApp.Api\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\lysia\\AppData\\Roaming\\NuGet\\NuGet.Config"

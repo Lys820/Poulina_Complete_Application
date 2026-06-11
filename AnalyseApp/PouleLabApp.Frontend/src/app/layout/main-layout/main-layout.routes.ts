@@ -67,11 +67,11 @@ export const LAYOUT_ROUTES: Routes = [
           import('../../pages/profile/profile.component').then((m) => m.ProfileComponent),
       },
       {
-<<<<<<< HEAD
         path: 'chat',
         loadComponent: () =>
           import('../../pages/chat/chat.component').then((m) => m.ChatComponent),
-=======
+      },
+      {
         path: 'laboratories',
         canActivate: [roleGuard],
         data: { roles: ['Administrator'] },
@@ -79,7 +79,6 @@ export const LAYOUT_ROUTES: Routes = [
           import('../../pages/laboratories/laboratory-list.component').then(
             (m) => m.LaboratoryListComponent,
           ),
->>>>>>> nouvelle-branche
       },
     ],
   },

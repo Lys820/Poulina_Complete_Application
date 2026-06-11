@@ -125,7 +125,7 @@ namespace PouleLabApp.API.Data
                 );
                 await context.SaveChangesAsync();
             }
-                Console.WriteLine("[Seeder] Laboratoires créés : DICK, SNA, GIPA, MEDOIL");
+                //Console.WriteLine("[Seeder] Laboratoires créés : DICK, SNA, GIPA, MEDOIL");
             }
         }
     }
