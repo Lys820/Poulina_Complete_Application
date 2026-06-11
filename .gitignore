@@ -30,3 +30,6 @@ Chatbot/.env
 Chatbot/.env
 AnalyseApp/PouleLabApp.API/bin/Debug/
 /Chatbot/app/api/__pycache__
+/Chatbot/app/services/__pycache__
+/AnalyseApp/PouleLabApp.API/obj
+/AnalyseApp/PouleLabApp.API/bin

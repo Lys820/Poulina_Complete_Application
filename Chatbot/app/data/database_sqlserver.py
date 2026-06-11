@@ -56,11 +56,17 @@ class SqlServerDatabase:
 
     def connect(self) -> bool:
         try:
-            self._conn = pyodbc.connect(self._conn_str, timeout=10)
-            log.info("Connexion PouleLabDB OK (%s / %s)", self._server, self._database)
+            conn_str = (
+                f"DRIVER={{{self.driver}}};"
+                f"SERVER={self.server};"
+                f"DATABASE={self.database};"
+                "Trusted_Connection=yes;"
+                "TrustServerCertificate=yes;"   # <- ligne a verifier / ajouter
+            )
+            self._conn = pyodbc.connect(conn_str, timeout=5)
             return True
-        except Exception as exc:
-            log.error("Connexion PouleLabDB échouée : %s", exc)
+        except Exception as e:
+            logging.getLogger(__name__).error(f"Connexion SQL Server impossible : {e}")
             self._conn = None
             return False
 
