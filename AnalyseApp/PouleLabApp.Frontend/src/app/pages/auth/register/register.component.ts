@@ -25,15 +25,7 @@ export class RegisterComponent {
   showPassword = signal(false);
   showConfirm = signal(false);
 
-  readonly roles = [
-    { value: 'Client', label: 'Client' },
-    { value: 'Receptionist', label: 'Réceptionniste' },
-    { value: 'Analyst', label: 'Laborantin' },
-    { value: 'LabChief', label: 'Chef de laboratoire' },
-    { value: 'Manager', label: 'Manager' },
-    { value: 'Administrator', label: 'Administrateur' },
-  ];
-
+  // ← Plus de sélection de rôle — uniquement les filiales
   readonly brands = ['DICK', 'SNA', 'GIPA', 'MEDOIL'];
 
   constructor(
@@ -47,8 +39,7 @@ export class RegisterComponent {
         lastName: ['', [Validators.required, Validators.minLength(2)]],
         email: ['', [Validators.required, Validators.email]],
         phoneNumber: ['', [Validators.pattern(/^[+]?[\d\s\-().]{8,15}$/)]],
-        filialeName: [''],
-        role: ['Client', Validators.required],
+        filialeName: ['', Validators.required], // ← obligatoire
         password: [
           '',
           [Validators.required, Validators.minLength(8), this.passwordStrengthValidator],
@@ -59,7 +50,6 @@ export class RegisterComponent {
     );
   }
 
-  // Validateur — mot de passe fort
   passwordStrengthValidator(control: AbstractControl) {
     const v = control.value as string;
     if (!v) return null;
@@ -71,14 +61,12 @@ export class RegisterComponent {
     return null;
   }
 
-  // Validateur — confirmation mot de passe
   passwordMatchValidator(group: AbstractControl) {
     const pass = group.get('password')?.value;
     const confirm = group.get('confirmPassword')?.value;
     return pass === confirm ? null : { mismatch: true };
   }
 
-  // Indicateur de force du mot de passe
   get passwordStrength(): number {
     const v = (this.form.get('password')?.value as string) ?? '';
     let score = 0;
@@ -102,14 +90,9 @@ export class RegisterComponent {
   get strengthColor(): string {
     const s = this.passwordStrength;
     if (s <= 1) return '#DC2626';
-    if (s === 2) return '#F59E0B';
-    if (s === 3) return '#F59E0B';
+    if (s <= 3) return '#F59E0B';
     if (s === 4) return '#10B981';
     return '#059669';
-  }
-
-  isClientRole(): boolean {
-    return this.form.get('role')?.value === 'Client';
   }
 
   submit(): void {

@@ -19,7 +19,7 @@ namespace PouleLabApp.API.Controllers
 
         public UserController(
             UserManager<ApplicationUser> userManager,
-            ApplicationDbContext context) // ← ajouter
+            ApplicationDbContext context)
         {
             _userManager = userManager;
             _context     = context;
@@ -226,6 +226,56 @@ namespace PouleLabApp.API.Controllers
             var user = await _userManager.FindByIdAsync(id);
             if (user == null)
                 return NotFound(new { message = "Utilisateur introuvable." });
+
+            // ← Mettre RecordedById à null dans AnalysisResults
+            var analysisResults = await _context.AnalysisResults
+                .Where(r => r.RecordedById == id)
+                .ToListAsync();
+            foreach (var ar in analysisResults)
+                ar.RecordedById = null;
+
+            // ← Mettre PerformedById à null dans AuditLogs
+            var auditLogs = await _context.AuditLogs
+                .Where(a => a.PerformedById == id)
+                .ToListAsync();
+            foreach (var log in auditLogs)
+                log.PerformedById = null;
+
+            // ← Mettre AssignedToId à null dans AnalysisRequests
+            var assignedRequests = await _context.AnalysisRequests
+                .Where(r => r.AssignedToId == id)
+                .ToListAsync();
+            foreach (var req in assignedRequests)
+                req.AssignedToId = null;
+
+            // ← Supprimer les notifications de cet utilisateur
+            var notifications = await _context.Notifications
+                .Where(n => n.RecipientId == id)
+                .ToListAsync();
+            _context.Notifications.RemoveRange(notifications);
+
+            // ← Supprimer toutes les demandes dont l'utilisateur est le client
+            var clientRequests = await _context.AnalysisRequests
+                .Include(r => r.Samples)
+                    .ThenInclude(s => s.Results)
+                .Include(r => r.Deadlines)
+                .Include(r => r.AuditLogs)
+                .Include(r => r.Notifications)
+                .Where(r => r.ClientId == id)
+                .ToListAsync();
+
+            foreach (var req in clientRequests)
+            {
+                _context.AnalysisResults.RemoveRange(
+                    req.Samples.SelectMany(s => s.Results));
+                _context.Deadlines.RemoveRange(req.Deadlines);
+                _context.Samples.RemoveRange(req.Samples);
+                _context.AuditLogs.RemoveRange(req.AuditLogs);
+                _context.Notifications.RemoveRange(req.Notifications);
+                _context.AnalysisRequests.Remove(req);
+            }
+
+            await _context.SaveChangesAsync();
 
             var result = await _userManager.DeleteAsync(user);
             if (!result.Succeeded)

@@ -7,7 +7,10 @@ namespace PouleLabApp.API.Services.Interfaces
         Task<RequestDetailDto> CreateAsync(string clientId, CreateRequestDto dto);
         Task<RequestDetailDto> SubmitAsync(int requestId, string clientId);
         Task<RequestDetailDto?> GetByIdAsync(int requestId);
-        Task<List<RequestListDto>> GetAllAsync(string? status = null);
+        Task<List<RequestListDto>> GetAllAsync(
+            string? status = null,
+            string? userId = null,
+            int? laboratoryId = null);
         Task<List<RequestListDto>> GetByClientAsync(string clientId);
         Task<RequestDetailDto> ReceiveAsync(int requestId, string receptionistId);
         Task<RequestDetailDto> AssignAsync(int requestId, string analystId);

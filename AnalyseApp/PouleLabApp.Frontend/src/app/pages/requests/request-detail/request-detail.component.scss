@@ -233,21 +233,95 @@
 }
 
 // =============================================
-// URGENCE & PÉREMPTION
+// URGENCE & PÉREMPTION — Formulaire
 // =============================================
-.urgency-card {
-  border: 1px solid var(--border-color);
-  border-radius: 10px;
-  padding: 12px 14px;
-  margin-bottom: 10px;
-  position: relative;
+.deadline-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sample-deadline-card {
+  border: 1.5px solid var(--border-color);
+  border-radius: 12px;
+  overflow: hidden;
+  background: white;
   transition: box-shadow 0.2s;
 
   &:hover {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
   }
+}
+
+.sample-deadline-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: var(--light);
+  border-bottom: 1px solid var(--border-color);
+
+  strong {
+    font-size: 14px;
+    color: var(--dark);
+  }
+
+  .sample-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--primary);
+    flex-shrink: 0;
+  }
+}
+
+.deadline-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  padding: 16px;
+}
+
+.deadline-field {
+  .form-label {
+    font-weight: 500;
+    margin-bottom: 6px;
+  }
+}
+
+// =============================================
+// URGENCE & PÉREMPTION — Affichage
+// =============================================
+.urgency-card {
+  border: 1.5px solid var(--border-color);
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin-bottom: 12px;
+  position: relative;
+  background: white;
+  transition: box-shadow 0.2s;
+  border-left-width: 4px;
+
   &:last-child {
     margin-bottom: 0;
+  }
+  &:hover {
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.07);
+  }
+
+  // Couleur bordure gauche selon urgence
+  &.urgency-card-normal {
+    border-left-color: #10b981;
+  }
+  &.urgency-card-urgent {
+    border-left-color: #f59e0b;
+  }
+  &.urgency-card-tresurgent,
+  &.urgency-card-tr-surgent {
+    border-left-color: #ef4444;
+  }
+  &.urgency-card-critique {
+    border-left-color: #7c3aed;
   }
 }
 
@@ -255,16 +329,17 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 
   strong {
-    font-size: 13px;
+    font-size: 14px;
+    font-weight: 700;
     color: var(--dark);
   }
 
   .sample-dot {
-    width: 8px;
-    height: 8px;
+    width: 9px;
+    height: 9px;
     border-radius: 50%;
     background: var(--primary);
     flex-shrink: 0;
@@ -275,28 +350,28 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .urgency-badge {
-  padding: 3px 10px;
+  padding: 4px 12px;
   border-radius: 20px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   flex-shrink: 0;
 
   &.urgency-normal {
     background: #ecfdf5;
-    color: #10b981;
+    color: #059669;
   }
   &.urgency-urgent {
     background: #fffbeb;
-    color: #f59e0b;
+    color: #d97706;
   }
   &.urgency-tresurgent,
   &.urgency-tr-surgent {
     background: #fef2f2;
-    color: #ef4444;
+    color: #dc2626;
   }
   &.urgency-critique {
     background: #f5f3ff;
@@ -315,11 +390,16 @@
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: var(--danger);
+  padding: 6px 10px;
+  border-radius: 8px;
+  width: fit-content;
+
+  color: #dc2626;
+  background: #fef2f2;
 
   &.not-perishable {
-    color: var(--success);
-    font-size: 11px;
+    color: #059669;
+    background: #ecfdf5;
   }
 
   svg {
@@ -329,20 +409,27 @@
 
 .delete-deadline-btn {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  top: 14px;
+  right: 14px;
   background: none;
   border: none;
-  padding: 2px;
+  padding: 4px;
   cursor: pointer;
   color: var(--text-muted);
   opacity: 0.4;
   display: inline-flex;
   align-items: center;
+  border-radius: 6px;
   transition: all 0.2s;
 
   &:hover {
     opacity: 1;
     color: var(--danger);
+    background: #fef2f2;
   }
+}
+
+.deadline-separator {
+  margin: 15px 0;
+  border-color: var(--border-color);
 }

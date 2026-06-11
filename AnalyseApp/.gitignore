@@ -1,0 +1,26 @@
+# Build output
+obj/
+Debug/
+bin/
+.pytest_cache/
+
+# Env
+.env
+.env.*
+*.env
+Chatbot/.env
+
+# Data files
+*.csv
+*.pkl
+*.bin
+*.pickle
+*.sqlite3
+*.pyc
+*.log
+*.cache
+*.so
+*.dylib
+*.ttf
+*.pdb
+*.exe

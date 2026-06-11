@@ -343,13 +343,22 @@
                 </form>
               }
             }
+            <!-- ← Séparateur entre formulaire et affichage -->
+            @if (showDeadlineForm() && deadlines().length > 0) {
+              <hr class="deadline-separator" />
+            }
 
             <!-- Affichage -->
             @if (deadlines().length === 0) {
               <p class="text-muted small mb-0">Aucune information d'urgence définie.</p>
             } @else {
               @for (deadline of deadlines(); track deadline.id) {
-                <div class="urgency-card">
+                <div
+                  class="urgency-card"
+                  [ngClass]="
+                    'urgency-card-' + deadline.urgencyLevel.toLowerCase().replace('è', 'e')
+                  "
+                >
                   <div class="urgency-sample-name">
                     <span class="sample-dot"></span>
                     <strong>{{ deadline.sampleType }}</strong>
