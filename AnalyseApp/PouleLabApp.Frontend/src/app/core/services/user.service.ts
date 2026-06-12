@@ -66,4 +66,8 @@ export class UserService {
   getLaboratories(): Observable<any[]> {
     return this.http.get<any[]>(`${environment.apiUrl}/laboratories`);
   }
+
+  approveUser(id: string): Observable<any> {
+    return this.http.post(`${this.url}/${id}/approve`, {});
+  }
 }

@@ -12,7 +12,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { UserDto } from '../../../core/models/user.model';
 import { RegisterComponent } from '../../auth/register/register.component';
 import { RegisterFormComponent } from '../../auth/register/register-form.component';
-
+import { extractErrorMessage } from '../../../core/utils/error.utils';
 @Component({
   selector: 'app-user-list',
   standalone: true,
@@ -37,6 +37,7 @@ export class UserListComponent implements OnInit {
   deleteUserId = signal<string | null>(null);
   deleteUserName = signal('');
   laboratories = signal<any[]>([]);
+  pendingUsers = signal<UserDto[]>([]);
 
   readonly roles = ['Administrator', 'Manager', 'Receptionist', 'Analyst', 'LabChief', 'Client'];
 
@@ -76,8 +77,9 @@ export class UserListComponent implements OnInit {
   loadUsers(): void {
     this.isLoading.set(true);
     this.userService.getAll().subscribe({
-      next: (data) => {
-        this.users.set(data);
+      next: (data: UserDto[]) => {
+        this.users.set(data.filter((u) => u.isActive));
+        this.pendingUsers.set(data.filter((u) => !u.isActive));
         this.isLoading.set(false);
       },
       error: () => this.isLoading.set(false),
@@ -122,7 +124,7 @@ export class UserListComponent implements OnInit {
         this.loadUsers();
         this.showSuccess('Utilisateur mis à jour avec succès.');
       },
-      error: (err) => this.showError(err.error?.message),
+      error: (err) => this.showError(extractErrorMessage(err)),
     });
   }
 
@@ -197,5 +199,15 @@ export class UserListComponent implements OnInit {
     if (user.role === 'Client') return user.filialeName ?? '—';
     if (user.role === 'Administrator' || user.role === 'Manager') return 'Poulina Group Holding';
     return user.laboratoryName ?? '—';
+  }
+
+  approveUser(user: UserDto): void {
+    this.userService.approveUser(user.id).subscribe({
+      next: () => {
+        this.loadUsers();
+        this.showSuccess(`Compte de ${user.firstName} ${user.lastName} approuvé.`);
+      },
+      error: (err: unknown) => this.showError(extractErrorMessage(err)),
+    });
   }
 }
