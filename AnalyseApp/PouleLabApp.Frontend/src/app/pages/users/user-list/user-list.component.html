@@ -67,7 +67,7 @@
               <tr>
                 <th>Utilisateur</th>
                 <th>Email</th>
-                <th>Filiale</th>
+                <th>Organisation</th>
                 <th>Rôle</th>
                 <th>Statut</th>
                 <th>Créé le</th>
@@ -86,7 +86,7 @@
                     </div>
                   </td>
                   <td>{{ user.email }}</td>
-                  <td>{{ user.filialeName }}</td>
+                  <td>{{ getOrganisationLabel(user) }}</td>
                   <td>
                     <span class="role-badge" [ngClass]="getRoleBadgeClass(user.role)">
                       {{ roleLabels[user.role] || user.role }}
@@ -249,15 +249,37 @@
               />
             </div>
 
-            <div class="col-12">
-              <label class="form-label" for="editFiliale">Filiale</label>
-              <input
-                id="editFiliale"
-                type="text"
-                class="form-control"
-                formControlName="filialeName"
-              />
-            </div>
+            <!-- Labo — Receptionist, Analyst, LabChief -->
+            @if (isStaffRole(editingUser()?.role)) {
+              <div class="col-12">
+                <label class="form-label" for="editLab">Laboratoire</label>
+                <select
+                  id="editLab"
+                  class="form-control"
+                  formControlName="laboratoryId"
+                  aria-label="Sélectionner un laboratoire"
+                >
+                  <option [value]="null">— Sélectionner —</option>
+                  @for (lab of laboratories(); track lab.id) {
+                    <option [value]="lab.id">{{ lab.name }}</option>
+                  }
+                </select>
+              </div>
+            }
+
+            <!-- Filiale — Client uniquement -->
+            @if (isClientRole(editingUser()?.role)) {
+              <div class="col-12">
+                <label class="form-label" for="editFiliale">Filiale</label>
+                <input
+                  id="editFiliale"
+                  type="text"
+                  class="form-control"
+                  formControlName="filialeName"
+                />
+              </div>
+            }
+
             <div class="col-md-6">
               <label class="form-label" for="editRole">Rôle</label>
               <select

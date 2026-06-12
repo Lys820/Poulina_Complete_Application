@@ -62,4 +62,8 @@ export class UserService {
   deleteMyAccount(): Observable<any> {
     return this.http.delete(`${this.url}/me`);
   }
+
+  getLaboratories(): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.apiUrl}/laboratories`);
+  }
 }

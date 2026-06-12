@@ -36,6 +36,7 @@ export class UserListComponent implements OnInit {
   showCreateModal = signal(false);
   deleteUserId = signal<string | null>(null);
   deleteUserName = signal('');
+  laboratories = signal<any[]>([]);
 
   readonly roles = ['Administrator', 'Manager', 'Receptionist', 'Analyst', 'LabChief', 'Client'];
 
@@ -53,19 +54,23 @@ export class UserListComponent implements OnInit {
     private fb: FormBuilder,
     public authService: AuthService,
   ) {
-    // ← Initialiser editForm ici
     this.editForm = this.fb.group({
       firstName: ['', Validators.required],
       lastName: ['', Validators.required],
       email: ['', [Validators.required, Validators.email]],
       phoneNumber: [''],
       filialeName: [''],
+      laboratoryId: [null], // ← ajouter
       role: ['', Validators.required],
       isActive: [true],
     });
   }
   ngOnInit(): void {
     this.loadUsers();
+    this.userService.getLaboratories().subscribe({
+      next: (labs: any[]) => this.laboratories.set(labs),
+      error: () => {},
+    });
   }
 
   loadUsers(): void {
@@ -90,9 +95,10 @@ export class UserListComponent implements OnInit {
     this.editForm.patchValue({
       firstName: user.firstName,
       lastName: user.lastName,
-      email: user.email, // ← nouveau
-      phoneNumber: user.phoneNumber, // ← nouveau
+      email: user.email,
+      phoneNumber: user.phoneNumber,
       filialeName: user.filialeName,
+      laboratoryId: user.laboratoryId ?? null, // ← ajouter
       role: user.role,
       isActive: user.isActive,
     });
@@ -175,5 +181,21 @@ export class UserListComponent implements OnInit {
       },
       error: (err) => alert(err.error?.message ?? 'Erreur.'),
     });
+  }
+
+  isClientRole(role?: string): boolean {
+    return (role ?? this.editForm.get('role')?.value) === 'Client';
+  }
+
+  isStaffRole(role?: string): boolean {
+    return ['Receptionist', 'Analyst', 'LabChief'].includes(
+      role ?? this.editForm.get('role')?.value,
+    );
+  }
+
+  getOrganisationLabel(user: UserDto): string {
+    if (user.role === 'Client') return user.filialeName ?? '—';
+    if (user.role === 'Administrator' || user.role === 'Manager') return 'Poulina Group Holding';
+    return user.laboratoryName ?? '—';
   }
 }

@@ -5,6 +5,8 @@ export interface UserDto {
   email: string;
   phoneNumber?: string;
   filialeName?: string;
+  laboratoryId?: number;
+  laboratoryName?: string;
   isActive: boolean;
   role: string;
   createdAt: string;
@@ -13,6 +15,9 @@ export interface UserDto {
 export interface UpdateUserDto {
   firstName: string;
   lastName: string;
+  email: string;
+  phoneNumber?: string;
+  laboratoryId?: number;
   filialeName: string;
   isActive: boolean;
   role: string;
