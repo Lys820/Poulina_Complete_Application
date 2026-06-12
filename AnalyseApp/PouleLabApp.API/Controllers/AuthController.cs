@@ -62,7 +62,8 @@ namespace PouleLabApp.API.Controllers
                 LastName    = dto.LastName,
                 PhoneNumber = dto.PhoneNumber,
                 FilialeName = dto.FilialeName ?? string.Empty,
-                IsActive    = true,
+                LaboratoryId = dto.LaboratoryId,
+                IsActive    = false, // ← inactif jusqu'à validation admin
                 CreatedAt   = DateTime.UtcNow
             };
 
@@ -107,6 +108,13 @@ namespace PouleLabApp.API.Controllers
                 return Unauthorized(new { message = "Email ou mot de passe incorrect." });
             }
 
+            if (!user.IsActive)
+            {
+                return Unauthorized(new {
+                    message = "Votre compte est en attente de validation par un administrateur."
+                });
+            }
+            
             // Récupérer les rôles pour les embarquer dans le token
             var roles = await _userManager.GetRolesAsync(user);
             var token = _jwtTokenService.GenerateToken(user, roles);

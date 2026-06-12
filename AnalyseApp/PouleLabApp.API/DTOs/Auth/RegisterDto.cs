@@ -23,6 +23,8 @@ namespace PouleLabApp.API.DTOs.Auth
 
         public string? FilialeName { get; set; }
 
+        public int? LaboratoryId { get; set; }
+
         [Required]
         public string Role { get; set; } = "Client";
     }

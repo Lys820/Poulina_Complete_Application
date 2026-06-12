@@ -133,6 +133,7 @@ namespace PouleLabApp.API.Controllers
                 LastName    = dto.LastName,
                 PhoneNumber = dto.PhoneNumber,
                 FilialeName = dto.FilialeName ?? string.Empty,
+                LaboratoryId = dto.LaboratoryId,
                 IsActive    = true,
                 CreatedAt   = DateTime.UtcNow
             };
@@ -398,5 +399,22 @@ namespace PouleLabApp.API.Controllers
 
             return Ok(new { message = "Compte supprimé avec succès." });
         }
+
+        [HttpPost("{id}/approve")]
+        [Authorize(Policy = "RequireAdmin")]
+        public async Task<IActionResult> ApproveUser(string id)
+        {
+            var user = await _userManager.FindByIdAsync(id);
+            if (user == null)
+                return NotFound(new { message = "Utilisateur introuvable." });
+
+            user.IsActive = true;
+            await _userManager.UpdateAsync(user);
+
+            return Ok(new {
+                message = $"Compte de {user.FirstName} {user.LastName} approuvé."
+            });
+        }
     }
+
 }
