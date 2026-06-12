@@ -35,6 +35,63 @@
     <div class="alert alert-danger mb-3">{{ errorMsg() }}</div>
   }
 
+  <!-- Comptes en attente de validation -->
+  @if (pendingUsers().length > 0) {
+    <div class="card mb-4">
+      <div class="card-header d-flex align-items-center gap-2">
+        <span class="pending-dot"></span>
+        Comptes en attente de validation
+        <span class="badge badge-submitted ms-1">{{ pendingUsers().length }}</span>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table mb-0">
+            <thead>
+              <tr>
+                <th>Utilisateur</th>
+                <th>Email</th>
+                <th>Rôle</th>
+                <th>Organisation</th>
+                <th>Créé le</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (user of pendingUsers(); track user.id) {
+                <tr>
+                  <td>
+                    <div class="user-cell">
+                      <div class="user-avatar">{{ user.firstName[0] }}{{ user.lastName[0] }}</div>
+                      <strong>{{ user.firstName }} {{ user.lastName }}</strong>
+                    </div>
+                  </td>
+                  <td>{{ user.email }}</td>
+                  <td>
+                    <span class="role-badge" [ngClass]="getRoleBadgeClass(user.role)">
+                      {{ roleLabels[user.role] || user.role }}
+                    </span>
+                  </td>
+                  <td>{{ getOrganisationLabel(user) }}</td>
+                  <td>{{ user.createdAt | date: 'dd/MM/yyyy' }}</td>
+                  <td>
+                    <div class="actions">
+                      <button class="btn btn-success btn-sm me-1" (click)="approveUser(user)">
+                        ✓ Approuver
+                      </button>
+                      <button class="btn btn-danger btn-sm" (click)="confirmDelete(user)">
+                        ✗ Rejeter
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  }
+
   <!-- Filtres -->
   <div class="filters-bar mb-3">
     <select

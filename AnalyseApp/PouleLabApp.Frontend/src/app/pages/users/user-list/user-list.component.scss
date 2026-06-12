@@ -161,3 +161,22 @@
   max-height: 90vh;
   overflow-y: auto;
 }
+
+.pending-card {
+  border: 1.5px solid #f59e0b;
+}
+
+.pending-card-header {
+  background: #fffbeb;
+  color: #92400e;
+  font-weight: 600;
+}
+
+.pending-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f59e0b;
+  display: inline-block;
+  flex-shrink: 0;
+}
