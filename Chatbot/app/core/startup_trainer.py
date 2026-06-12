@@ -2,14 +2,14 @@
 app/core/startup_trainer.py
 ────────────────────────────────────────────────────────────────────────────
 Entraîne automatiquement le modèle ML et le RAG au démarrage de FastAPI,
-en lisant les données directement depuis PouleLabDB.
+en appelant directement les services (sans HTTP interne).
 
-Pourquoi c'est nécessaire :
-  - InMemoryVectorStore et le modèle RF/GB/XGB ne persistent PAS sur disque.
-  - À chaque redémarrage du chatbot, la RAM est vide → chat et prédictions
-    retournent des erreurs tant que /analyses/train-from-sqlserver n'a pas
-    été appelé manuellement.
-  - Ce module règle le problème en s'entraînant automatiquement au startup.
+Pourquoi appel direct et non HTTP :
+  - Au moment du lifespan startup, Uvicorn n'a pas encore ouvert le socket.
+  - Un appel httpx vers localhost:8000 échoue avec ConnectError ou message
+    vide, d'où "Entraînement startup impossible ()".
+  - La solution correcte est d'appeler les fonctions de service directement,
+    exactement comme le fait l'endpoint /analyses/train-from-sqlserver.
 
 Intégration dans main.py :
   from contextlib import asynccontextmanager
@@ -26,43 +26,92 @@ Intégration dans main.py :
 from __future__ import annotations
 
 import logging
-import httpx
+import os
 
 log = logging.getLogger(__name__)
 
-INTERNAL_TRAIN_URL = "http://localhost:8000/api/v1/analyses/train-from-sqlserver"
 
-
-async def auto_train_on_startup(base_url: str = "http://localhost:8000") -> None:
+async def auto_train_on_startup() -> None:
     """
     Appelé une fois au démarrage via le lifespan FastAPI.
-    Appelle l'endpoint /analyses/train-from-sqlserver en interne.
-    Loggue le résultat mais ne bloque jamais le démarrage si ça échoue.
+    Charge les données depuis PouleLabDB et entraîne ML + RAG en mémoire.
+    Ne bloque jamais le démarrage si la base est inaccessible.
     """
-    url = f"{base_url}/api/v1/analyses/train-from-sqlserver"
-    log.info("🚀 Startup : entraînement automatique ML + RAG...")
+    log.info("Startup : entraînement automatique ML + RAG...")
 
     try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            r = await client.post(url)
+        # ── 1. Données ────────────────────────────────────────────────
+        from app.data.database_sqlserver import get_db
 
-        if r.status_code == 200:
-            data = r.json()
-            analyses_docs = data.get("analyses", {}).get("docs", 0)
-            labos_docs    = data.get("labos",    {}).get("docs", 0)
-            souche_model  = data.get("model_status", {}).get("souche", {}).get("model", "?")
-            souche_acc    = data.get("model_status", {}).get("souche", {}).get("accuracy", 0)
-            log.info(f"✅ ML prêt — analyses={analyses_docs} docs, labos={labos_docs} docs")
-            log.info(f"✅ Modèle souche : {souche_model}  acc={souche_acc:.3f}")
-        else:
+        db = get_db()
+        if not db.connect():
             log.warning(
-                f"⚠️  Entraînement startup échoué (HTTP {r.status_code}) — "
-                f"le chatbot démarre sans modèle ML. "
-                f"Appelle manuellement POST /api/v1/analyses/train-from-sqlserver."
+                "Entraînement startup impossible — connexion SQL Server échouée. "
+                "Vérifier SQLSERVER_SERVER / SQLSERVER_DATABASE dans .env. "
+                "Le chatbot démarre sans ML."
             )
+            return
 
-    except Exception as e:
+        df_analyses, df_labos = db.get_all_data()
+        db.close()
+
+        if df_analyses.empty and df_labos.empty:
+            log.warning(
+                "Startup : aucune donnée dans PouleLabDB "
+                "(AnalysisRequests vide ?). Le chatbot démarre sans ML."
+            )
+            return
+
+        # ── 2. RAG ────────────────────────────────────────────────────
+        # rag_service est un singleton global dans app.services.rag_service
+        from app.services.rag_service import rag_service
+
+        embedding_method = os.getenv("EMBEDDING_METHOD", "tfidf")
+        rag_result = rag_service.build_from_dataframes(
+            df_analyses, df_labos, embedding_method=embedding_method
+        )
+        log.info(
+            "RAG prêt — analyses=%d docs [%s], labos=%d docs [%s]",
+            rag_result["analyses"]["docs"],
+            rag_result["analyses"]["embedder"],
+            rag_result["labos"]["docs"],
+            rag_result["labos"]["embedder"],
+        )
+
+        # ── 3. ML ─────────────────────────────────────────────────────
+        # model_registry est un singleton global dans app.ml.model_factory
+        # On importe après avoir vérifié rag pour isoler les erreurs
+        try:
+            from app.ml.model_factory import model_registry
+
+            ml_model = os.getenv("ML_MODEL", "auto")
+            ml_result = model_registry.train_from_dataframes(
+                df_analyses, df_labos, ml_model_name=ml_model
+            )
+            souche = ml_result.get("souche", {})
+            labo   = ml_result.get("labo",   {})
+            log.info(
+                "Modèle souche : %s  acc=%.3f",
+                souche.get("model", "?"),
+                souche.get("accuracy", 0.0),
+            )
+            log.info(
+                "Modèle labo   : %s  acc=%.3f",
+                labo.get("model", "?"),
+                labo.get("accuracy", 0.0),
+            )
+        except Exception as ml_exc:
+            log.warning("Entraînement ML échoué (RAG reste actif) : %s", ml_exc)
+
+        log.info(
+            "Startup terminé — analyses=%d, labos=%d",
+            len(df_analyses),
+            len(df_labos),
+        )
+
+    except Exception as exc:
         log.warning(
-            f"⚠️  Entraînement startup impossible ({e}) — "
-            f"SQL Server accessible ? Le chatbot continue sans ML."
+            "Entraînement startup impossible (%s) — "
+            "SQL Server accessible ? Le chatbot continue sans ML.",
+            exc,
         )
