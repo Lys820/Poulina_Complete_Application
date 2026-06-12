@@ -19,6 +19,7 @@ namespace PouleLabApp.API.Controllers
 
         // GET /api/laboratories — liste tous les laboratoires
         [HttpGet]
+        [AllowAnonymous]
         public async Task<IActionResult> GetAll()
         {
             var labs = await _context.Laboratories
