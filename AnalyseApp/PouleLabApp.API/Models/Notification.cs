@@ -11,7 +11,7 @@ namespace PouleLabApp.API.Models
         public string RecipientId { get; set; } = string.Empty;
         public ApplicationUser Recipient { get; set; } = null!;
 
-        public int RequestId { get; set; }
-        public AnalysisRequest Request { get; set; } = null!;
+        public int? RequestId { get; set; }
+        public AnalysisRequest? Request { get; set; } = null!;
     }
 }

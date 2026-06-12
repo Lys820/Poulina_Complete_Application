@@ -23,15 +23,19 @@ namespace PouleLabApp.API.Controllers
         // Notre service JWT pour générer les tokens
         private readonly IJwtTokenService _jwtTokenService;
 
+        private readonly Data.ApplicationDbContext _context;
+
         // Injection de dépendances via le constructeur
         public AuthController(
             UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager,
-            IJwtTokenService jwtTokenService)
+            IJwtTokenService jwtTokenService,
+            Data.ApplicationDbContext context) // ← ajouter
         {
-            _userManager = userManager;
-            _signInManager = signInManager;
+            _userManager     = userManager;
+            _signInManager   = signInManager;
             _jwtTokenService = jwtTokenService;
+            _context         = context;        // ← ajouter
         }
 
         // -------------------------------------------------------
@@ -76,7 +80,24 @@ namespace PouleLabApp.API.Controllers
 
             await _userManager.AddToRoleAsync(user, dto.Role);
 
-            return Ok(new { message = "Compte créé avec succès." });
+            // ← Notifier tous les admins du nouveau compte en attente
+            var admins = await _userManager.GetUsersInRoleAsync("Administrator");
+            foreach (var admin in admins)
+            {
+                _context.Notifications.Add(new Notification
+                {
+                    RecipientId = admin.Id,
+                    RequestId   = null, // ← pas lié à une demande
+                    Message     = $"Nouveau compte en attente de validation : " +
+                                $"{user.FirstName} {user.LastName} ({dto.Role}).",
+                    IsRead      = false,
+                    CreatedAt   = DateTime.UtcNow
+                });
+            }
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Compte créé avec succès. En attente de validation par un administrateur." });
+
         }
 
         // -------------------------------------------------------
