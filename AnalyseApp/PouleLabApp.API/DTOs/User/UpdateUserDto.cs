@@ -5,7 +5,8 @@ namespace PouleLabApp.API.DTOs.User
         public string FirstName   { get; set; } = string.Empty;
         public string LastName    { get; set; } = string.Empty;
         public string Email       { get; set; } = string.Empty;
-        public string? PhoneNumber { get; set; }                
+        public string? PhoneNumber { get; set; }               
+        public int?    LaboratoryId { get; set; } 
         public string? FilialeName { get; set; }
         public string Role        { get; set; } = string.Empty;
         public bool   IsActive    { get; set; }

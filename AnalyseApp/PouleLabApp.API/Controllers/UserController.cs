@@ -31,7 +31,9 @@ namespace PouleLabApp.API.Controllers
         [Authorize(Policy = "RequireManager")]
         public async Task<IActionResult> GetAll()
         {
-            var users = await _userManager.Users.ToListAsync();
+            var users = await _userManager.Users
+            .Include(u => u.Laboratory) // ← ajouter
+            .ToListAsync();
 
             var result = new List<UserDto>();
             foreach (var user in users)
@@ -47,7 +49,9 @@ namespace PouleLabApp.API.Controllers
                     FilialeName = user.FilialeName,
                     IsActive    = user.IsActive,
                     CreatedAt   = user.CreatedAt,
-                    Role        = roles.FirstOrDefault() ?? "Client"
+                    Role        = roles.FirstOrDefault() ?? "Client",
+                    LaboratoryId   = user.LaboratoryId,      // ← ajouter
+                    LaboratoryName = user.Laboratory?.Name
                 });
             }
 
@@ -170,6 +174,7 @@ namespace PouleLabApp.API.Controllers
             user.LastName    = dto.LastName;
             user.PhoneNumber = dto.PhoneNumber;
             user.FilialeName = dto.FilialeName ?? string.Empty;
+            user.LaboratoryId = dto.LaboratoryId;
             user.IsActive    = dto.IsActive;
 
             var updateResult = await _userManager.UpdateAsync(user);

@@ -205,7 +205,7 @@ namespace PouleLabApp.API.Migrations
 
                     b.HasIndex("LaboratoryId");
 
-                    b.ToTable("AnalysisRequests");
+                    b.ToTable("AnalysisRequests", (string)null);
                 });
 
             modelBuilder.Entity("PouleLabApp.API.Models.AnalysisResult", b =>
@@ -251,7 +251,7 @@ namespace PouleLabApp.API.Migrations
 
                     b.HasIndex("SampleId");
 
-                    b.ToTable("AnalysisResults");
+                    b.ToTable("AnalysisResults", (string)null);
                 });
 
             modelBuilder.Entity("PouleLabApp.API.Models.ApplicationUser", b =>
@@ -374,7 +374,7 @@ namespace PouleLabApp.API.Migrations
 
                     b.HasIndex("RequestId");
 
-                    b.ToTable("AuditLogs");
+                    b.ToTable("AuditLogs", (string)null);
                 });
 
             modelBuilder.Entity("PouleLabApp.API.Models.Deadline", b =>
@@ -411,7 +411,7 @@ namespace PouleLabApp.API.Migrations
 
                     b.HasIndex("SampleId");
 
-                    b.ToTable("Deadlines");
+                    b.ToTable("Deadlines", (string)null);
                 });
 
             modelBuilder.Entity("PouleLabApp.API.Models.Laboratory", b =>
@@ -442,7 +442,7 @@ namespace PouleLabApp.API.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Laboratories");
+                    b.ToTable("Laboratories", (string)null);
                 });
 
             modelBuilder.Entity("PouleLabApp.API.Models.Notification", b =>
@@ -476,7 +476,7 @@ namespace PouleLabApp.API.Migrations
 
                     b.HasIndex("RequestId");
 
-                    b.ToTable("Notifications");
+                    b.ToTable("Notifications", (string)null);
                 });
 
             modelBuilder.Entity("PouleLabApp.API.Models.Sample", b =>
@@ -509,7 +509,7 @@ namespace PouleLabApp.API.Migrations
 
                     b.HasIndex("RequestId");
 
-                    b.ToTable("Samples");
+                    b.ToTable("Samples", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
