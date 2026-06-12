@@ -67,8 +67,12 @@ async def login(req: LoginRequest, settings=Depends(get_settings)):
             role=row["nom_role"] or "",
             permissions=permissions,
         )
-    finally:
-        db.close()
+    except Exception:
+        password_ok = False
+    if not password_ok:
+        raise HTTPException(status_code=401, detail="Email ou mot de passe incorrect.")
+    
+    db.close()
 
 
 @router.post("/auth/logout")
