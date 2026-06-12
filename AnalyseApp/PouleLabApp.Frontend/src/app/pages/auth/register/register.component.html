@@ -103,7 +103,7 @@
             type="tel"
             class="form-control"
             formControlName="phoneNumber"
-            placeholder="Ex: 12345678 ou 216123456789"
+            placeholder="Ex: 12345678 ou +216123456789"
             [class.is-invalid]="
               hasError('phoneNumber', 'required') || hasError('phoneNumber', 'pattern')
             "
@@ -112,7 +112,10 @@
             <div class="invalid-feedback">Téléphone obligatoire.</div>
           }
           @if (hasError('phoneNumber', 'pattern')) {
-            <div class="invalid-feedback">Exactement 8 ou 12 chiffres sans espaces.</div>
+            <div class="invalid-feedback">
+              Format accepté : 8 chiffres (ex: 12345678) ou +216 suivi de 8 chiffres (ex:
+              +21612345678).
+            </div>
           }
         </div>
 

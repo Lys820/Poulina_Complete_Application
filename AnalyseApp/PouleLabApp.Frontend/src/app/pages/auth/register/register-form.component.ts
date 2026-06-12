@@ -25,6 +25,8 @@ export class RegisterFormComponent {
   errorMessage = signal('');
   showPassword = signal(false);
   showConfirm = signal(false);
+  laboratories = signal<any[]>([]);
+  readonly staffRoles = ['Receptionist', 'Analyst', 'LabChief'];
 
   readonly roles = [
     { value: 'Client', label: 'Client' },
@@ -46,8 +48,9 @@ export class RegisterFormComponent {
         firstName: ['', [Validators.required, Validators.minLength(2)]],
         lastName: ['', [Validators.required, Validators.minLength(2)]],
         email: ['', [Validators.required, Validators.email]],
-        phoneNumber: ['', [Validators.pattern(/^[+]?[\d\s\-().]{8,15}$/)]],
+        phoneNumber: ['', [Validators.pattern(/^\d{8}$|^\+216\d{8}$/)]],
         filialeName: [''],
+        laboratoryId: [null],
         role: ['Client', Validators.required],
         password: [
           '',
@@ -57,6 +60,23 @@ export class RegisterFormComponent {
       },
       { validators: this.passwordMatchValidator },
     );
+    // Charger les labos
+    this.http.get<any[]>(`${environment.apiUrl}/laboratories`).subscribe({
+      next: (labs: any[]) => this.laboratories.set(labs),
+      error: () => {},
+    });
+
+    // Rendre laboratoryId obligatoire pour les rôles staff
+    this.form.get('role')?.valueChanges.subscribe((role: string) => {
+      const labCtrl = this.form.get('laboratoryId');
+      if (this.staffRoles.includes(role)) {
+        labCtrl?.setValidators(Validators.required);
+      } else {
+        labCtrl?.clearValidators();
+        labCtrl?.setValue(null);
+      }
+      labCtrl?.updateValueAndValidity();
+    });
   }
 
   passwordStrengthValidator(control: AbstractControl) {
@@ -129,5 +149,9 @@ export class RegisterFormComponent {
         this.errorMessage.set(err.error?.message ?? 'Erreur.');
       },
     });
+  }
+
+  isStaffRole(): boolean {
+    return this.staffRoles.includes(this.form.get('role')?.value);
   }
 }

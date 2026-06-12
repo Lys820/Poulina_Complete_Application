@@ -112,3 +112,9 @@
     }
   }
 }
+
+.password-field {
+  input.is-invalid {
+    background-image: none;
+  }
+}

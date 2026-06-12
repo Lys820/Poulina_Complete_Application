@@ -12,8 +12,10 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
       if (error.status === 401) {
-        // Token expiré — déconnecter et rediriger
-        authService.logout();
+        // Rediriger seulement si l'utilisateur était connecté
+        if (authService.getToken()) {
+          authService.logout();
+        }
       }
       if (error.status === 403) {
         // Accès refusé — rediriger vers une page d'erreur

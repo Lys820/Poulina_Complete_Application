@@ -44,6 +44,9 @@
     @if (hasError('email', 'email')) {
       <div class="invalid-feedback">Email invalide.</div>
     }
+    @if (hasError('email', 'required')) {
+      <div class="invalid-feedback">Email obligatoire.</div>
+    }
   </div>
 
   <div class="mb-3">
@@ -55,6 +58,11 @@
       placeholder="+216 XX XXX XXX"
       [class.is-invalid]="hasError('phoneNumber', 'pattern')"
     />
+    @if (hasError('phoneNumber', 'pattern')) {
+      <div class="invalid-feedback">
+        Format accepté : 8 chiffres (ex: 12345678) ou +216 suivi de 8 chiffres (ex: +21612345678).
+      </div>
+    }
   </div>
 
   <div class="mb-3">
@@ -88,6 +96,43 @@
     </div>
   </div>
 
+  @if (isStaffRole()) {
+    <div class="mb-3">
+      <label class="form-label">Laboratoire *</label>
+      <div class="select-wrapper">
+        <select
+          class="form-control custom-select"
+          formControlName="laboratoryId"
+          title="Laboratoire"
+          [class.is-invalid]="hasError('laboratoryId', 'required')"
+        >
+          <option [value]="null">— Sélectionner —</option>
+          @for (lab of laboratories(); track lab.id) {
+            <option [value]="lab.id">{{ lab.name }}</option>
+          }
+        </select>
+        <span class="select-arrow">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </span>
+      </div>
+      @if (hasError('laboratoryId', 'required')) {
+        <div class="text-danger small mt-1">Veuillez sélectionner un laboratoire.</div>
+      }
+    </div>
+  }
+
   @if (isClientRole()) {
     <div class="mb-3">
       <label class="form-label">Filiale</label>
@@ -97,6 +142,7 @@
           formControlName="filialeName"
           title="Filiale"
           aria-label="Filiale"
+          [class.is-invalid]="hasError('filialeName', 'required')"
         >
           <option value="">— Sélectionner —</option>
           @for (brand of brands; track brand) {
@@ -119,6 +165,9 @@
           </svg>
         </span>
       </div>
+      @if (hasError('filialeName', 'required')) {
+        <div class="text-danger small mt-1">Veuillez sélectionner une filiale.</div>
+      }
     </div>
   }
 
@@ -130,6 +179,9 @@
         class="form-control"
         formControlName="password"
         placeholder="Minimum 8 caractères"
+        [class.is-invalid]="
+          hasError('password', 'required') || hasError('password', 'weakPassword')
+        "
       />
       <button
         type="button"
@@ -211,6 +263,15 @@
         </svg>
       </button>
     </div>
+    @if (hasError('password', 'required')) {
+      <div class="text-danger small mt-1">Mot de passe obligatoire.</div>
+    }
+    @if (hasError('password', 'weakPassword')) {
+      <div class="text-danger small mt-1">
+        Le mot de passe doit contenir une majuscule, une minuscule, un chiffre et un caractère
+        spécial.
+      </div>
+    }
     @if (form.get('confirmPassword')?.touched && form.errors?.['mismatch']) {
       <div class="text-danger small mt-1">Les mots de passe ne correspondent pas.</div>
     }
