@@ -67,15 +67,32 @@ export class RegisterFormComponent {
     });
 
     // Rendre laboratoryId obligatoire pour les rôles staff
+    // ← Initialiser selon rôle par défaut (Client)
+    this.form.get('filialeName')?.setValidators(Validators.required);
+    this.form.get('filialeName')?.updateValueAndValidity();
+
+    // ← Mettre à jour selon rôle
     this.form.get('role')?.valueChanges.subscribe((role: string) => {
       const labCtrl = this.form.get('laboratoryId');
+      const filialeCtrl = this.form.get('filialeName');
+
       if (this.staffRoles.includes(role)) {
         labCtrl?.setValidators(Validators.required);
-      } else {
+        filialeCtrl?.clearValidators();
+        filialeCtrl?.setValue('');
+      } else if (role === 'Client') {
+        filialeCtrl?.setValidators(Validators.required);
         labCtrl?.clearValidators();
         labCtrl?.setValue(null);
+      } else {
+        filialeCtrl?.clearValidators();
+        labCtrl?.clearValidators();
+        labCtrl?.setValue(null);
+        filialeCtrl?.setValue('');
       }
+
       labCtrl?.updateValueAndValidity();
+      filialeCtrl?.updateValueAndValidity();
     });
   }
 
