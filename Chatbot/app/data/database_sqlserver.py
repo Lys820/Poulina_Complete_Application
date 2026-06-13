@@ -80,6 +80,10 @@ class SqlServerDatabase:
     # ------------------------------------------------------------------
 
     def get_utilisateur_par_email(self, email: str) -> Optional[dict]:
+        """
+        Returns a dict with fields expected by app/api/auth.py.
+        Join: AspNetUsers → AspNetUserRoles → AspNetRoles → AspNetUserClaims (permissions).
+        """
         if not self._ensure_connected():
             return None
         try:
@@ -94,10 +98,12 @@ class SqlServerDatabase:
                     u.FilialeName       AS filiale,
                     u.IsActive          AS actif,
                     ISNULL(r.Name, '')  AS nom_role,
-                    NULL                AS permissions
+                    c.ClaimValue        AS permissions
                 FROM AspNetUsers u
-                LEFT JOIN AspNetUserRoles ur ON ur.UserId = u.Id
-                LEFT JOIN AspNetRoles r      ON r.Id      = ur.RoleId
+                LEFT JOIN AspNetUserRoles ur  ON ur.UserId  = u.Id
+                LEFT JOIN AspNetRoles r       ON r.Id       = ur.RoleId
+                LEFT JOIN AspNetUserClaims c  ON c.UserId   = u.Id
+                                             AND c.ClaimType = 'permissions'
                 WHERE u.NormalizedEmail = ?
                 """,
                 email.upper(),
@@ -118,6 +124,7 @@ class SqlServerDatabase:
         except Exception as exc:
             log.error("get_utilisateur_par_email(%s) : %s", email, exc)
             return None
+ 
 
     # ------------------------------------------------------------------
     # Données d'entraînement ML / RAG
@@ -355,6 +362,7 @@ class SqlServerDatabase:
             return []
 
     def get_count(self) -> dict:
+        """Global counters for the /data/count endpoint."""
         if not self._ensure_connected():
             return {"analyses": 0, "labos": 0, "souches": 0, "centres": 0}
         try:
@@ -363,17 +371,89 @@ class SqlServerDatabase:
             nb_analyses = cursor.fetchone()[0]
             cursor.execute("SELECT COUNT(*) FROM Laboratories")
             nb_labos = cursor.fetchone()[0]
-            cursor.execute("SELECT COUNT(DISTINCT s.Type) FROM Samples s")
-            nb_souches = cursor.fetchone()[0]
-            cursor.execute(
-                "SELECT COUNT(DISTINCT u.FilialeName) FROM AspNetUsers u "
-                "WHERE u.FilialeName IS NOT NULL AND u.FilialeName <> ''"
-            )
-            nb_centres = cursor.fetchone()[0]
-            return {"analyses": nb_analyses, "labos": nb_labos, "souches": nb_souches, "centres": nb_centres}
+            cursor.execute("SELECT COUNT(*) FROM Breeds WHERE IsActive = 1")
+            nb_breeds = cursor.fetchone()[0]
+            cursor.execute("SELECT COUNT(*) FROM FarmCenters WHERE IsActive = 1")
+            nb_centers = cursor.fetchone()[0]
+            return {
+                "analyses": nb_analyses,
+                "labos":    nb_labos,
+                "souches":  nb_breeds,   # alias pour compatibilité frontend
+                "centres":  nb_centers,  # alias pour compatibilité frontend
+            }
         except Exception as exc:
             log.error("get_count : %s", exc)
             return {"analyses": 0, "labos": 0, "souches": 0, "centres": 0}
+        
+        
+        
+    def get_breeds(self) -> list[dict]:
+        """Returns poultry breeds from the Breeds table."""
+        if not self._ensure_connected():
+            return []
+        try:
+            cursor = self._conn.cursor()
+            cursor.execute(
+                """
+                SELECT Id, Name, ProductionType, Origin, Description, AverageScore
+                FROM Breeds
+                WHERE IsActive = 1
+                ORDER BY ProductionType, AverageScore DESC
+                """
+            )
+            rows = cursor.fetchall()
+            return [
+                {
+                    "id":              row[0],
+                    "nom":             row[1],
+                    "type_production": row[2],
+                    "origine":         row[3],
+                    "description":     row[4],
+                    "score_moyen":     row[5],
+                }
+                for row in rows
+            ]
+        except Exception as exc:
+            log.error("get_breeds : %s", exc)
+            return []
+ 
+    # Alias pour rétrocompatibilité avec les anciens appels get_souches()
+    def get_souches(self) -> list[dict]:
+        return self.get_breeds()
+ 
+    def get_farm_centers(self) -> list[dict]:
+        """Returns farm centers from the FarmCenters table."""
+        if not self._ensure_connected():
+            return []
+        try:
+            cursor = self._conn.cursor()
+            cursor.execute(
+                """
+                SELECT Id, Name, Governorate, Address, Capacity, FarmingType
+                FROM FarmCenters
+                WHERE IsActive = 1
+                ORDER BY Name
+                """
+            )
+            rows = cursor.fetchall()
+            return [
+                {
+                    "id":           row[0],
+                    "nom":          row[1],
+                    "gouvernorat":  row[2],
+                    "adresse":      row[3],
+                    "capacite":     row[4],
+                    "type_elevage": row[5],
+                }
+                for row in rows
+            ]
+        except Exception as exc:
+            log.error("get_farm_centers : %s", exc)
+            return []
+ 
+    # Alias pour rétrocompatibilité
+    def get_centres(self) -> list[dict]:
+        return self.get_farm_centers()
 
     # ------------------------------------------------------------------
     # Sessions de chat (stubs RAM)
@@ -403,3 +483,5 @@ def get_db(settings=None) -> SqlServerDatabase:
         driver   = getattr(settings, "SQLSERVER_DRIVER",   None)
         return SqlServerDatabase(server=server, database=database, driver=driver)
     return SqlServerDatabase()
+
+

@@ -9,14 +9,15 @@ namespace PouleLabApp.API.Data
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options) { }
 
-        public DbSet<Laboratory>      Laboratories   => Set<Laboratory>();
+        public DbSet<Laboratory>      Laboratories    => Set<Laboratory>();
         public DbSet<AnalysisRequest> AnalysisRequests => Set<AnalysisRequest>();
-        public DbSet<Sample>          Samples        => Set<Sample>();
+        public DbSet<Sample>          Samples         => Set<Sample>();
         public DbSet<AnalysisResult>  AnalysisResults => Set<AnalysisResult>();
-        public DbSet<Deadline>        Deadlines      => Set<Deadline>();
-        public DbSet<AuditLog>        AuditLogs      => Set<AuditLog>();
-        public DbSet<Notification>    Notifications  => Set<Notification>();
-        // ← AnalysisTypes supprimé
+        public DbSet<Deadline>        Deadlines       => Set<Deadline>();
+        public DbSet<AuditLog>        AuditLogs       => Set<AuditLog>();
+        public DbSet<Notification>    Notifications   => Set<Notification>();
+        public DbSet<Breed>           Breeds          => Set<Breed>();
+        public DbSet<FarmCenter>      FarmCenters     => Set<FarmCenter>();
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -49,19 +50,18 @@ namespace PouleLabApp.API.Data
             builder.Entity<AnalysisRequest>()
                 .Property(r => r.Status)
                 .HasConversion<string>();
-            
+
             builder.Entity<Deadline>()
                 .HasOne(d => d.Sample)
                 .WithMany(s => s.Deadlines)
                 .HasForeignKey(d => d.SampleId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // Relation User → Laboratory (nullable, un user appartient à un labo ou pas)
             builder.Entity<ApplicationUser>()
-            .HasOne(u => u.Laboratory)
-            .WithMany()
-            .HasForeignKey(u => u.LaboratoryId)
-            .OnDelete(DeleteBehavior.SetNull); // ← si le labo est supprimé, LaboratoryId = null                
+                .HasOne(u => u.Laboratory)
+                .WithMany()
+                .HasForeignKey(u => u.LaboratoryId)
+                .OnDelete(DeleteBehavior.SetNull);
         }
     }
 }

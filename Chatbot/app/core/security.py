@@ -1,192 +1,222 @@
 """
 app/core/security.py
-────────────────────────────────────────────────────────────────────────────
-Sécurité : hachage des mots de passe, JWT, dépendances FastAPI.
+Sécurité : hachage, vérification de mot de passe, JWT
 
-Exports attendus par les autres modules :
-  - hash_password          ← app/api/auth.py
-  - verify_password        ← app/api/auth.py
-  - create_access_token    ← app/api/auth.py
-  - decode_token           ← app/api/auth.py + tests
-  - require_permission     ← app/api/chat.py, analyses.py, souches.py
-  - get_current_user       ← app/api/chat.py  ← MANQUAIT → ImportError corrigé
+verify_password supporte deux formats :
+  1. Format Python natif (hex 128 chars) : sel 32 octets + clé 32 octets, PBKDF2-SHA256
+     Utilisé par hash_password() — pour les utilisateurs créés directement en Python.
 
-Compatibilité ASP.NET Identity v3 :
-  - PasswordHash stocké en Base64, format binaire PBKDF2-SHA256 v3
-  - IDs utilisateurs = GUIDs (string)
+  2. Format ASP.NET Identity v3 (Base64) : en-tête binaire + sel + clé, PBKDF2-SHA256/SHA512
+     Utilisé par UserManager<ApplicationUser> dans PouleLabApp.API.
+     Structure : [0x01][PRF:4 BE][iter:4 BE][saltLen:4 BE][salt][subkey]
+     PRF = 1 → HMACSHA256, PRF = 2 → HMACSHA512 (défaut Identity Core 3+)
+
+require_permission(permission) s'utilise sans secret_key dans les endpoints :
+    Depends(require_permission("CHAT_READ"))
+La clé JWT est lue depuis JWT_SECRET_KEY dans les variables d'environnement.
+
+En test unitaire, on peut passer secret_key explicitement :
+    checker = require_permission("CHAT_READ", secret_key=SECRET)
 """
-
 from __future__ import annotations
 
 import base64
 import hashlib
+import logging
 import os
 import struct
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Optional
 
-import jwt as pyjwt
-from fastapi import Depends, HTTPException
+import jwt
+from fastapi import HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-# ── Lecture de la config JWT depuis .env ──────────────────────────────────────
-from dotenv import load_dotenv
-load_dotenv()
+log = logging.getLogger(__name__)
 
-_JWT_SECRET    = os.getenv("JWT_SECRET_KEY", "cle-non-configuree")
-_JWT_ALGORITHM = os.getenv("JWT_ALGORITHM",  "HS256")
-_JWT_EXPIRE    = int(os.getenv("JWT_EXPIRE_MINUTES", "480"))
+# ---------------------------------------------------------------------------
+# Hachage — format Python natif (hex)
+# ---------------------------------------------------------------------------
 
-# ── Schéma Bearer pour FastAPI ────────────────────────────────────────────────
-_bearer = HTTPBearer(auto_error=True)
-
-
-# ════════════════════════════════════════════════════════════════════════════
-# Hachage — format ASP.NET Identity v3 (PBKDF2-SHA256, Base64)
-# ════════════════════════════════════════════════════════════════════════════
-
-_FORMAT_VERSION   = 1        # octet 0
-_PRF_HMACSHA256   = 1        # PRF identifier
-_ITERATIONS       = 100_000
-_SALT_SIZE        = 16
-_KEY_SIZE         = 32
+_ITERATIONS = 200_000
+_HASH_NAME  = "sha256"
+_SALT_LEN   = 32
+_KEY_LEN    = 32
 
 
 def hash_password(password: str) -> str:
     """
-    Produit un hash PBKDF2-SHA256 au format ASP.NET Identity v3 (Base64).
-    Utiliser pour créer de nouveaux utilisateurs côté Python.
+    Hache un mot de passe avec PBKDF2-SHA256.
+    Format de sortie : hex 128 chars (sel 32 octets + clé 32 octets).
     """
-    salt = os.urandom(_SALT_SIZE)
-    dk = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, _ITERATIONS, dklen=_KEY_SIZE)
-    payload = (
-        struct.pack(">B", _FORMAT_VERSION)
-        + struct.pack(">I", _PRF_HMACSHA256)
-        + struct.pack(">I", _ITERATIONS)
-        + struct.pack(">I", _SALT_SIZE)
-        + salt
-        + dk
+    import os as _os
+    salt = _os.urandom(_SALT_LEN)
+    key  = hashlib.pbkdf2_hmac(
+        _HASH_NAME, password.encode("utf-8"), salt, _ITERATIONS, _KEY_LEN
     )
-    return base64.b64encode(payload).decode("ascii")
+    return (salt + key).hex()
 
 
-def verify_password(password: str, hashed: str) -> bool:
-    """
-    Vérifie un mot de passe contre le PasswordHash stocké dans AspNetUsers.
-    Compatible format ASP.NET Identity v3 (Base64).
-    """
+def _verify_python_hex(password: str, stored: str) -> bool:
+    """Vérifie un hash au format Python natif (hex 128 chars)."""
     try:
-        raw = base64.b64decode(hashed)
+        raw  = bytes.fromhex(stored)
+        salt = raw[:_SALT_LEN]
+        key  = raw[_SALT_LEN:]
+        candidate = hashlib.pbkdf2_hmac(
+            _HASH_NAME, password.encode("utf-8"), salt, _ITERATIONS, _KEY_LEN
+        )
+        return candidate == key
     except Exception:
         return False
 
-    if len(raw) < 61:
+
+# ---------------------------------------------------------------------------
+# Vérification — format ASP.NET Identity v3 (Base64)
+# ---------------------------------------------------------------------------
+
+_ASPNET_V3_HEADER_SIZE = 13  # 1 octet version + 3 x 4 octets uint32
+
+
+def _verify_aspnet_v3(password: str, stored: str) -> bool:
+    """Vérifie un hash au format ASP.NET Identity v3 (Base64)."""
+    try:
+        raw = base64.b64decode(stored)
+        if len(raw) < _ASPNET_V3_HEADER_SIZE + 1:
+            return False
+        version = raw[0]
+        if version != 0x01:
+            return False
+        prf, iterations, salt_len = struct.unpack_from(">III", raw, 1)
+        if prf not in (1, 2):
+            return False
+        offset    = _ASPNET_V3_HEADER_SIZE
+        salt      = raw[offset : offset + salt_len]
+        subkey    = raw[offset + salt_len :]
+        key_len   = len(subkey)
+        hash_name = "sha512" if prf == 2 else "sha256"
+        candidate = hashlib.pbkdf2_hmac(
+            hash_name, password.encode("utf-8"), salt, iterations, key_len
+        )
+        return candidate == subkey
+    except Exception:
         return False
 
-    version  = struct.unpack(">B", raw[0:1])[0]
-    prf      = struct.unpack(">I", raw[1:5])[0]
-    iters    = struct.unpack(">I", raw[5:9])[0]
-    salt_len = struct.unpack(">I", raw[9:13])[0]
 
-    if version != _FORMAT_VERSION or prf != _PRF_HMACSHA256:
+def _is_hex(s: str) -> bool:
+    try:
+        int(s, 16)
+        return True
+    except ValueError:
         return False
 
-    salt_end     = 13 + salt_len
-    expected_key = raw[salt_end: salt_end + _KEY_SIZE]
 
-    if len(expected_key) < _KEY_SIZE:
+def verify_password(password: str, stored_hash: str) -> bool:
+    """
+    Vérifie un mot de passe contre un hash stocké.
+    Détecte automatiquement le format (Python hex vs ASP.NET Identity v3 Base64).
+    """
+    if not stored_hash:
         return False
-
-    actual_key = hashlib.pbkdf2_hmac(
-        "sha256", password.encode("utf-8"), raw[13:salt_end], iters, dklen=_KEY_SIZE
-    )
-
-    # Comparaison en temps constant
-    result = 0
-    for x, y in zip(actual_key, expected_key):
-        result |= x ^ y
-    return result == 0
+    if len(stored_hash) == 128 and _is_hex(stored_hash):
+        return _verify_python_hex(password, stored_hash)
+    return _verify_aspnet_v3(password, stored_hash)
 
 
-# ════════════════════════════════════════════════════════════════════════════
+# ---------------------------------------------------------------------------
 # JWT
-# ════════════════════════════════════════════════════════════════════════════
+# ---------------------------------------------------------------------------
+
+_ALGORITHM = "HS256"
+
+
+def _get_jwt_secret() -> str:
+    """Lit la clé JWT depuis l'environnement (fallback sur valeur vide)."""
+    return os.environ.get("JWT_SECRET_KEY", "")
+
 
 def create_access_token(
-    user_id: Any,
+    user_id,
     email: str,
     role: str,
     permissions: list[str],
-    expire_minutes: int,
-    secret_key: str,
+    expire_minutes: int = 480,
+    secret_key: str = "",
 ) -> str:
-    """Crée un JWT signé HMAC-SHA256. user_id peut être un GUID string ou int."""
-    now = datetime.now(timezone.utc)
-    payload: dict[str, Any] = {
+    """
+    Génère un token JWT.
+    user_id peut être un int ou un GUID string (PouleLabDB).
+    Si secret_key est vide, lit JWT_SECRET_KEY depuis l'environnement.
+    """
+    key = secret_key or _get_jwt_secret()
+    expire = datetime.now(timezone.utc) + timedelta(minutes=expire_minutes)
+    payload = {
         "sub":         str(user_id),
         "email":       email,
         "role":        role,
         "permissions": permissions,
-        "iat":         int(now.timestamp()),
-        "exp":         int((now + timedelta(minutes=expire_minutes)).timestamp()),
+        "exp":         expire,
     }
-    return pyjwt.encode(payload, secret_key, algorithm="HS256")
+    return jwt.encode(payload, key, algorithm=_ALGORITHM)
 
 
-def decode_token(token: str, secret_key: str) -> dict[str, Any]:
+def decode_token(token: str, secret_key: str = "") -> dict:
     """
-    Décode et valide un JWT.
-    Lève HTTPException 401 si invalide ou expiré.
+    Décode et valide un token JWT.
+    Si secret_key est vide, lit JWT_SECRET_KEY depuis l'environnement.
+    Lève HTTP 401 si invalide ou expiré.
     """
+    if not token:
+        raise HTTPException(status_code=401, detail="Token manquant.")
+    key = secret_key or _get_jwt_secret()
     try:
-        return pyjwt.decode(token, secret_key, algorithms=["HS256"])
-    except pyjwt.ExpiredSignatureError:
+        return jwt.decode(token, key, algorithms=[_ALGORITHM])
+    except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expiré.")
-    except pyjwt.InvalidTokenError:
-        raise HTTPException(status_code=401, detail="Token invalide.")
+    except jwt.InvalidTokenError as exc:
+        raise HTTPException(status_code=401, detail=f"Token invalide : {exc}")
 
-
-# ════════════════════════════════════════════════════════════════════════════
-# Dépendances FastAPI
-# ════════════════════════════════════════════════════════════════════════════
 
 def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(_bearer),
-) -> dict[str, Any]:
+    credentials: HTTPAuthorizationCredentials,
+    secret_key: str = "",
+) -> dict:
+    """Extrait l'utilisateur courant depuis les credentials Bearer."""
+    return decode_token(credentials.credentials, secret_key)
+
+
+# Bearer scheme partagé
+_bearer = HTTPBearer(auto_error=False)
+
+
+def require_permission(permission: str, secret_key: str = ""):
     """
-    Dépendance FastAPI — extrait et valide le JWT du header Authorization.
-    Usage dans un endpoint :
-        @router.get("/protected")
-        def endpoint(user = Depends(get_current_user)):
-            ...
+    Retourne une dépendance FastAPI qui vérifie la présence d'une permission
+    dans le token JWT.
 
-    Retourne le payload JWT décodé (dict avec sub, email, role, permissions).
-    Lève HTTPException 401 si le token est absent, invalide ou expiré.
+    Utilisation dans les endpoints (sans secret_key) :
+        Depends(require_permission("CHAT_READ"))
+    La clé est lue depuis JWT_SECRET_KEY dans l'environnement.
+
+    Utilisation dans les tests unitaires (avec secret_key) :
+        checker = require_permission("CHAT_READ", SECRET)
+        user = checker(creds)
+
+    Lève HTTP 401 si token absent ou invalide, HTTP 403 si permission absente.
     """
-    return decode_token(credentials.credentials, _JWT_SECRET)
-
-
-def require_permission(permission: str, secret_key: str | None = None):
-    """
-    Factory de dépendance FastAPI — vérifie qu'une permission précise est présente.
-    Usage dans un endpoint :
-        @router.post("/admin")
-        def endpoint(user = Depends(require_permission("ADMIN_TRAIN"))):
-            ...
-
-    Lève HTTPException 403 si la permission est absente du token.
-    """
-    _key = secret_key or _JWT_SECRET
-
-    def _checker(
-        credentials: HTTPAuthorizationCredentials = Depends(_bearer),
-    ) -> dict[str, Any]:
-        payload = decode_token(credentials.credentials, _key)
-        if permission not in payload.get("permissions", []):
+    def checker(
+        credentials: Optional[HTTPAuthorizationCredentials] = None,
+    ) -> dict:
+        if credentials is None:
+            raise HTTPException(status_code=401, detail="Authentification requise.")
+        key = secret_key or _get_jwt_secret()
+        payload = decode_token(credentials.credentials, key)
+        perms = payload.get("permissions", [])
+        if permission not in perms:
             raise HTTPException(
                 status_code=403,
-                detail=f"Permission requise : {permission}",
+                detail=f"Permission '{permission}' requise.",
             )
         return payload
 
-    return _checker
+    return checker

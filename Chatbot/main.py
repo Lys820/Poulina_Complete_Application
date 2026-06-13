@@ -19,7 +19,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # ── Import des routers (adapte selon ta structure réelle) ─────────────────────
-from app.api import health, chat, analyses, souches, labos, auth
+from app.api import health, chat, analyses, souches, labos, auth, data
 
 # ── Startup trainer ───────────────────────────────────────────────────────────
 from app.core.startup_trainer import auto_train_on_startup
@@ -55,6 +55,8 @@ app = FastAPI(
     description="Chatbot IA pour l'analyse avicole — FastAPI + RAG + ML",
     lifespan=lifespan,
 )
+
+app.include_router(data.router, prefix="/api/v1")
 
 # ── CORS ──────────────────────────────────────────────────────────────────────
 app.add_middleware(
