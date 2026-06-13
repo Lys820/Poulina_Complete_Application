@@ -234,13 +234,19 @@ namespace PouleLabApp.API.Controllers
         // -------------------------------------------------------
         [HttpDelete("{id}")]
         [Authorize(Policy = "RequireAdmin")]
-        public async Task<IActionResult> DeleteUser(string id)
+        public async Task<IActionResult> DeleteUser(string id, [FromBody] PasswordConfirmDto dto)
         {
             var currentUserId = _userManager.GetUserId(User);
             if (id == currentUserId)
                 return BadRequest(new {
                     message = "Vous ne pouvez pas supprimer votre propre compte."
                 });
+
+            // ← Vérifier mot de passe admin
+            var admin = await _userManager.FindByIdAsync(currentUserId!);
+            var passwordOk = await _userManager.CheckPasswordAsync(admin!, dto.Password);
+            if (!passwordOk)
+                return BadRequest(new { message = "Mot de passe incorrect." });
 
             var user = await _userManager.FindByIdAsync(id);
             if (user == null)
@@ -299,8 +305,16 @@ namespace PouleLabApp.API.Controllers
         // -------------------------------------------------------
         [HttpPatch("{id}/status")]
         [Authorize(Policy = "RequireAdmin")]
-        public async Task<IActionResult> ToggleStatus(string id)
+        public async Task<IActionResult> ToggleStatus(string id, [FromBody] PasswordConfirmDto dto)
         {
+            var currentUserId = _userManager.GetUserId(User);
+
+            // ← Vérifier mot de passe admin
+            var admin = await _userManager.FindByIdAsync(currentUserId!);
+            var passwordOk = await _userManager.CheckPasswordAsync(admin!, dto.Password);
+            if (!passwordOk)
+                return BadRequest(new { message = "Mot de passe incorrect." });
+            
             var user = await _userManager.FindByIdAsync(id);
             if (user == null)
                 return NotFound(new { message = "Utilisateur introuvable." });
@@ -404,14 +418,19 @@ namespace PouleLabApp.API.Controllers
         // -------------------------------------------------------
         // DELETE /api/user/me — Supprimer son propre compte
         // -------------------------------------------------------
-        [HttpDelete("me")]
-        public async Task<IActionResult> DeleteMyAccount()
+        [HttpPost("me/delete")]
+        public async Task<IActionResult> DeleteMyAccount([FromBody] PasswordConfirmDto dto)
         {
             var userId = _userManager.GetUserId(User);
             var user   = await _userManager.FindByIdAsync(userId!);
             if (user == null)
                 return NotFound(new { message = "Utilisateur introuvable." });
 
+            // Vérifier le mot de passe
+            var passwordOk = await _userManager.CheckPasswordAsync(user, dto.Password);
+            if (!passwordOk)
+             return BadRequest(new { message = "Mot de passe incorrect." });
+           
             // Nettoyer les FK
             var analysisResults = await _context.AnalysisResults
                 .Where(r => r.RecordedById == userId).ToListAsync();
