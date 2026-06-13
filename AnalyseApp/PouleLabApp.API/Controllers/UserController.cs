@@ -66,9 +66,14 @@ namespace PouleLabApp.API.Controllers
         [Authorize(Policy = "RequireReceptionistOnly")]
         public async Task<IActionResult> GetAnalysts()
         {
+            var userId = _userManager.GetUserId(User);
+            var receptionist = await _userManager.FindByIdAsync(userId!);
+
             var analysts = await _userManager.GetUsersInRoleAsync("Analyst");
-            var activeAnalysts = analysts
+            var filtered = analysts
                 .Where(u => u.IsActive)
+                // ← Filtrer par labo du réceptionniste
+                .Where(u => u.LaboratoryId == receptionist?.LaboratoryId)
                 .Select(u => new {
                     u.Id,
                     FullName = $"{u.FirstName} {u.LastName}",
@@ -76,7 +81,7 @@ namespace PouleLabApp.API.Controllers
                 })
                 .ToList();
 
-            return Ok(activeAnalysts);
+            return Ok(filtered);
         }
 
         // -------------------------------------------------------

@@ -71,12 +71,28 @@ namespace PouleLabApp.API.Controllers
             var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
                 ?? User.FindFirst("sub")?.Value;
 
+            // Client — voit uniquement ses demandes
             if (User.IsInRole("Client"))
             {
                 var clientRequests = await _requestService.GetByClientAsync(userId!);
                 return Ok(clientRequests);
             }
 
+            // ← Staff — voit uniquement les demandes de son labo
+            if (User.IsInRole("Receptionist") ||
+                User.IsInRole("Analyst") ||
+                User.IsInRole("LabChief"))
+            {
+                var staffUser = await _userManager.FindByIdAsync(userId!);
+                if (staffUser?.LaboratoryId == null)
+                    return Ok(new List<object>());
+
+                var labRequests = await _requestService.GetAllAsync(
+                    status, staffUser.LaboratoryId);
+                return Ok(labRequests);
+            }
+
+            // Admin / Manager — voit tout
             var requests = await _requestService.GetAllAsync(status);
             return Ok(requests);
         }
@@ -92,6 +108,22 @@ namespace PouleLabApp.API.Controllers
             if (request == null)
                 return NotFound(new { message = "Demande introuvable." });
 
+            // ← Staff ne peut voir que les demandes de son labo
+            if (User.IsInRole("Receptionist") ||
+                User.IsInRole("Analyst") ||
+                User.IsInRole("LabChief"))
+            {
+                var userId = User.FindFirst(
+                    System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                    ?? User.FindFirst("sub")?.Value;
+                var staffUser = await _userManager.FindByIdAsync(userId!);
+
+                if (staffUser?.LaboratoryId != request.LaboratoryId)
+                    return StatusCode(403, new {
+                        message = "Vous n'avez pas accès à cette demande."
+                    });
+            }
+
             return Ok(request);
         }
 
@@ -103,7 +135,8 @@ namespace PouleLabApp.API.Controllers
         [Authorize(Policy = "RequireReceptionistOnly")]
         public async Task<IActionResult> Receive(int id)
         {
-            var receptionistId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+            var receptionistId = User.FindFirst(
+                System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
                 ?? User.FindFirst("sub")?.Value;
 
             var request = await _requestService.GetByIdAsync(id);
@@ -111,13 +144,23 @@ namespace PouleLabApp.API.Controllers
                 return NotFound(new { message = "Demande introuvable." });
 
             if (request.Status != "Submitted")
-                return BadRequest(new { message = "Seules les demandes soumises peuvent être réceptionnées." });
+                return BadRequest(new {
+                    message = "Seules les demandes soumises peuvent être réceptionnées."
+                });
 
-            // Vérifier que des échéances sont définies
+            // ← Vérifier que le réceptionniste appartient au bon labo
+            var receptionist = await _userManager.FindByIdAsync(receptionistId!);
+            if (receptionist?.LaboratoryId != request.LaboratoryId)
+                return StatusCode(403, new {
+                    message = "Vous n'appartenez pas au laboratoire destinataire de cette demande."
+                });
+
             var deadlines = await _requestService.GetDeadlinesAsync(id);
             if (!deadlines.Any())
-                return BadRequest(new { message = "Veuillez définir les échéances avant de réceptionner la demande." });
-            
+                return BadRequest(new {
+                    message = "Veuillez définir les échéances avant de réceptionner."
+                });
+
             var result = await _requestService.ReceiveAsync(id, receptionistId!);
             return Ok(result);
         }
@@ -202,13 +245,22 @@ namespace PouleLabApp.API.Controllers
         [Authorize(Policy = "RequireLabChiefOnly")]
         public async Task<IActionResult> Validate(int id)
         {
-            var labChiefId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+            var labChiefId = User.FindFirst(
+                System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
                 ?? User.FindFirst("sub")?.Value;
 
-            if (labChiefId == null)
-                return Unauthorized(new { message = "Utilisateur non identifié." });
+            var request = await _requestService.GetByIdAsync(id);
+            if (request == null)
+                return NotFound(new { message = "Demande introuvable." });
 
-            var result = await _requestService.ValidateAsync(id, labChiefId);
+            // ← Vérifier appartenance au labo
+            var labChief = await _userManager.FindByIdAsync(labChiefId!);
+            if (labChief?.LaboratoryId != request.LaboratoryId)
+                return StatusCode(403, new {
+                    message = "Vous n'appartenez pas au laboratoire de cette demande."
+                });
+
+            var result = await _requestService.ValidateAsync(id, labChiefId!);
             return Ok(result);
         }
 
@@ -229,6 +281,12 @@ namespace PouleLabApp.API.Controllers
             var request = await _requestService.GetByIdAsync(id);
             if (request == null)
                 return NotFound(new { message = "Demande introuvable." });
+
+            var labChief = await _userManager.FindByIdAsync(labChiefId!);
+            if (labChief?.LaboratoryId != request.LaboratoryId)
+                return StatusCode(403, new {
+                    message = "Vous n'appartenez pas au laboratoire de cette demande."
+                });
 
             if (request.Status != "InReview")
                 return BadRequest(new { message = "Seules les demandes en cours de révision peuvent être rejetées." });

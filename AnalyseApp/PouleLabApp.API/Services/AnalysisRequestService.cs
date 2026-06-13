@@ -44,10 +44,17 @@ namespace PouleLabApp.API.Services
         }
 
         private async Task NotifyRoleAsync(
-            string role, int requestId, string message)
+            string role, int requestId, string message, int? laboratoryId = null)
         {
             var users = await _userManager.GetUsersInRoleAsync(role);
-            foreach (var user in users.Where(u => u.IsActive))
+            var filtered = users.Where(u => u.IsActive);
+
+            // ← Filtrer par labo pour les rôles staff
+            if (laboratoryId.HasValue &&
+                new[] { "Receptionist", "Analyst", "LabChief" }.Contains(role))
+                filtered = filtered.Where(u => u.LaboratoryId == laboratoryId);
+
+            foreach (var user in filtered)
                 await CreateNotificationAsync(user.Id, requestId, message);
         }
 
@@ -173,11 +180,11 @@ namespace PouleLabApp.API.Services
                         client.Email!, client.FirstName, request.Id);
 
                 await NotifyRoleAsync("Receptionist", request.Id,
-                    $"Nouvelle demande #{request.Id} soumise par {client?.FirstName} {client?.LastName}.");
+                    $"Nouvelle demande #{request.Id}...", request.LaboratoryId);
                 await NotifyRoleAsync("Administrator", request.Id,
-                    $"Nouvelle demande #{request.Id} soumise.");
+                    $"Nouvelle demande #{request.Id}...");
                 await NotifyRoleAsync("Manager", request.Id,
-                    $"Nouvelle demande #{request.Id} soumise.");
+                    $"Nouvelle demande #{request.Id}...");
             }
 
             await _auditLogService.LogAsync(
@@ -228,12 +235,12 @@ namespace PouleLabApp.API.Services
             await _emailService.SendRequestSubmittedAsync(
                 request.Client.Email!, request.Client.FirstName, requestId);
 
-            await NotifyRoleAsync("Receptionist", requestId,
-                $"Nouvelle demande #{requestId} soumise par {request.Client.FirstName} {request.Client.LastName}.");
-            await NotifyRoleAsync("Administrator", requestId,
-                $"Nouvelle demande #{requestId} soumise.");
-            await NotifyRoleAsync("Manager", requestId,
-                $"Nouvelle demande #{requestId} soumise.");
+            await NotifyRoleAsync("Receptionist", request.Id,
+                $"Nouvelle demande #{request.Id}...", request.LaboratoryId);
+            await NotifyRoleAsync("Administrator", request.Id,
+                $"Nouvelle demande #{request.Id}...");
+            await NotifyRoleAsync("Manager", request.Id,
+                $"Nouvelle demande #{request.Id}...");
 
             return await GetByIdAsync(requestId)
                 ?? throw new Exception("Erreur lors de la récupération de la demande.");
@@ -260,13 +267,18 @@ namespace PouleLabApp.API.Services
         // -------------------------------------------------------
         // Récupérer toutes les demandes
         // -------------------------------------------------------
-        public async Task<List<RequestListDto>> GetAllAsync(string? status = null)
-        {
+        public async Task<List<RequestListDto>> GetAllAsync(
+            string? status = null, int? laboratoryId = null) {
             var query = _context.AnalysisRequests
                 .Include(r => r.Client)
                 .Include(r => r.Laboratory)
                 .Include(r => r.Samples)
                 .AsQueryable();
+
+            if (laboratoryId.HasValue)
+            {
+                query = query.Where(r => r.LaboratoryId == laboratoryId.Value);
+            }
 
             if (!string.IsNullOrEmpty(status) &&
                 Enum.TryParse<RequestStatus>(status, true, out var parsedStatus))
@@ -448,7 +460,8 @@ namespace PouleLabApp.API.Services
                 RequestStatus.InReview.ToString());
 
             await NotifyRoleAsync("LabChief", requestId,
-                $"La demande #{requestId} est prête pour validation.");
+                $"La demande #{requestId} est prête pour validation.",
+                request.LaboratoryId);
 
             return await GetByIdAsync(requestId)
                 ?? throw new Exception("Erreur lors de la récupération de la demande.");
