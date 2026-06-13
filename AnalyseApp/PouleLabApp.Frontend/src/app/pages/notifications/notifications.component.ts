@@ -57,6 +57,7 @@ export class NotificationsComponent implements OnInit {
     this.notificationService.markAllAsRead().subscribe({
       next: () => {
         this.notifications.update((list) => list.map((n) => ({ ...n, isRead: true })));
+        this.badgeService.refresh();
         this.showSuccess('Toutes les notifications marquées comme lues.');
       },
     });

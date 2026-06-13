@@ -1,0 +1,256 @@
+<div class="lab-list">
+  <div class="page-header">
+    <div>
+      <h4>Gestion des laboratoires</h4>
+      <p class="text-muted mb-0">{{ labs().length }} laboratoire(s)</p>
+    </div>
+    <button class="btn btn-primary btn-sm" (click)="openCreate()">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        class="me-1"
+      >
+        <line x1="12" y1="5" x2="12" y2="19" />
+        <line x1="5" y1="12" x2="19" y2="12" />
+      </svg>
+      Nouveau laboratoire
+    </button>
+  </div>
+
+  @if (successMsg()) {
+    <div class="alert alert-success mb-3">{{ successMsg() }}</div>
+  }
+  @if (errorMsg()) {
+    <div class="alert alert-danger mb-3">{{ errorMsg() }}</div>
+  }
+
+  <div class="card">
+    <div class="card-body p-0">
+      @if (isLoading()) {
+        <div class="text-center py-5">
+          <div class="spinner-border text-primary"></div>
+        </div>
+      } @else if (labs().length === 0) {
+        <div class="empty-state">
+          <p>Aucun laboratoire enregistré.</p>
+        </div>
+      } @else {
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead>
+              <tr>
+                <th>Nom</th>
+                <th>Description</th>
+                <th>Adresse</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (lab of labs(); track lab.id) {
+                <tr>
+                  <td>
+                    <strong>{{ lab.name }}</strong>
+                  </td>
+                  <td class="text-muted">{{ lab.description || '—' }}</td>
+                  <td class="text-muted">{{ lab.address || '—' }}</td>
+                  <td>
+                    <div class="actions">
+                      <button
+                        class="btn btn-icon btn-light"
+                        title="Modifier"
+                        (click)="openEdit(lab)"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        >
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                        </svg>
+                      </button>
+                      <button
+                        class="btn btn-icon btn-danger ms-1"
+                        title="Supprimer"
+                        (click)="openDelete(lab)"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        >
+                          <polyline points="3 6 5 6 21 6" />
+                          <path d="M19 6l-1 14H6L5 6" />
+                          <path d="M10 11v6" />
+                          <path d="M14 11v6" />
+                          <path d="M9 6V4h6v2" />
+                        </svg>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- Modal création -->
+  @if (showCreateModal()) {
+    <div class="modal-overlay" (click)="showCreateModal.set(false)">
+      <div class="modal-box" (click)="$event.stopPropagation()">
+        <div class="modal-header-custom">
+          <h5>Nouveau laboratoire</h5>
+          <button class="modal-close" (click)="showCreateModal.set(false)" aria-label="Fermer">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+        <ng-container [ngTemplateOutlet]="labForm" />
+        <div class="d-flex gap-2 mt-4">
+          <button class="btn btn-primary flex-fill" (click)="create()" [disabled]="isSaving()">
+            @if (isSaving()) {
+              <span class="spinner-border spinner-border-sm me-1"></span>
+            }
+            Créer
+          </button>
+          <button class="btn btn-light flex-fill" (click)="showCreateModal.set(false)">
+            Annuler
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Modal édition -->
+  @if (showEditModal()) {
+    <div class="modal-overlay" (click)="showEditModal.set(false)">
+      <div class="modal-box" (click)="$event.stopPropagation()">
+        <div class="modal-header-custom">
+          <h5>Modifier le laboratoire</h5>
+          <button class="modal-close" (click)="showEditModal.set(false)" aria-label="Fermer">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+        <ng-container [ngTemplateOutlet]="labForm" />
+        <div class="d-flex gap-2 mt-4">
+          <button class="btn btn-primary flex-fill" (click)="saveEdit()" [disabled]="isSaving()">
+            @if (isSaving()) {
+              <span class="spinner-border spinner-border-sm me-1"></span>
+            }
+            Enregistrer
+          </button>
+          <button class="btn btn-light flex-fill" (click)="showEditModal.set(false)">
+            Annuler
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Modal suppression -->
+  @if (showDeleteModal()) {
+    <div class="modal-overlay" (click)="showDeleteModal.set(false)">
+      <div class="modal-box" (click)="$event.stopPropagation()">
+        <h5>Supprimer le laboratoire</h5>
+        <p class="text-muted">
+          Êtes-vous sûr de vouloir supprimer
+          <strong>{{ deletingLab()?.name }}</strong> ? Cette action est irréversible.
+        </p>
+        <div class="d-flex gap-2 mt-3">
+          <button class="btn btn-danger flex-fill" (click)="deleteLab()">Supprimer</button>
+          <button class="btn btn-light flex-fill" (click)="showDeleteModal.set(false)">
+            Annuler
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Template formulaire partagé -->
+  <ng-template #labForm>
+    <form [formGroup]="form">
+      <div class="mb-3">
+        <label class="form-label">Nom *</label>
+        <input
+          type="text"
+          class="form-control"
+          formControlName="name"
+          placeholder="Ex: BioVet Analyses"
+          [class.is-invalid]="form.get('name')?.touched && form.get('name')?.invalid"
+        />
+        @if (form.get('name')?.touched && form.get('name')?.invalid) {
+          <div class="invalid-feedback">Le nom est obligatoire.</div>
+        }
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Description</label>
+        <input
+          type="text"
+          class="form-control"
+          formControlName="description"
+          placeholder="Ex: Laboratoire vétérinaire DICK"
+        />
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Adresse *</label>
+        <input
+          type="text"
+          class="form-control"
+          formControlName="address"
+          placeholder="Ex: Zone industrielle, Tunis"
+          [class.is-invalid]="form.get('address')?.touched && form.get('address')?.invalid"
+        />
+        @if (form.get('address')?.touched && form.get('address')?.invalid) {
+          <div class="invalid-feedback">L'adresse est obligatoire.</div>
+        }
+      </div>
+    </form>
+  </ng-template>
+</div>

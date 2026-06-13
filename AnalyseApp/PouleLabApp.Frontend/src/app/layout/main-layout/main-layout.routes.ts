@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { roleGuard } from '../../core/guards/role.guard';
 
 export const LAYOUT_ROUTES: Routes = [
   {
@@ -64,6 +65,15 @@ export const LAYOUT_ROUTES: Routes = [
         path: 'profile',
         loadComponent: () =>
           import('../../pages/profile/profile.component').then((m) => m.ProfileComponent),
+      },
+      {
+        path: 'laboratories',
+        loadComponent: () =>
+          import('../../pages/laboratories/laboratory-list.component').then(
+            (m) => m.LaboratoryListComponent,
+          ),
+        canActivate: [roleGuard],
+        data: { roles: ['Administrator'] },
       },
     ],
   },
