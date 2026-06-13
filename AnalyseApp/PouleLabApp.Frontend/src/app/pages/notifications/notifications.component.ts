@@ -32,19 +32,6 @@ export class NotificationsComponent implements OnInit {
       next: (data) => {
         this.notifications.set(data);
         this.isLoading.set(false);
-
-        // Marquer automatiquement toutes les non lues comme lues
-        const unread = data.filter((n) => !n.isRead);
-        if (unread.length > 0) {
-          this.notificationService.markAllAsRead().subscribe({
-            next: () => {
-              // Mettre à jour localement sans recharger
-              this.notifications.update((list) => list.map((n) => ({ ...n, isRead: true })));
-              // Rafraîchir le badge
-              this.badgeService.refresh();
-            },
-          });
-        }
       },
       error: () => this.isLoading.set(false),
     });
@@ -61,6 +48,7 @@ export class NotificationsComponent implements OnInit {
         this.notifications.update((list) =>
           list.map((n) => (n.id === notification.id ? { ...n, isRead: true } : n)),
         );
+        this.badgeService.refresh();
       },
     });
   }
