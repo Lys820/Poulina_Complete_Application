@@ -391,8 +391,11 @@ namespace PouleLabApp.API.Controllers
             if (request == null)
                 return NotFound(new { message = "Demande introuvable." });
 
-            if (request.Status != "Draft")
-                return BadRequest(new { message = "Seules les demandes en brouillon peuvent être supprimées." });
+           if (request.Status != "Draft" && request.Status != "Submitted")
+                return BadRequest(new {
+                    message = "Seules les demandes en brouillon ou soumises " +
+                            "(non encore réceptionnées) peuvent être supprimées."
+                });
 
             if (request.ClientId != userId && !User.IsInRole("Administrator"))
                 return StatusCode(403, new { message = "Vous n'êtes pas autorisé à supprimer cette demande." });

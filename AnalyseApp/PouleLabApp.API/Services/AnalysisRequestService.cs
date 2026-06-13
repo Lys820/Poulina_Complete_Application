@@ -829,6 +829,12 @@ namespace PouleLabApp.API.Services
                 .FirstOrDefaultAsync(r => r.Id == requestId)
                 ?? throw new KeyNotFoundException("Demande introuvable.");
 
+            if (request.Status != RequestStatus.Draft &&
+                request.Status != RequestStatus.Submitted)
+                throw new ArgumentException(
+                    "Seules les demandes en brouillon ou soumises " +
+                    "(non encore réceptionnées) peuvent être supprimées.");
+
             _context.AnalysisResults.RemoveRange(
                 request.Samples.SelectMany(s => s.Results));
                 _context.Deadlines.RemoveRange(request.Deadlines);
