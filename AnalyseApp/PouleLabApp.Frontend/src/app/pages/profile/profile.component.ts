@@ -156,6 +156,7 @@ export class ProfileComponent implements OnInit {
       next: () => {
         this.isSaving.set(false);
         this.successMsg.set('Profil mis à jour avec succès !');
+        this.authService.updateUserInfo(dto.firstName, dto.lastName);
         this.changePassword.set(false);
         this.form.get('currentPassword')!.setValue('');
         this.form.get('newPassword')!.setValue('');
