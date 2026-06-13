@@ -81,8 +81,10 @@ export class UserListComponent implements OnInit {
     this.isLoading.set(true);
     this.userService.getAll().subscribe({
       next: (data: UserDto[]) => {
-        this.users.set(data.filter((u) => u.isActive));
-        this.pendingUsers.set(data.filter((u) => !u.isActive));
+        // ← Comptes en attente = pas encore approuvés
+        this.pendingUsers.set(data.filter((u) => !u.isApproved));
+        // ← Comptes actifs ET désactivés (déjà approuvés)
+        this.users.set(data.filter((u) => u.isApproved));
         this.isLoading.set(false);
       },
       error: () => this.isLoading.set(false),

@@ -8,6 +8,7 @@ export interface UserDto {
   laboratoryId?: number;
   laboratoryName?: string;
   isActive: boolean;
+  isApproved: boolean;
   role: string;
   createdAt: string;
 }
