@@ -10,7 +10,6 @@ import {
 import { UserService } from '../../../core/services/user.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { UserDto } from '../../../core/models/user.model';
-import { RegisterComponent } from '../../auth/register/register.component';
 import { RegisterFormComponent } from '../../auth/register/register-form.component';
 import { extractErrorMessage } from '../../../core/utils/error.utils';
 @Component({
@@ -34,10 +33,14 @@ export class UserListComponent implements OnInit {
   editingUser = signal<UserDto | null>(null);
   editForm!: FormGroup;
   showCreateModal = signal(false);
-  deleteUserId = signal<string | null>(null);
-  deleteUserName = signal('');
   laboratories = signal<any[]>([]);
   pendingUsers = signal<UserDto[]>([]);
+  adminPassword = signal('');
+  showPasswordModal = signal(false);
+  passwordModalAction = signal<'delete' | 'toggle' | null>(null);
+  pendingActionUserId = signal<string | null>(null);
+  pendingActionName = signal('');
+  pendingUserActive = signal(false);
 
   readonly roles = ['Administrator', 'Manager', 'Receptionist', 'Analyst', 'LabChief', 'Client'];
 
@@ -129,13 +132,13 @@ export class UserListComponent implements OnInit {
   }
 
   deactivate(user: any): void {
-    const action = user.isActive ? 'désactiver' : 'réactiver';
-    if (!confirm(`Voulez-vous ${action} le compte de ${user.firstName} ${user.lastName} ?`)) return;
-
-    this.userService.toggleStatus(user.id).subscribe({
-      next: () => this.loadUsers(),
-      error: (err) => this.errorMsg.set(err.error?.message ?? 'Erreur.'),
-    });
+    this.pendingActionUserId.set(user.id);
+    this.pendingActionName.set(`${user.firstName} ${user.lastName}`);
+    this.pendingUserActive.set(user.isActive);
+    this.passwordModalAction.set('toggle');
+    this.adminPassword.set('');
+    this.errorMsg.set('');
+    this.showPasswordModal.set(true);
   }
 
   getRoleBadgeClass(role: string): string {
@@ -168,21 +171,12 @@ export class UserListComponent implements OnInit {
 
   // Confirmer suppression
   confirmDelete(user: any): void {
-    this.deleteUserId.set(user.id);
-    this.deleteUserName.set(`${user.firstName} ${user.lastName}`);
-  }
-
-  deleteUser(): void {
-    const id = this.deleteUserId();
-    if (!id) return;
-
-    this.userService.deleteUser(id).subscribe({
-      next: () => {
-        this.deleteUserId.set(null);
-        this.loadUsers();
-      },
-      error: (err) => alert(err.error?.message ?? 'Erreur.'),
-    });
+    this.pendingActionUserId.set(user.id);
+    this.pendingActionName.set(`${user.firstName} ${user.lastName}`);
+    this.passwordModalAction.set('delete');
+    this.adminPassword.set('');
+    this.errorMsg.set('');
+    this.showPasswordModal.set(true);
   }
 
   isClientRole(role?: string): boolean {
@@ -209,5 +203,31 @@ export class UserListComponent implements OnInit {
       },
       error: (err: unknown) => this.showError(extractErrorMessage(err)),
     });
+  }
+
+  confirmAction(): void {
+    if (!this.adminPassword()) return;
+    const id = this.pendingActionUserId();
+    if (!id) return;
+
+    if (this.passwordModalAction() === 'delete') {
+      this.userService.deleteUser(id, this.adminPassword()).subscribe({
+        next: () => {
+          this.showPasswordModal.set(false);
+          this.loadUsers();
+          this.showSuccess('Compte supprimé.');
+        },
+        error: (err: unknown) => this.showError(extractErrorMessage(err)),
+      });
+    } else {
+      this.userService.toggleStatus(id, this.adminPassword()).subscribe({
+        next: () => {
+          this.showPasswordModal.set(false);
+          this.loadUsers();
+          this.showSuccess('Statut mis à jour.');
+        },
+        error: (err: unknown) => this.showError(extractErrorMessage(err)),
+      });
+    }
   }
 }

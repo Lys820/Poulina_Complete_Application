@@ -6,6 +6,7 @@ import {
   Validators,
   ReactiveFormsModule,
   AbstractControl,
+  FormsModule,
 } from '@angular/forms';
 import { UserService } from '../../core/services/user.service';
 import { AuthService } from '../../core/services/auth.service';
@@ -14,7 +15,7 @@ import { Router } from '@angular/router';
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule],
   templateUrl: './profile.component.html',
   styleUrls: ['./profile.component.scss'],
 })
@@ -29,6 +30,7 @@ export class ProfileComponent implements OnInit {
   showConfirm = signal(false);
   changePassword = signal(false);
   showDeleteModal = signal(false);
+  deletePassword = signal('');
 
   readonly brands = ['DICK', 'SNA', 'GIPA', 'MEDOIL'];
 
@@ -177,10 +179,15 @@ export class ProfileComponent implements OnInit {
   }
 
   deleteAccount(): void {
-    this.userService.deleteMyAccount().subscribe({
+    if (!this.deletePassword()) {
+      this.errorMsg.set('Veuillez entrer votre mot de passe.');
+      return;
+    }
+
+    this.userService.deleteMyAccount(this.deletePassword()).subscribe({
       next: () => {
-        this.authService.logout(); // vider le token
-        this.router.navigate(['/login']);
+        this.authService.logout();
+        this.router.navigate(['/auth/login']);
       },
       error: (err) => {
         this.errorMsg.set(err.error?.message ?? 'Erreur lors de la suppression.');

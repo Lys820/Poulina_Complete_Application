@@ -403,20 +403,45 @@
     </div>
   }
 
-  <!-- Modal confirmation suppression -->
-  @if (deleteUserId()) {
-    <div class="modal-overlay">
-      <div class="modal-box">
-        <h5>Supprimer le compte</h5>
-        <p class="text-muted">
-          Êtes-vous sûr de vouloir supprimer le compte de
-          <strong>{{ deleteUserName() }}</strong> ? Cette action est <strong>irréversible</strong>.
-        </p>
+  <!-- Modal confirmation mot de passe admin -->
+  @if (showPasswordModal()) {
+    <div class="modal-overlay" (click)="showPasswordModal.set(false)">
+      <div class="modal-box" (click)="$event.stopPropagation()">
+        <h5>
+          @if (passwordModalAction() === 'delete') {
+            Supprimer le compte de {{ pendingActionName() }}
+          } @else {
+            {{ pendingUserActive() ? 'Désactiver' : 'Réactiver' }}
+            le compte de {{ pendingActionName() }}
+          }
+        </h5>
+        <p class="text-muted small">Entrez votre mot de passe administrateur pour confirmer.</p>
+        <div class="mb-3">
+          <label class="form-label small">Mot de passe administrateur *</label>
+          <input
+            type="password"
+            class="form-control"
+            placeholder="Votre mot de passe"
+            [ngModel]="adminPassword()"
+            (ngModelChange)="adminPassword.set($event)"
+          />
+        </div>
+        @if (errorMsg()) {
+          <div class="alert alert-danger py-2 px-3 mb-3">
+            <small>{{ errorMsg() }}</small>
+          </div>
+        }
         <div class="d-flex gap-2 mt-3">
-          <button class="btn btn-danger flex-fill" (click)="deleteUser()">
-            Supprimer définitivement
+          <button class="btn btn-light flex-fill" (click)="showPasswordModal.set(false)">
+            Annuler
           </button>
-          <button class="btn btn-light flex-fill" (click)="deleteUserId.set(null)">Annuler</button>
+          <button
+            class="btn btn-danger flex-fill"
+            (click)="confirmAction()"
+            [disabled]="!adminPassword()"
+          >
+            Confirmer
+          </button>
         </div>
       </div>
     </div>

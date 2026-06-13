@@ -409,59 +409,44 @@
 
     <!-- Modal confirmation suppression -->
     @if (showDeleteModal()) {
-      <div class="delete-page-overlay">
-        <div class="delete-page-card">
-          <div class="delete-icon">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="40"
-              height="40"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <polyline points="3 6 5 6 21 6" />
-              <path d="M19 6l-1 14H6L5 6" />
-              <path d="M10 11v6" />
-              <path d="M14 11v6" />
-              <path d="M9 6V4h6v2" />
-            </svg>
-          </div>
-          <h4>Supprimer mon compte</h4>
+      <div class="modal-overlay" (click)="showDeleteModal.set(false)">
+        <div class="modal-box" (click)="$event.stopPropagation()">
+          <h5>Supprimer mon compte</h5>
           <p class="text-muted">
-            Vous êtes sur le point de supprimer définitivement votre compte ainsi que toutes les
-            données qui y sont associées.
+            Cette action est <strong>irréversible</strong>. Entrez votre mot de passe pour
+            confirmer.
           </p>
-          <div class="delete-warning">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="8" x2="12" y2="12" />
-              <line x1="12" y1="16" x2="12.01" y2="16" />
-            </svg>
-            <span>
-              Cette action est <strong>irréversible</strong>. Votre compte ne pourra pas être
-              récupéré.
-            </span>
+
+          <div class="mb-3">
+            <label class="form-label small">Mot de passe *</label>
+            <input
+              type="password"
+              class="form-control"
+              placeholder="Votre mot de passe"
+              [ngModel]="deletePassword()"
+              (ngModelChange)="deletePassword.set($event)"
+            />
           </div>
-          <div class="d-flex gap-3 mt-4">
-            <button class="btn btn-light flex-fill" (click)="showDeleteModal.set(false)">
+
+          @if (errorMsg()) {
+            <div class="alert alert-danger py-2 px-3 mb-3">
+              <small>{{ errorMsg() }}</small>
+            </div>
+          }
+
+          <div class="d-flex gap-2 mt-3">
+            <button
+              class="btn btn-light flex-fill"
+              (click)="showDeleteModal.set(false); deletePassword.set('')"
+            >
               Annuler
             </button>
-            <button class="btn btn-danger flex-fill" (click)="deleteAccount()">
-              Oui, supprimer
+            <button
+              class="btn btn-danger flex-fill"
+              (click)="deleteAccount()"
+              [disabled]="!deletePassword()"
+            >
+              Supprimer définitivement
             </button>
           </div>
         </div>
