@@ -25,6 +25,7 @@ export class ChatComponent implements OnInit {
   loading = false;
   ville = '';
   sessionId: string | undefined = undefined;
+  activeTab: 'chat' | 'usage' = 'chat';
 
   readonly suggestions = [
     'Quelle souche recommandes-tu pour mon centre ?',
@@ -43,6 +44,10 @@ export class ChatComponent implements OnInit {
       content: 'Bonjour ! Je suis l\'assistant IA Poulina. Comment puis-je vous aider ?',
       ts: new Date(),
     });
+  }
+
+  setTab(tab: 'chat' | 'usage'): void {
+    this.activeTab = tab;
   }
 
   send(text?: string): void {

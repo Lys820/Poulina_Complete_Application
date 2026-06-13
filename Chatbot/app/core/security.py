@@ -46,7 +46,7 @@ _bearer = HTTPBearer(auto_error=True)
 # ════════════════════════════════════════════════════════════════════════════
 
 _FORMAT_VERSION   = 1        # octet 0
-_PRF_HMACSHA256   = 2        # PRF identifier
+_PRF_HMACSHA256   = 1        # PRF identifier
 _ITERATIONS       = 100_000
 _SALT_SIZE        = 16
 _KEY_SIZE         = 32
