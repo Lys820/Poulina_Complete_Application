@@ -58,6 +58,20 @@ namespace PouleLabApp.API.Controllers
             if (existing != null)
                 return BadRequest(new { message = "Cet email est déjà utilisé." });
 
+            //Vérifier si le numéro de téléphone existe déjà
+            if (!string.IsNullOrEmpty(dto.PhoneNumber))
+            {
+                var normalizedNew = NormalizePhone(dto.PhoneNumber);
+                var phoneExists = _userManager.Users
+                    .AsEnumerable()
+                    .Any(u => u.PhoneNumber != null
+                        && NormalizePhone(u.PhoneNumber) == normalizedNew);
+                if (phoneExists)
+                    return BadRequest(new {
+                        message = "Ce numéro de téléphone est déjà utilisé."
+                    });
+            }
+
             var user = new ApplicationUser
             {
                 UserName    = dto.Email,
@@ -214,6 +228,16 @@ namespace PouleLabApp.API.Controllers
                 LastName = user.LastName,
                 Role = roles.FirstOrDefault() ?? "Client"
             });
+        }
+
+        private static string NormalizePhone(string phone)
+        {
+            // Supprimer tous les espaces
+            var cleaned = phone.Replace(" ", "");
+            // Supprimer le préfixe +216 si présent
+            if (cleaned.StartsWith("+216"))
+                cleaned = cleaned.Substring(4);
+            return cleaned;
         }
     }
 }

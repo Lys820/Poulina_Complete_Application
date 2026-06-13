@@ -125,6 +125,20 @@ namespace PouleLabApp.API.Controllers
             if (existing != null)
                 return BadRequest(new { message = "Cet email est déjà utilisé." });
 
+            if (!string.IsNullOrEmpty(dto.PhoneNumber))
+            {
+                var normalizedNew = NormalizePhone(dto.PhoneNumber);
+                var phoneExists = _userManager.Users
+                    .AsEnumerable()
+                    .Any(u => u.PhoneNumber != null
+                        && NormalizePhone(u.PhoneNumber) == normalizedNew);
+                if (phoneExists)
+                    return BadRequest(new {
+                        message = "Ce numéro de téléphone est déjà utilisé."
+                    });
+            }
+
+
             var user = new ApplicationUser
             {
                 UserName    = dto.Email,
@@ -167,6 +181,18 @@ namespace PouleLabApp.API.Controllers
                 if (!phoneRegex.IsMatch(dto.PhoneNumber))
                     return BadRequest(new {
                         message = "Format téléphone invalide."
+                    });
+
+                //vérifier doublon (exclure le compte modifié)
+                var normalizedNew = NormalizePhone(dto.PhoneNumber);
+                var phoneExists = _userManager.Users
+                    .AsEnumerable() // ← nécessaire pour appliquer la normalisation côté C#
+                    .Any(u => u.PhoneNumber != null
+                        && NormalizePhone(u.PhoneNumber) == normalizedNew
+                        && u.Id != id);
+                if (phoneExists)
+                    return BadRequest(new {
+                        message = "Ce numéro de téléphone est déjà utilisé."
                     });
             }
 
@@ -331,6 +357,18 @@ namespace PouleLabApp.API.Controllers
                     return BadRequest(new {
                         message = "Format téléphone invalide."
                     });
+
+                // Vérifier doublon (exclure le compte actuel)
+                var normalizedNew = NormalizePhone(dto.PhoneNumber);
+                var phoneExists = _userManager.Users
+                    .AsEnumerable()
+                    .Any(u => u.PhoneNumber != null
+                        && NormalizePhone(u.PhoneNumber) == normalizedNew
+                        && u.Id != userId);
+                if (phoneExists)
+                    return BadRequest(new {
+                        message = "Ce numéro de téléphone est déjà utilisé."
+                    });
             }
             
             user.FirstName   = dto.FirstName;
@@ -434,6 +472,16 @@ namespace PouleLabApp.API.Controllers
             return Ok(new {
                 message = $"Compte de {user.FirstName} {user.LastName} approuvé."
             });
+        }
+
+        private static string NormalizePhone(string phone)
+        {
+            // Supprimer tous les espaces
+            var cleaned = phone.Replace(" ", "");
+            // Supprimer le préfixe +216 si présent
+            if (cleaned.StartsWith("+216"))
+                cleaned = cleaned.Substring(4);
+            return cleaned;
         }
     }
 
