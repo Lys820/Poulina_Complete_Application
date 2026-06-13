@@ -28,12 +28,12 @@ namespace PouleLabApp.API.Services
                 .FirstOrDefault(r => r.Id == requestId)
                 ?? throw new KeyNotFoundException("Demande introuvable.");
 
-            return request.Laboratory?.TemplateType switch
+            return request.Brand switch
             {
-                FormTemplateType.DICK   => GenerateDickFormPdf(request),
-                FormTemplateType.GIPA   => GenerateIndustrialFormPdf(request, "GIPA",   "#7C3AED", "Huiles & Lubrifiants"),
-                FormTemplateType.MEDOIL => GenerateIndustrialFormPdf(request, "MEDOIL", "#B45309", "Corps Gras & Huiles Alimentaires"),
-                _                      => GenerateIndustrialFormPdf(request, "SNA",    "#1E3A8A", "Analyses Industrielles"),
+                "DICK"   => GenerateDickFormPdf(request),
+                "GIPA"   => GenerateIndustrialFormPdf(request, "GIPA",   "#7C3AED", "Huiles & Lubrifiants"),
+                "MEDOIL" => GenerateIndustrialFormPdf(request, "MEDOIL", "#B45309", "Corps Gras & Huiles Alimentaires"),
+                _        => GenerateIndustrialFormPdf(request, "SNA",    "#1E3A8A", "Analyses Industrielles"),
             };
         }
 
@@ -128,8 +128,8 @@ namespace PouleLabApp.API.Services
                                     ("N° DEMANDE :", $"{request.Id:D6}"),
                                     ("EMAIL :", request.Client?.Email ?? ""),
                                     ("DATE :", request.CreatedAt.ToString("dd/MM/yyyy HH:mm")),
-                                    ("FILIALE / SOCIÉTÉ :", request.Client?.FilialeName ?? ""),
-                                    ("LABORATOIRE :", "DICK")
+                                    ("MARQUE :",      request.Brand ?? ""),
+                                    ("LABORATOIRE :", request.Laboratory?.Name ?? "")
                                 }));
                         });
 
@@ -484,8 +484,8 @@ namespace PouleLabApp.API.Services
                                     ("N° DEMANDE :", $"{request.Id:D6}"),
                                     ("EMAIL :", request.Client?.Email ?? ""),
                                     ("DATE :", request.CreatedAt.ToString("dd/MM/yyyy HH:mm")),
-                                    ("FILIALE / SOCIÉTÉ :", request.Client?.FilialeName ?? ""),
-                                    ("LABORATOIRE :", labName)
+                                    ("MARQUE :",      request.Brand ?? ""),
+                                    ("LABORATOIRE :", request.Laboratory?.Name ?? "")
                                 }));
                         });
 
@@ -724,12 +724,12 @@ namespace PouleLabApp.API.Services
         // -------------------------------------------------------
         private static byte[] GenerateBulletinDocument(AnalysisRequest request)
         {
-            var accentColor = request.Laboratory?.TemplateType switch
+            var accentColor = request.Brand switch
             {
-                FormTemplateType.DICK   => "#991B1B",
-                FormTemplateType.GIPA   => "#7C3AED",
-                FormTemplateType.MEDOIL => "#B45309",
-                _                      => "#065F46"
+                "DICK"   => "#991B1B",
+                "GIPA"   => "#7C3AED",
+                "MEDOIL" => "#B45309",
+                _        => "#1E3A8A"  // ← bleu SNA correct
             };
 
             return Document.Create(container =>
@@ -804,7 +804,7 @@ namespace PouleLabApp.API.Services
                                 {
                                     ("NOM ET PRÉNOM :", $"{request.Client?.FirstName} {request.Client?.LastName}"),
                                     ("DATE SOUMISSION :", request.SubmittedAt.ToString("dd/MM/yyyy")),
-                                    ("FILIALE :", request.Client?.FilialeName ?? ""),
+                                    ("MARQUE :",      request.Brand ?? ""),
                                     ("LABORATOIRE :", request.Laboratory?.Name ?? "")
                                 }));
                         });
