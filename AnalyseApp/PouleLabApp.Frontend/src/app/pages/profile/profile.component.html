@@ -160,7 +160,10 @@
                   [class.is-invalid]="hasError('phoneNumber', 'pattern')"
                 />
                 @if (hasError('phoneNumber', 'pattern')) {
-                  <div class="invalid-feedback">Numéro invalide.</div>
+                  <div class="invalid-feedback">
+                    Formats acceptés : 12345678 · 12 345 678 · +21612345678 · +216 12345678 · +216
+                    12 345 678
+                  </div>
                 }
               </div>
 

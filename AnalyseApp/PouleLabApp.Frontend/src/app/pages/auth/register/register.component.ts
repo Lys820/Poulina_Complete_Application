@@ -48,7 +48,10 @@ export class RegisterComponent {
         firstName: ['', [Validators.required, Validators.minLength(2)]],
         lastName: ['', [Validators.required, Validators.minLength(2)]],
         email: ['', [Validators.required, Validators.email]],
-        phoneNumber: ['', [Validators.required, Validators.pattern(/^\d{8}$|^\+216\d{8}$/)]],
+        phoneNumber: [
+          '',
+          [Validators.required, Validators.pattern(/^(\+216 ?)?(\d{8}|\d{2} \d{3} \d{3})$/)],
+        ],
         filialeName: [''],
         role: ['Client', Validators.required],
         laboratoryId: [null],

@@ -50,7 +50,7 @@ export class ProfileComponent implements OnInit {
         firstName: ['', [Validators.required, Validators.minLength(2)]],
         lastName: ['', [Validators.required, Validators.minLength(2)]],
         email: [{ value: '', disabled: true }],
-        phoneNumber: ['', [Validators.pattern(/^[+]?[\d\s\-().]{8,15}$/)]],
+        phoneNumber: ['', [Validators.pattern(/^(\+216 ?)?(\d{8}|\d{2} \d{3} \d{3})$/)]],
         filialeName: [''],
         role: [{ value: '', disabled: true }],
         currentPassword: [''],
@@ -131,11 +131,17 @@ export class ProfileComponent implements OnInit {
   }
 
   save(): void {
+    this.form.markAllAsTouched();
     if (this.form.invalid) {
-      this.form.markAllAsTouched();
       return;
     }
 
+    const phone = this.form.get('phoneNumber')?.value;
+    const phoneRegex = /^(\+216 ?)?(\d{8}|\d{2} \d{3} \d{3})$/;
+    if (phone && !phoneRegex.test(phone)) {
+      this.errorMsg.set('Format de téléphone invalide.');
+      return;
+    }
     this.isSaving.set(true);
     this.successMsg.set('');
     this.errorMsg.set('');
