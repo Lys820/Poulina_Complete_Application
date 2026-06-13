@@ -466,6 +466,17 @@
                   🗑 Supprimer le brouillon
                 </button>
               }
+
+              <!-- ← Ajouter ce bloc pour les demandes soumises -->
+              @if (request()?.status === 'Submitted' && isCreator()) {
+                <button
+                  class="btn btn-danger w-100 mb-2"
+                  (click)="deleteRequest()"
+                  [disabled]="actionLoading()"
+                >
+                  🗑 Annuler et supprimer la demande
+                </button>
+              }
             }
 
             <!-- Laborantin -->
@@ -519,7 +530,7 @@
             @if (
               request()?.status === 'Validated' ||
               request()?.status === 'Closed' ||
-              request()?.status === 'Submitted'
+              (request()?.status === 'Submitted' && !isCreator())
             ) {
               <p class="text-muted small text-center mb-0">
                 Aucune action disponible pour ce statut.
