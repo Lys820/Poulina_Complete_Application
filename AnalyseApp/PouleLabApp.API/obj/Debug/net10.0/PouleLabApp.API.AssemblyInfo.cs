@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("PouleLabApp.API")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+9233352540b55ad79e78f3ed15c17f58ce874866")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c820bb40134671f0954af5e49003bf613a336674")]
 [assembly: System.Reflection.AssemblyProductAttribute("PouleLabApp.API")]
 [assembly: System.Reflection.AssemblyTitleAttribute("PouleLabApp.API")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
