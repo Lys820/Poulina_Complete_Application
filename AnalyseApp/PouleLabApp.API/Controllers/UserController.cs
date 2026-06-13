@@ -160,6 +160,16 @@ namespace PouleLabApp.API.Controllers
             if (user == null)
                 return NotFound(new { message = "Utilisateur introuvable." });
 
+            if (!string.IsNullOrEmpty(dto.PhoneNumber))
+            {
+                var phoneRegex = new System.Text.RegularExpressions.Regex(
+                    @"^(\+216 ?)?(\d{8}|\d{2} \d{3} \d{3})$");
+                if (!phoneRegex.IsMatch(dto.PhoneNumber))
+                    return BadRequest(new {
+                        message = "Format téléphone invalide."
+                    });
+            }
+
             // Vérifier si le nouvel email est déjà pris par quelqu'un d'autre
             if (!string.IsNullOrEmpty(dto.Email) && dto.Email != user.Email)
             {
@@ -313,6 +323,16 @@ namespace PouleLabApp.API.Controllers
             if (user == null)
                 return NotFound(new { message = "Utilisateur introuvable." });
 
+            if (!string.IsNullOrEmpty(dto.PhoneNumber))
+            {
+                var phoneRegex = new System.Text.RegularExpressions.Regex(
+                    @"^(\+216 ?)?(\d{8}|\d{2} \d{3} \d{3})$");
+                if (!phoneRegex.IsMatch(dto.PhoneNumber))
+                    return BadRequest(new {
+                        message = "Format téléphone invalide."
+                    });
+            }
+            
             user.FirstName   = dto.FirstName;
             user.LastName    = dto.LastName;
             user.PhoneNumber = dto.PhoneNumber;
