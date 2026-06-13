@@ -11,6 +11,7 @@ namespace PouleLabApp.API.Models
         public int? LaboratoryId { get; set; }
         public Laboratory? Laboratory   { get; set; }
         public bool IsActive { get; set; } = true;
+        public bool IsApproved { get; set; } = false;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public ICollection<AnalysisRequest> SubmittedRequests { get; set; } = new List<AnalysisRequest>();

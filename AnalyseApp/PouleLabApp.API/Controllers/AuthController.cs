@@ -81,7 +81,8 @@ namespace PouleLabApp.API.Controllers
                 PhoneNumber = dto.PhoneNumber,
                 FilialeName = dto.FilialeName ?? string.Empty,
                 LaboratoryId = dto.LaboratoryId,
-                IsActive    = false, // ← inactif jusqu'à validation admin
+                IsActive    = false, // inactif jusqu'à validation admin
+                IsApproved = false,
                 CreatedAt   = DateTime.UtcNow
             };
 

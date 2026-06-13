@@ -48,6 +48,7 @@ namespace PouleLabApp.API.Controllers
                     PhoneNumber = user.PhoneNumber,
                     FilialeName = user.FilialeName,
                     IsActive    = user.IsActive,
+                    IsApproved = user.IsApproved,
                     CreatedAt   = user.CreatedAt,
                     Role        = roles.FirstOrDefault() ?? "Client",
                     LaboratoryId   = user.LaboratoryId,      // ← ajouter
@@ -149,6 +150,7 @@ namespace PouleLabApp.API.Controllers
                 FilialeName = dto.FilialeName ?? string.Empty,
                 LaboratoryId = dto.LaboratoryId,
                 IsActive    = true,
+                IsApproved = true,
                 CreatedAt   = DateTime.UtcNow
             };
 
@@ -486,6 +488,7 @@ namespace PouleLabApp.API.Controllers
                 return NotFound(new { message = "Utilisateur introuvable." });
 
             user.IsActive = true;
+            user.IsApproved = true;
             await _userManager.UpdateAsync(user);
 
             return Ok(new {

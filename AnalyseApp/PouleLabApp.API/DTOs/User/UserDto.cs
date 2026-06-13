@@ -9,6 +9,7 @@ public class UserDto
     public string? LaboratoryName { get; set; }
     public string? FilialeName { get; set; }
     public bool   IsActive    { get; set; }
+    public bool IsApproved { get; set; }
     public string Role        { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
 }
