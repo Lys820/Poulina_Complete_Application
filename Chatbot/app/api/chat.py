@@ -58,7 +58,7 @@ async def chat(
         memory = MemoryService(db._conn)
 
         # Création ou récupération de session
-        user_id = int(current_user["sub"])
+        user_id = current_user["sub"]
         if req.session_id:
             if not memory.session_belongs_to_user(req.session_id, user_id):
                 raise HTTPException(status_code=403, detail="Session non autorisée")
