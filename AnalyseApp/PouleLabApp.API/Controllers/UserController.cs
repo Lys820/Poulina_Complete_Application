@@ -15,19 +15,11 @@ namespace PouleLabApp.API.Controllers
     public class UserController : ControllerBase
     {
         private readonly UserManager<ApplicationUser> _userManager;
-<<<<<<< HEAD
-        private readonly ApplicationDbContext _context;
-
-        public UserController(
-            UserManager<ApplicationUser> userManager,
-            ApplicationDbContext context)
-=======
         private readonly Data.ApplicationDbContext _context;
 
         public UserController(
             UserManager<ApplicationUser> userManager,
             Data.ApplicationDbContext context)
->>>>>>> origin/Lilia
         {
             _userManager = userManager;
             _context     = context;
@@ -155,25 +147,6 @@ namespace PouleLabApp.API.Controllers
             if (existing != null)
                 return BadRequest(new { message = "Cet email est déjà utilisé." });
 
-<<<<<<< HEAD
-            // Filiale par défaut pour Admin/Manager
-            var adminRoles = new[] { "Administrator", "Manager" };
-            var filiale = adminRoles.Contains(dto.Role)
-                ? "Poulina Group Holding"
-                : dto.FilialeName ?? string.Empty;
-
-            var user = new ApplicationUser
-            {
-                UserName     = dto.Email,
-                Email        = dto.Email,
-                FirstName    = dto.FirstName,
-                LastName     = dto.LastName,
-                PhoneNumber  = dto.PhoneNumber,
-                FilialeName  = filiale,
-                LaboratoryId = staffRoles.Contains(dto.Role) ? dto.LaboratoryId : null,
-                IsActive     = true,
-                CreatedAt    = DateTime.UtcNow
-=======
             if (!string.IsNullOrEmpty(dto.PhoneNumber))
             {
                 var normalizedNew = NormalizePhone(dto.PhoneNumber);
@@ -200,7 +173,6 @@ namespace PouleLabApp.API.Controllers
                 IsActive    = true,
                 IsApproved = true,
                 CreatedAt   = DateTime.UtcNow
->>>>>>> origin/Lilia
             };
 
             var result = await _userManager.CreateAsync(user, dto.Password);
@@ -303,44 +275,6 @@ namespace PouleLabApp.API.Controllers
             if (user == null)
                 return NotFound(new { message = "Utilisateur introuvable." });
 
-<<<<<<< HEAD
-            // ← Mettre RecordedById à null dans AnalysisResults
-            var analysisResults = await _context.AnalysisResults
-                .Where(r => r.RecordedById == id)
-                .ToListAsync();
-            foreach (var ar in analysisResults)
-                ar.RecordedById = null;
-
-            // ← Mettre PerformedById à null dans AuditLogs
-            var auditLogs = await _context.AuditLogs
-                .Where(a => a.PerformedById == id)
-                .ToListAsync();
-            foreach (var log in auditLogs)
-                log.PerformedById = null;
-
-            // ← Mettre AssignedToId à null dans AnalysisRequests
-            var assignedRequests = await _context.AnalysisRequests
-                .Where(r => r.AssignedToId == id)
-                .ToListAsync();
-            foreach (var req in assignedRequests)
-                req.AssignedToId = null;
-
-            // ← Supprimer les notifications de cet utilisateur
-            var notifications = await _context.Notifications
-                .Where(n => n.RecipientId == id)
-                .ToListAsync();
-            _context.Notifications.RemoveRange(notifications);
-
-            // ← Supprimer toutes les demandes dont l'utilisateur est le client
-            var clientRequests = await _context.AnalysisRequests
-                .Include(r => r.Samples)
-                    .ThenInclude(s => s.Results)
-                .Include(r => r.Deadlines)
-                .Include(r => r.AuditLogs)
-                .Include(r => r.Notifications)
-                .Where(r => r.ClientId == id)
-                .ToListAsync();
-=======
             // Nettoyer les FK
             var analysisResults = await _context.AnalysisResults
                 .Where(r => r.RecordedById == id).ToListAsync();
@@ -364,7 +298,6 @@ namespace PouleLabApp.API.Controllers
                 .Include(r => r.AuditLogs)
                 .Include(r => r.Notifications)
                 .Where(r => r.ClientId == id).ToListAsync();
->>>>>>> origin/Lilia
 
             foreach (var req in clientRequests)
             {

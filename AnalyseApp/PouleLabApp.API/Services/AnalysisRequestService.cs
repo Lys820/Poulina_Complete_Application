@@ -44,19 +44,7 @@ namespace PouleLabApp.API.Services
         }
 
         private async Task NotifyRoleAsync(
-<<<<<<< HEAD
-            string role, int requestId, string message,
-            int? laboratoryId = null) // ← paramètre optionnel
-        {
-            var users = await _userManager.GetUsersInRoleAsync(role);
 
-            foreach (var user in users.Where(u => u.IsActive))
-            {
-                // ← Si un labo est précisé, ne notifier que les membres de ce labo
-                if (laboratoryId.HasValue && user.LaboratoryId != laboratoryId)
-                    continue;
-
-=======
             string role, int requestId, string message, int? laboratoryId = null)
         {
             var users = await _userManager.GetUsersInRoleAsync(role);
@@ -68,7 +56,6 @@ namespace PouleLabApp.API.Services
                 filtered = filtered.Where(u => u.LaboratoryId == laboratoryId);
 
             foreach (var user in filtered)
->>>>>>> origin/Lilia
                 await CreateNotificationAsync(user.Id, requestId, message);
             }
         }
@@ -76,11 +63,9 @@ namespace PouleLabApp.API.Services
         // -------------------------------------------------------
         // Créer une nouvelle demande
         // -------------------------------------------------------
-        public async Task<RequestDetailDto> CreateAsync(
-            string clientId, CreateRequestDto dto)
+        public async Task<RequestDetailDto> CreateAsync(string clientId, CreateRequestDto dto)
         {
-            if (!dto.IsDraft && dto.LaboratoryId > 0)
-            {
+            if (!dto.IsDraft && dto.LaboratoryId > 0) {
                 _ = await _context.Laboratories.FindAsync(dto.LaboratoryId)
                     ?? throw new KeyNotFoundException("Laboratoire introuvable.");
             }
@@ -195,12 +180,8 @@ namespace PouleLabApp.API.Services
                         client.Email!, client.FirstName, request.Id);
 
                 await NotifyRoleAsync("Receptionist", request.Id,
-<<<<<<< HEAD
-                    $"Nouvelle demande #{request.Id} soumise par {client?.FirstName} {client?.LastName}.",
-                    request.LaboratoryId);
-=======
+
                     $"Nouvelle demande #{request.Id}...", request.LaboratoryId);
->>>>>>> origin/Lilia
                 await NotifyRoleAsync("Administrator", request.Id,
                     $"Nouvelle demande #{request.Id}...");
                 await NotifyRoleAsync("Manager", request.Id,
@@ -255,22 +236,12 @@ namespace PouleLabApp.API.Services
             await _emailService.SendRequestSubmittedAsync(
                 request.Client.Email!, request.Client.FirstName, requestId);
 
-<<<<<<< HEAD
-            await NotifyRoleAsync("Receptionist", requestId,
-                $"Nouvelle demande #{requestId} soumise par {request.Client.FirstName} {request.Client.LastName}.",
-                request.LaboratoryId);
-            await NotifyRoleAsync("Administrator", requestId,
-                $"Nouvelle demande #{requestId} soumise.");
-            await NotifyRoleAsync("Manager", requestId,
-                $"Nouvelle demande #{requestId} soumise.");
-=======
             await NotifyRoleAsync("Receptionist", request.Id,
                 $"Nouvelle demande #{request.Id}...", request.LaboratoryId);
             await NotifyRoleAsync("Administrator", request.Id,
                 $"Nouvelle demande #{request.Id}...");
             await NotifyRoleAsync("Manager", request.Id,
                 $"Nouvelle demande #{request.Id}...");
->>>>>>> origin/Lilia
 
             return await GetByIdAsync(requestId)
                 ?? throw new Exception("Erreur lors de la récupération de la demande.");
@@ -298,14 +269,9 @@ namespace PouleLabApp.API.Services
         // -------------------------------------------------------
         // Récupérer toutes les demandes
         // -------------------------------------------------------
-<<<<<<< HEAD
-        public async Task<List<RequestListDto>> GetAllAsync(string? status = null, string? userId = null,
-            int? laboratoryId = null)
-        {
-=======
+
         public async Task<List<RequestListDto>> GetAllAsync(
             string? status = null, int? laboratoryId = null) {
->>>>>>> origin/Lilia
             var query = _context.AnalysisRequests
                 .Include(r => r.Client)
                 .Include(r => r.Laboratory)

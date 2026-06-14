@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "nEl83/k+9lU=",
+  "dgSpecHash": "vDsBzyTQr8o=",
   "success": true,
-  "projectFilePath": "C:\\Users\\lysia\\Documents\\IUT1\\Stage\\Projet\\Poulina_Complete_Application\\AnalyseApp\\pouleLabApp.Api\\PouleLabApp.API.csproj",
+  "projectFilePath": "C:\\Users\\lysia\\Documents\\IUT1\\Stage\\Projet\\Poulina_Complete_Application\\AnalyseApp\\PouleLabApp.API\\PouleLabApp.API.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\lysia\\.nuget\\packages\\azure.core\\1.47.1\\azure.core.1.47.1.nupkg.sha512",
     "C:\\Users\\lysia\\.nuget\\packages\\azure.identity\\1.14.2\\azure.identity.1.14.2.nupkg.sha512",

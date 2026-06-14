@@ -287,12 +287,9 @@ namespace PouleLabApp.API.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
-<<<<<<< HEAD
-=======
                     b.Property<bool>("IsApproved")
                         .HasColumnType("bit");
 
->>>>>>> origin/Lilia
                     b.Property<int?>("LaboratoryId")
                         .HasColumnType("int");
 
@@ -698,12 +695,7 @@ namespace PouleLabApp.API.Migrations
                 {
                     b.HasOne("PouleLabApp.API.Models.Laboratory", "Laboratory")
                         .WithMany()
-<<<<<<< HEAD
-                        .HasForeignKey("LaboratoryId")
-                        .OnDelete(DeleteBehavior.SetNull);
-=======
                         .HasForeignKey("LaboratoryId");
->>>>>>> origin/Lilia
 
                     b.Navigation("Laboratory");
                 });

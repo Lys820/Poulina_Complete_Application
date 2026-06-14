@@ -41,3 +41,4 @@ AnalyseApp/PouleLabApp.API/bin/Debug/
 *.dll
 /AnalyseApp/PouleLabApp.Frontend/node_modules
 /Chatbot/app/api/__pycache__
+/AnalyseApp/PouleLabApp.API/obj/Debug
