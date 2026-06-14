@@ -1,0 +1,506 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using PouleLabApp.API.DTOs.Request;
+using PouleLabApp.API.Models;
+using PouleLabApp.API.Services.Interfaces;
+
+namespace PouleLabApp.API.Controllers
+{
+    [ApiController]
+    [Route("api/requests")]
+    [Authorize]
+    public class AnalysisRequestController : ControllerBase
+    {
+        private readonly IAnalysisRequestService _requestService;
+        private readonly UserManager<ApplicationUser> _userManager;
+
+        public AnalysisRequestController(
+            IAnalysisRequestService requestService,
+            UserManager<ApplicationUser> userManager)
+        {
+            _requestService = requestService;
+            _userManager = userManager;
+        }
+
+        // -------------------------------------------------------
+        // POST /api/requests
+        // Créer une demande — uniquement Client, Manager, Admin
+        // Receptionist, Analyst, LabChief ne peuvent pas créer
+        // -------------------------------------------------------
+        [HttpPost]
+        [Authorize(Policy = "RequireClientRole")]
+        public async Task<IActionResult> Create([FromBody] CreateRequestDto dto)
+        {
+            var clientId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                ?? User.FindFirst("sub")?.Value;
+
+            if (clientId == null)
+                return Unauthorized(new { message = "Utilisateur non identifié." });
+
+            var result = await _requestService.CreateAsync(clientId, dto);
+            return StatusCode(201, result);
+        }
+
+        // -------------------------------------------------------
+        // PUT /api/requests/{id}/submit
+        // Soumettre un brouillon — uniquement le créateur de la demande
+        // -------------------------------------------------------
+        [HttpPut("{id}/submit")]
+        public async Task<IActionResult> Submit(int id)
+        {
+            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                ?? User.FindFirst("sub")?.Value;
+
+            if (userId == null)
+                return Unauthorized(new { message = "Utilisateur non identifié." });
+
+            // La vérification que l'utilisateur est bien le créateur
+            // est faite dans le service (SubmitAsync)
+            var result = await _requestService.SubmitAsync(id, userId);
+            return Ok(result);
+        }
+
+        // -------------------------------------------------------
+        // GET /api/requests
+        // Client voit ses demandes, les autres voient tout
+        // -------------------------------------------------------
+        [HttpGet]
+        public async Task<IActionResult> GetAll([FromQuery] string? status = null)
+        {
+            var userId = _userManager.GetUserId(User);
+            var user   = await _userManager.FindByIdAsync(userId!);
+
+<<<<<<< HEAD
+            // Admin et Manager voient tout
+            var isAdminOrManager = User.IsInRole("Administrator") ||
+                                User.IsInRole("Manager");
+
+            // Client voit uniquement ses propres demandes
+=======
+            // Client — voit uniquement ses demandes
+>>>>>>> origin/Lilia
+            if (User.IsInRole("Client"))
+            {
+                var clientRequests = await _requestService.GetByClientAsync(userId!);
+                return Ok(clientRequests);
+            }
+
+<<<<<<< HEAD
+            // Réceptionniste, Laborantin, Chef de labo →
+            // uniquement les demandes de leur labo
+            int? laboratoryId = isAdminOrManager ? null : user?.LaboratoryId;
+
+            var requests = await _requestService.GetAllAsync(status, userId, laboratoryId);
+=======
+            // ← Staff — voit uniquement les demandes de son labo
+            if (User.IsInRole("Receptionist") ||
+                User.IsInRole("Analyst") ||
+                User.IsInRole("LabChief"))
+            {
+                var staffUser = await _userManager.FindByIdAsync(userId!);
+                if (staffUser?.LaboratoryId == null)
+                    return Ok(new List<object>());
+
+                var labRequests = await _requestService.GetAllAsync(
+                    status, staffUser.LaboratoryId);
+                return Ok(labRequests);
+            }
+
+            // Admin / Manager — voit tout
+            var requests = await _requestService.GetAllAsync(status);
+>>>>>>> origin/Lilia
+            return Ok(requests);
+        }
+
+        // -------------------------------------------------------
+        // GET /api/requests/{id}
+        // Détail d'une demande — tous les rôles connectés
+        // -------------------------------------------------------
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetById(int id)
+        {
+            var request = await _requestService.GetByIdAsync(id);
+            if (request == null)
+                return NotFound(new { message = "Demande introuvable." });
+
+            // ← Staff ne peut voir que les demandes de son labo
+            if (User.IsInRole("Receptionist") ||
+                User.IsInRole("Analyst") ||
+                User.IsInRole("LabChief"))
+            {
+                var userId = User.FindFirst(
+                    System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                    ?? User.FindFirst("sub")?.Value;
+                var staffUser = await _userManager.FindByIdAsync(userId!);
+
+                if (staffUser?.LaboratoryId != request.LaboratoryId)
+                    return StatusCode(403, new {
+                        message = "Vous n'avez pas accès à cette demande."
+                    });
+            }
+
+            return Ok(request);
+        }
+
+        // -------------------------------------------------------
+        // PUT /api/requests/{id}/receive
+        // Réceptionner — uniquement Receptionist (pas Admin)
+        // -------------------------------------------------------
+        [HttpPut("{id}/receive")]
+        [Authorize(Policy = "RequireReceptionistOnly")]
+        public async Task<IActionResult> Receive(int id)
+        {
+            var receptionistId = User.FindFirst(
+                System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                ?? User.FindFirst("sub")?.Value;
+
+            var request = await _requestService.GetByIdAsync(id);
+            if (request == null)
+                return NotFound(new { message = "Demande introuvable." });
+
+            if (request.Status != "Submitted")
+                return BadRequest(new {
+                    message = "Seules les demandes soumises peuvent être réceptionnées."
+                });
+
+            // ← Vérifier que le réceptionniste appartient au bon labo
+            var receptionist = await _userManager.FindByIdAsync(receptionistId!);
+            if (receptionist?.LaboratoryId != request.LaboratoryId)
+                return StatusCode(403, new {
+                    message = "Vous n'appartenez pas au laboratoire destinataire de cette demande."
+                });
+
+            var deadlines = await _requestService.GetDeadlinesAsync(id);
+            if (!deadlines.Any())
+                return BadRequest(new {
+                    message = "Veuillez définir les échéances avant de réceptionner."
+                });
+
+            var result = await _requestService.ReceiveAsync(id, receptionistId!);
+            return Ok(result);
+        }
+
+        // -------------------------------------------------------
+        // PUT /api/requests/{id}/assign
+        // Assigner — uniquement Receptionist, uniquement vers un Analyst
+        // -------------------------------------------------------
+        [HttpPut("{id}/assign")]
+        [Authorize(Policy = "RequireReceptionistOnly")]
+        public async Task<IActionResult> Assign(int id, [FromBody] string analystId)
+        {
+            // Vérifier que l'utilisateur cible existe
+            var analyst = await _userManager.FindByIdAsync(analystId);
+            if (analyst == null)
+                return NotFound(new { message = "Utilisateur introuvable." });
+
+            // Vérifier que l'utilisateur cible a bien le rôle Analyst
+            var roles = await _userManager.GetRolesAsync(analyst);
+            if (!roles.Contains("Analyst"))
+                return BadRequest(new { message = "L'utilisateur sélectionné n'est pas un laborantin." });
+
+            var result = await _requestService.AssignAsync(id, analystId);
+            return Ok(result);
+        }
+
+        // -------------------------------------------------------
+        // POST /api/requests/{id}/results
+        // Saisir les résultats — uniquement Analyst (pas Admin)
+        // -------------------------------------------------------
+        [HttpPost("{id}/results")]
+        [Authorize(Policy = "RequireAnalystOnly")]
+        public async Task<IActionResult> SaveResults(int id, [FromBody] List<SaveResultDto> results)
+        {
+            var analystId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                ?? User.FindFirst("sub")?.Value;
+
+            if (analystId == null)
+                return Unauthorized(new { message = "Utilisateur non identifié." });
+
+            var request = await _requestService.GetByIdAsync(id);
+            if (request == null)
+                return NotFound(new { message = "Demande introuvable." });
+
+            if (request.Status != "InProgress")
+                return BadRequest(new { message = "La demande doit être acceptée avant de saisir les résultats." });
+
+            var result = await _requestService.SaveResultsAsync(id, analystId, results);
+            return Ok(result);
+        }
+
+        // -------------------------------------------------------
+        // PUT /api/requests/{id}/complete-analysis
+        // Terminer l'analyse — uniquement Analyst (pas Admin)
+        // -------------------------------------------------------
+        [HttpPut("{id}/complete-analysis")]
+        [Authorize(Policy = "RequireAnalystOnly")]
+        public async Task<IActionResult> CompleteAnalysis(int id)
+        {
+            var analystId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                ?? User.FindFirst("sub")?.Value;
+
+            if (analystId == null)
+                return Unauthorized(new { message = "Utilisateur non identifié." });
+
+            var request = await _requestService.GetByIdAsync(id);
+            if (request == null)
+                return NotFound(new { message = "Demande introuvable." });
+
+            if (request.Status != "InProgress")
+                return BadRequest(new { message = "La demande doit être en cours d'analyse." });
+
+            var result = await _requestService.CompleteAnalysisAsync(id, analystId);
+            return Ok(result);
+        }
+
+        // -------------------------------------------------------
+        // PUT /api/requests/{id}/validate
+        // Valider — uniquement LabChief (pas Admin)
+        // -------------------------------------------------------
+        [HttpPut("{id}/validate")]
+        [Authorize(Policy = "RequireLabChiefOnly")]
+        public async Task<IActionResult> Validate(int id)
+        {
+            var labChiefId = User.FindFirst(
+                System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                ?? User.FindFirst("sub")?.Value;
+
+            var request = await _requestService.GetByIdAsync(id);
+            if (request == null)
+                return NotFound(new { message = "Demande introuvable." });
+
+            // ← Vérifier appartenance au labo
+            var labChief = await _userManager.FindByIdAsync(labChiefId!);
+            if (labChief?.LaboratoryId != request.LaboratoryId)
+                return StatusCode(403, new {
+                    message = "Vous n'appartenez pas au laboratoire de cette demande."
+                });
+
+            var result = await _requestService.ValidateAsync(id, labChiefId!);
+            return Ok(result);
+        }
+
+        // -------------------------------------------------------
+        // PUT /api/requests/{id}/invalidate
+        // Rejeter — uniquement LabChief (pas Admin)
+        // -------------------------------------------------------
+        [HttpPut("{id}/invalidate")]
+        [Authorize(Policy = "RequireLabChiefOnly")]
+        public async Task<IActionResult> Invalidate(int id, [FromBody] string reason)
+        {
+            var labChiefId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                ?? User.FindFirst("sub")?.Value;
+
+            if (labChiefId == null)
+                return Unauthorized(new { message = "Utilisateur non identifié." });
+
+            var request = await _requestService.GetByIdAsync(id);
+            if (request == null)
+                return NotFound(new { message = "Demande introuvable." });
+
+            var labChief = await _userManager.FindByIdAsync(labChiefId!);
+            if (labChief?.LaboratoryId != request.LaboratoryId)
+                return StatusCode(403, new {
+                    message = "Vous n'appartenez pas au laboratoire de cette demande."
+                });
+
+            if (request.Status != "InReview")
+                return BadRequest(new { message = "Seules les demandes en cours de révision peuvent être rejetées." });
+
+            var result = await _requestService.InvalidateAsync(id, labChiefId, reason);
+            return Ok(result);
+        }
+
+        // -------------------------------------------------------
+        // GET /api/requests/{id}/history
+        // Historique — uniquement Admin et LabChief
+        // -------------------------------------------------------
+        [HttpGet("{id}/history")]
+        [Authorize]
+        public async Task<IActionResult> GetHistory(int id)
+        {
+            var history = await _requestService.GetHistoryAsync(id);
+            return Ok(history);
+        }
+
+        // -------------------------------------------------------
+        // PUT /api/requests/{id}/deadlines
+        // Définir les échéances — Receptionist et Admin uniquement
+        // -------------------------------------------------------
+        [HttpPut("{id}/deadlines")]
+        [Authorize(Policy = "RequireClientRole")]
+        public async Task<IActionResult> SetDeadlines(
+            int id,
+            [FromBody] List<SetDeadlineDto> deadlines)
+        {
+            // Récupérer l'ID de l'utilisateur connecté
+            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+            ?? User.FindFirst("sub")?.Value;
+            
+            // Vérifier que la demande existe
+            var request = await _requestService.GetByIdAsync(id);
+            if (request == null)
+                return NotFound(new { message = "Demande introuvable." });
+
+            // Vérifier que c'est bien le créateur de la demande qui définit les échéances ou l'admin 
+            if (request.ClientId != userId && !User.IsInRole("Administrator"))
+                return StatusCode(403, new { message = "Seul le créateur de la demande ou un administrateur peut définir les échéances." });
+            
+            var result = await _requestService.SetDeadlinesAsync(id, deadlines);
+            return Ok(result);
+        }
+
+        // -------------------------------------------------------
+        // GET /api/requests/{id}/deadlines
+        // Consulter les échéances — tous les rôles connectés
+        // -------------------------------------------------------
+        [HttpGet("{id}/deadlines")]
+        public async Task<IActionResult> GetDeadlines(int id)
+        {
+            var deadlines = await _requestService.GetDeadlinesAsync(id);
+            return Ok(deadlines);
+        }
+
+        // -------------------------------------------------------
+        // PUT /api/requests/{id}
+        // Modifier une demande — uniquement le créateur ou l'Admin
+        // Uniquement si la demande est en brouillon
+        // -------------------------------------------------------
+        [HttpPut("{id}")]
+        [Authorize(Policy = "RequireClientRole")]
+        public async Task<IActionResult> Update(int id, [FromBody] UpdateRequestDto dto)
+        {
+            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                ?? User.FindFirst("sub")?.Value;
+
+            if (userId == null)
+                return Unauthorized(new { message = "Utilisateur non identifié." });
+
+            // Vérifier que la demande existe
+            var request = await _requestService.GetByIdAsync(id);
+            if (request == null)
+                return NotFound(new { message = "Demande introuvable." });
+
+            // Vérifier le statut
+            if (request.Status != "Draft")
+                return BadRequest(new { message = "Seules les demandes en brouillon peuvent être modifiées." });
+
+            // Vérifier que c'est le créateur ou un Admin
+            if (request.ClientId != userId && !User.IsInRole("Administrator"))
+                return StatusCode(403, new { message = "Seul le créateur de la demande peut la modifier." });
+
+            var result = await _requestService.UpdateAsync(id, userId, dto);
+            return Ok(result);
+        }
+
+        // -------------------------------------------------------
+        // PUT /api/requests/{id}/analyst-accept
+        // Laborantin accepte la demande — confirme la prise en charge
+        // -------------------------------------------------------
+        [HttpPut("{id}/analyst-accept")]
+        [Authorize(Policy = "RequireAnalystOnly")]
+        public async Task<IActionResult> AnalystAccept(int id)
+        {
+            var analystId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                ?? User.FindFirst("sub")?.Value;
+
+            if (analystId == null)
+                return Unauthorized(new { message = "Utilisateur non identifié." });
+
+            var request = await _requestService.GetByIdAsync(id);
+            if (request == null)
+                return NotFound(new { message = "Demande introuvable." });
+
+            if (request.AssignedToId != analystId)
+                return StatusCode(403, new { message = "Cette demande ne vous est pas assignée." });
+
+            if (request.Status != "Assigned")
+                return BadRequest(new { message = "Seules les demandes assignées peuvent être acceptées." });
+
+            var result = await _requestService.AnalystAcceptAsync(id, analystId);
+            return Ok(result);
+        }
+
+        // -------------------------------------------------------
+        // PUT /api/requests/{id}/analyst-reject
+        // Laborantin refuse la demande — clôture automatique
+        // -------------------------------------------------------
+        [HttpPut("{id}/analyst-reject")]
+        [Authorize(Policy = "RequireAnalystOnly")]
+        public async Task<IActionResult> AnalystReject(int id, [FromBody] string reason)
+        {
+            var analystId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                ?? User.FindFirst("sub")?.Value;
+
+            if (analystId == null)
+                return Unauthorized(new { message = "Utilisateur non identifié." });
+
+            var request = await _requestService.GetByIdAsync(id);
+            if (request == null)
+                return NotFound(new { message = "Demande introuvable." });
+
+            if (request.AssignedToId != analystId)
+                return StatusCode(403, new { message = "Cette demande ne vous est pas assignée." });
+
+            if (request.Status != "Assigned")
+                return BadRequest(new { message = "Impossible de refuser une demande déjà acceptée." });
+
+            var result = await _requestService.AnalystRejectAsync(id, analystId, reason);
+            return Ok(result);
+        }
+
+        // -------------------------------------------------------
+        // DELETE /api/requests/{id}
+        // Supprimer une demande en brouillon
+        // Uniquement si statut = Draft et créateur = utilisateur connecté
+        // -------------------------------------------------------
+        [HttpDelete("{id}")]
+        [Authorize(Policy = "RequireClientRole")]
+        public async Task<IActionResult> Delete(int id)
+        {
+            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                ?? User.FindFirst("sub")?.Value;
+
+            var request = await _requestService.GetByIdAsync(id);
+            if (request == null)
+                return NotFound(new { message = "Demande introuvable." });
+
+           if (request.Status != "Draft" && request.Status != "Submitted")
+                return BadRequest(new {
+                    message = "Seules les demandes en brouillon ou soumises " +
+                            "(non encore réceptionnées) peuvent être supprimées."
+                });
+
+            if (request.ClientId != userId && !User.IsInRole("Administrator"))
+                return StatusCode(403, new { message = "Vous n'êtes pas autorisé à supprimer cette demande." });
+
+            await _requestService.DeleteAsync(id);
+            return Ok(new { message = "Demande supprimée avec succès." });
+        }
+
+        // DELETE /api/requests/{id}/deadlines/{deadlineId}
+        [HttpDelete("{id}/deadlines/{deadlineId}")]
+        [Authorize(Policy = "RequireClientRole")]
+        public async Task<IActionResult> DeleteDeadline(int id, int deadlineId)
+        {
+            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                ?? User.FindFirst("sub")?.Value;
+
+            var request = await _requestService.GetByIdAsync(id);
+            if (request == null)
+                return NotFound(new { message = "Demande introuvable." });
+
+            // Seul le créateur ou Admin peut supprimer
+            if (request.ClientId != userId && !User.IsInRole("Administrator"))
+                return StatusCode(403, new { message = "Non autorisé." });
+
+            // Impossible de modifier après réception
+            if (request.Status != "Draft" && request.Status != "Submitted")
+                return BadRequest(new { message = "Les échéances ne peuvent plus être modifiées après réception." });
+
+            await _requestService.DeleteDeadlineAsync(deadlineId);
+            return Ok(new { message = "Échéance supprimée." });
+        }
+    }
+
+}

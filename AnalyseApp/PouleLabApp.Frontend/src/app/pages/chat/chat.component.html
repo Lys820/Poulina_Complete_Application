@@ -1,0 +1,286 @@
+<div class="chat-page">
+
+  <!-- En-tête avec onglets -->
+  <div class="chat-header">
+    <div class="chat-header-top">
+      <div class="chat-title">
+        <div class="chat-avatar">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+               fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 16v-4M12 8h.01"/>
+          </svg>
+        </div>
+        <div>
+          <h2>Assistant IA Poulina</h2>
+          <span class="session-badge" *ngIf="activeTab === 'chat'">Session : {{ sessionShort }}</span>
+        </div>
+      </div>
+      <button class="btn-reset" (click)="reset()" *ngIf="activeTab === 'chat'" title="Nouvelle conversation">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="1 4 1 10 7 10"/>
+          <path d="M3.51 15a9 9 0 1 0 .49-3.44"/>
+        </svg>
+        Réinitialiser
+      </button>
+    </div>
+
+    <!-- Onglets -->
+    <div class="chat-tabs">
+      <button class="tab-btn" [class.active]="activeTab === 'chat'" (click)="setTab('chat')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+        Conversation
+      </button>
+      <button class="tab-btn" [class.active]="activeTab === 'usage'" (click)="setTab('usage')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M12 16v-4M12 8h.01"/>
+        </svg>
+        Utilisation
+      </button>
+    </div>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- ONGLET CONVERSATION                                               -->
+  <!-- ================================================================ -->
+  <ng-container *ngIf="activeTab === 'chat'">
+
+    <!-- Filtre ville -->
+    <div class="chat-filters">
+      <label for="filtreVille">Filtrer par ville</label>
+      <input id="filtreVille" type="text" [(ngModel)]="ville" placeholder="Ex. : Tunis, Sfax…" />
+    </div>
+
+    <!-- Zone messages -->
+    <div class="messages-container" #messagesContainer>
+
+      <!-- Suggestions initiales -->
+      <div class="suggestions-wrapper" *ngIf="showSuggestions">
+        <p class="suggestions-label">Suggestions de questions</p>
+        <div class="suggestions">
+          <button class="suggestion-chip" *ngFor="let s of suggestions" (click)="send(s)">
+            {{ s }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Messages -->
+      <div *ngFor="let msg of messages"
+           class="message"
+           [class.message-user]="msg.role === 'user'"
+           [class.message-assistant]="msg.role === 'assistant'">
+
+        <div class="message-avatar" *ngIf="msg.role === 'assistant'">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+               fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 16v-4M12 8h.01"/>
+          </svg>
+        </div>
+
+        <div class="message-body">
+          <!-- Indicateur de frappe -->
+          <div class="typing-indicator" *ngIf="msg.content === null">
+            <span></span><span></span><span></span>
+          </div>
+          <div class="message-text" *ngIf="msg.content !== null">{{ msg.content }}</div>
+
+          <!-- Métadonnées (prédiction souche, analyses récupérées) -->
+          <div class="message-meta" *ngIf="hasMeta(msg)">
+            <div class="meta-item" *ngIf="msg.meta?.souche_prediction">
+              <span class="meta-label">Souche recommandée</span>
+              <span class="meta-value">
+                {{ msg.meta!.souche_prediction!.souche }}
+                ({{ msg.meta!.souche_prediction!.confiance_pct | number:'1.0-0' }}% de confiance)
+              </span>
+            </div>
+            <div class="meta-item" *ngIf="msg.meta?.retrieved_analyses?.length">
+              <span class="meta-label">Analyses sources : {{ msg.meta!.retrieved_analyses!.length }}</span>
+            </div>
+          </div>
+
+          <span class="message-time">{{ formatTime(msg.ts) }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Zone de saisie -->
+    <div class="chat-input-area">
+      <textarea
+        [(ngModel)]="input"
+        (keydown)="onKeyDown($event)"
+        (input)="autoResize($event)"
+        placeholder="Posez votre question… (Entrée pour envoyer)"
+        rows="1"
+        [disabled]="loading">
+      </textarea>
+      <button class="btn-send" (click)="send()" [disabled]="loading || !input.trim()">
+        <svg *ngIf="!loading" xmlns="http://www.w3.org/2000/svg" width="18" height="18"
+             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round">
+          <line x1="22" y1="2" x2="11" y2="13"/>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+        </svg>
+        <span class="spinner" *ngIf="loading"></span>
+      </button>
+    </div>
+
+  </ng-container>
+
+  <!-- ================================================================ -->
+  <!-- ONGLET UTILISATION                                                -->
+  <!-- ================================================================ -->
+  <ng-container *ngIf="activeTab === 'usage'">
+    <div class="usage-panel">
+
+      <section class="usage-section">
+        <h3>Objectif de l'assistant</h3>
+        <p>
+          L'assistant IA Poulina est un service de questions-réponses specialise dans
+          le domaine avicole au sein du groupe Poulina. Il exploite une base de connaissances
+          composee des historiques d'analyses de laboratoire et des informations sur les
+          laboratoires partenaires, ainsi qu'un modele de recommandation de souches (races
+          de volailles) base sur vos parametres de production.
+        </p>
+      </section>
+
+      <section class="usage-section">
+        <h3>Capacites disponibles</h3>
+        <div class="usage-cards">
+          <div class="usage-card">
+            <div class="usage-card-icon usage-card-icon--primary">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                   fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              </svg>
+            </div>
+            <div>
+              <strong>Questions generales</strong>
+              <p>Posez toute question relative aux analyses, maladies avicoles, normes sanitaires ou fonctionnement des laboratoires.</p>
+            </div>
+          </div>
+          <div class="usage-card">
+            <div class="usage-card-icon usage-card-icon--success">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                   fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+              </svg>
+            </div>
+            <div>
+              <strong>Recommandation de souche</strong>
+              <p>Renseignez vos parametres de production (type, gouvernorat, budget, biosecurite) pour obtenir une recommandation ML personnalisee.</p>
+            </div>
+          </div>
+          <div class="usage-card">
+            <div class="usage-card-icon usage-card-icon--info">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                   fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 0 1-2.827 0l-4.244-4.243a8 8 0 1 1 11.314 0z"/>
+                <circle cx="12" cy="11" r="3"/>
+              </svg>
+            </div>
+            <div>
+              <strong>Filtre geographique</strong>
+              <p>Utilisez le champ "Filtrer par ville" pour restreindre les resultats de laboratoires a une region precise.</p>
+            </div>
+          </div>
+          <div class="usage-card">
+            <div class="usage-card-icon usage-card-icon--warning">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                   fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+            </div>
+            <div>
+              <strong>Alertes sanitaires</strong>
+              <p>Interrogez l'assistant sur les alertes ou incidents sanitaires recents enregistres dans la base de donnees.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="usage-section">
+        <h3>Exemples de questions</h3>
+        <div class="usage-examples">
+          <div class="usage-example-group">
+            <span class="example-category">Analyses</span>
+            <ul>
+              <li>"Quels sont les resultats d'analyse pour le centre de Bizerte ?"</li>
+              <li>"Quelle est la norme de taux de mortalite acceptable pour des poulets de chair ?"</li>
+              <li>"Y a-t-il des alertes sanitaires actives dans la region de Sfax ?"</li>
+            </ul>
+          </div>
+          <div class="usage-example-group">
+            <span class="example-category">Laboratoires</span>
+            <ul>
+              <li>"Quel laboratoire est disponible rapidement a Tunis ?"</li>
+              <li>"Quels laboratoires traitent les analyses bacteriologiques ?"</li>
+              <li>"Coordonnees du laboratoire de Sousse ?"</li>
+            </ul>
+          </div>
+          <div class="usage-example-group">
+            <span class="example-category">Recommandation de souche</span>
+            <ul>
+              <li>"Quelle souche recommandes-tu pour un elevage de 10 000 poulets a Nabeul avec un budget de 80 000 DT ?"</li>
+              <li>"Souche optimale pour une production d'oeufs avec un score de biosecurite de 7 ?"</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="usage-section">
+        <h3>Bonnes pratiques</h3>
+        <div class="usage-tips">
+          <div class="usage-tip">
+            <span class="tip-icon tip-icon--ok">+</span>
+            <span>Formulez des questions precises en mentionnant la region, le type de production ou le contexte pertinent.</span>
+          </div>
+          <div class="usage-tip">
+            <span class="tip-icon tip-icon--ok">+</span>
+            <span>Pour une recommandation de souche, fournissez autant de parametres que possible (budget, biosecurite, taux de mortalite acceptable).</span>
+          </div>
+          <div class="usage-tip">
+            <span class="tip-icon tip-icon--warn">!</span>
+            <span>L'assistant est limite au domaine avicole et a la base de donnees Poulina. Les questions hors domaine recevront une reponse negative.</span>
+          </div>
+          <div class="usage-tip">
+            <span class="tip-icon tip-icon--warn">!</span>
+            <span>La session est reinitialise a chaque rechargement de page. Utilisez le bouton "Reinitialiser" pour demarrer une nouvelle conversation.</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="usage-section usage-section--technical">
+        <h3>Informations techniques</h3>
+        <div class="usage-tech-grid">
+          <div class="tech-item">
+            <span class="tech-label">Modele LLM</span>
+            <span class="tech-value">Anthropic Claude (via API)</span>
+          </div>
+          <div class="tech-item">
+            <span class="tech-label">Base de connaissances</span>
+            <span class="tech-value">RAG — PouleLabDB (SQL Server)</span>
+          </div>
+          <div class="tech-item">
+            <span class="tech-label">Recommandation ML</span>
+            <span class="tech-value">Modele entraine au demarrage du service</span>
+          </div>
+          <div class="tech-item">
+            <span class="tech-label">Endpoint chatbot</span>
+            <span class="tech-value">POST /api/v1/chat</span>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </ng-container>
+
+</div>

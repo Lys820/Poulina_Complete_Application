@@ -1,0 +1,43 @@
+# Build output
+obj/
+Debug/
+bin/
+.pytest_cache/
+
+# Env
+.env
+.env.*
+*.env
+Chatbot/.env
+
+# Data files
+*.csv
+*.pkl
+*.bin
+*.pickle
+*.sqlite3
+*.pyc
+*.log
+*.cache
+*.so
+*.dylib
+*.ttf
+*.pdb
+*.exe
+*.dll
+*.pyc
+
+Chatbot/.env
+AnalyseApp/PouleLabApp.API/bin/Debug/
+/Chatbot/app/api/__pycache__
+/Chatbot/app/services/__pycache__
+/AnalyseApp/PouleLabApp.API/obj
+/AnalyseApp/PouleLabApp.API/bin
+/Chatbot/app/services/__pycache__
+/Chatbot/app/ml/__pycache__
+/Chatbot/app/ml/__pycache__
+/Chatbot/app/api/__pycache__
+/Chatbot/app/core/__pycache__
+*.dll
+/AnalyseApp/PouleLabApp.Frontend/node_modules
+/Chatbot/app/api/__pycache__

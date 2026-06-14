@@ -1,0 +1,60 @@
+.results-page {
+  max-width: 1000px;
+
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-muted);
+    font-size: 13px;
+    transition: color 0.2s;
+    &:hover {
+      color: var(--primary);
+    }
+  }
+
+  .page-header h4 {
+    margin: 0 0 4px;
+  }
+}
+
+// =============================================
+// ÉCHANTILLON
+// =============================================
+.sample-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+// =============================================
+// SAISIE
+// =============================================
+.result-input {
+  width: 130px;
+  padding: 6px 10px;
+  font-size: 13px;
+  font-weight: 600;
+
+  &.is-anomaly {
+    border-color: var(--danger);
+    color: var(--danger);
+    background: #fff5f5;
+  }
+}
+
+.anomaly-row {
+  background: #fff8f8 !important;
+}
+
+// =============================================
+// ACTIONS
+// =============================================
+.results-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-color);
+}

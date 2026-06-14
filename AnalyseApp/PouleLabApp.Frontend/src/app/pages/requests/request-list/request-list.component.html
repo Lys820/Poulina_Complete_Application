@@ -1,0 +1,132 @@
+<div class="request-list">
+  <!-- En-tête -->
+  <div class="page-header">
+    <div>
+      <h4>Demandes d'analyses</h4>
+      <p class="text-muted mb-0">{{ requests().length }} demande(s) trouvée(s)</p>
+    </div>
+    @if (authService.hasAnyRole(['Administrator', 'Manager', 'Client'])) {
+      <a routerLink="/app/requests/new" class="btn btn-primary">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="me-2"
+        >
+          <line x1="12" y1="5" x2="12" y2="19" />
+          <line x1="5" y1="12" x2="19" y2="12" />
+        </svg>
+        Nouvelle demande
+      </a>
+    }
+  </div>
+
+  <!-- Filtres -->
+  <div class="filters-bar">
+    <select
+      class="form-control filter-select"
+      [(ngModel)]="statusFilter"
+      (change)="onFilterChange()"
+      aria-label="Filtrer par statut"
+    >
+      @for (s of statuses; track s.value) {
+        <option [value]="s.value">{{ s.label }}</option>
+      }
+    </select>
+  </div>
+
+  <!-- Tableau -->
+  <div class="card">
+    <div class="card-body p-0">
+      @if (isLoading()) {
+        <div class="text-center py-5">
+          <div class="spinner-border text-primary"></div>
+        </div>
+      } @else if (requests().length === 0) {
+        <div class="empty-state">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="48"
+            height="48"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#ccc"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+          </svg>
+          <p>Aucune demande trouvée</p>
+        </div>
+      } @else {
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead>
+              <tr>
+                <th>N°</th>
+                <th>Client</th>
+                <th>Laboratoire</th>
+                <th>Échantillons</th>
+                <th>Créée le</th>
+                <th>Statut</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (req of requests(); track req.id) {
+                <tr>
+                  <td>
+                    <strong>#{{ req.id }}</strong>
+                  </td>
+                  <td>{{ req.clientName }}</td>
+                  <td>
+                    <span class="lab-badge">{{ req.laboratoryName }}</span>
+                  </td>
+                  <td>{{ req.samplesCount }}</td>
+                  <td>{{ req.createdAt | date: 'dd/MM/yyyy' }}</td>
+                  <td>
+                    <span class="badge" [ngClass]="getStatusBadge(req.status)">
+                      {{ getStatusLabel(req.status) }}
+                    </span>
+                  </td>
+                  <td>
+                    <div class="actions">
+                      <a
+                        [routerLink]="'/app/requests/' + req.id"
+                        class="btn btn-icon btn-light"
+                        title="Voir"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="15"
+                          height="15"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        >
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                          <circle cx="12" cy="12" r="3" />
+                        </svg>
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+  </div>
+</div>

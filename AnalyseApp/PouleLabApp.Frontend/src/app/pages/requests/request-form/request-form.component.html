@@ -1,0 +1,408 @@
+<div class="request-form">
+  <!-- Retour -->
+  <div class="mb-3">
+    <a routerLink="/app/requests" class="back-link">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <line x1="19" y1="12" x2="5" y2="12" />
+        <polyline points="12 19 5 12 12 5" />
+      </svg>
+      Retour à la liste
+    </a>
+  </div>
+
+  <!-- Titre -->
+  <div class="page-header mb-4">
+    <div>
+      <h4>Nouvelle demande d'analyse</h4>
+      <p class="text-muted mb-0">Étape {{ currentStep() }} sur {{ totalSteps }}</p>
+    </div>
+  </div>
+
+  <!-- Stepper -->
+  <div class="stepper mb-4">
+    <div class="step" [class.active]="currentStep() >= 1" [class.done]="currentStep() > 1">
+      <div class="step-circle">1</div>
+      <span>Laboratoire</span>
+    </div>
+    <div class="step-line" [class.done]="currentStep() > 1"></div>
+    <div class="step" [class.active]="currentStep() >= 2" [class.done]="currentStep() > 2">
+      <div class="step-circle">2</div>
+      <span>Échantillons</span>
+    </div>
+    <div class="step-line" [class.done]="currentStep() > 2"></div>
+    <div class="step" [class.active]="currentStep() >= 3">
+      <div class="step-circle">3</div>
+      <span>Analyses</span>
+    </div>
+  </div>
+
+  <!-- Erreur -->
+  @if (errorMessage()) {
+    <div class="alert alert-danger mb-3">{{ errorMessage() }}</div>
+  }
+
+  <form [formGroup]="form">
+    <!-- ==================== ÉTAPE 1 ==================== -->
+    @if (currentStep() === 1) {
+      <div class="card">
+        <div class="card-header">Informations de la demande</div>
+        <div class="card-body">
+          <!-- Laboratoire -->
+          <div class="mb-3">
+            <label class="form-label">Laboratoire destinataire *</label>
+            <div class="select-wrapper">
+              <select
+                class="form-control custom-select"
+                formControlName="laboratoryId"
+                aria-label="Sélectionner un laboratoire"
+                title="Laboratoire destinataire"
+                [class.is-invalid]="
+                  form.get('laboratoryId')!.touched && form.get('laboratoryId')!.invalid
+                "
+              >
+                <option [value]="null">— Sélectionner un laboratoire —</option>
+                @for (lab of laboratories(); track lab.id) {
+                  <option [value]="lab.id">{{ lab.name }} — {{ lab.description }}</option>
+                }
+              </select>
+              <span class="select-arrow">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </span>
+            </div>
+          </div>
+
+          <!-- Marque -->
+          <div class="mb-3">
+            <label class="form-label">Marque de l'échantillon *</label>
+            <p class="text-muted small mb-2">
+              Sélectionnez la marque à laquelle appartiennent vos échantillons
+            </p>
+            <div class="brand-selector">
+              @for (brand of brands; track brand.value) {
+                <button
+                  type="button"
+                  class="brand-pill"
+                  [class.brand-pill-active]="selectedBrand() === brand.value"
+                  [attr.data-brand]="brand.value"
+                  (click)="selectBrand(brand.value)"
+                >
+                  {{ brand.label }}
+                </button>
+              }
+            </div>
+            @if (showBrandError()) {
+              <p class="text-danger small mt-2">
+                ⚠ Veuillez sélectionner un laboratoire et une marque pour continuer.
+              </p>
+            }
+          </div>
+
+          <!-- Notes -->
+          <div class="mb-3">
+            <label class="form-label">Notes / Observations</label>
+            <textarea
+              class="form-control"
+              rows="3"
+              formControlName="notes"
+              placeholder="Informations complémentaires..."
+            >
+            </textarea>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- ==================== ÉTAPE 2 — Échantillons ==================== -->
+    @if (currentStep() === 2) {
+      <div>
+        @if (selectedBrand()) {
+          <div
+            class="brand-badge-indicator brand-badge-lg mb-3"
+            [attr.data-brand]="selectedBrand()"
+          >
+            <span class="brand-badge-dot"></span>
+            Échantillons — {{ getBrandConfig().label }}
+          </div>
+        }
+
+        <div formArrayName="samples">
+          @for (sample of samples.controls; track $index; let i = $index) {
+            <div
+              class="card mb-3 sample-card"
+              [attr.data-brand]="selectedBrand()"
+              [formGroupName]="i"
+            >
+              <div class="card-header d-flex align-items-center justify-content-between">
+                <span>Échantillon {{ i + 1 }}</span>
+                @if (samples.length > 1) {
+                  <button
+                    type="button"
+                    class="btn btn-icon btn-danger btn-sm"
+                    (click)="removeSample(i)"
+                    title="Supprimer"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                }
+              </div>
+
+              <div class="card-body">
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label class="form-label" [for]="'type_' + i">
+                      {{ getFieldConfig().sampleTypeLabel }}
+                    </label>
+                    <input
+                      type="text"
+                      class="form-control"
+                      formControlName="type"
+                      [id]="'type_' + i"
+                      [placeholder]="getFieldConfig().sampleTypePlaceholder"
+                      [title]="getFieldConfig().sampleTypeLabel"
+                    />
+                  </div>
+
+                  <div class="col-md-6">
+                    <label class="form-label" [for]="'char_' + i">
+                      {{ getFieldConfig().characteristicsLabel }}
+                    </label>
+                    <input
+                      type="text"
+                      class="form-control"
+                      formControlName="characteristics"
+                      [id]="'char_' + i"
+                      [placeholder]="getFieldConfig().characteristicsPlaceholder"
+                      [title]="getFieldConfig().characteristicsLabel"
+                    />
+                  </div>
+
+                  <div class="col-md-6">
+                    <label class="form-label" [for]="'qty_' + i">Quantité *</label>
+                    <input
+                      type="number"
+                      class="form-control"
+                      formControlName="quantity"
+                      [id]="'qty_' + i"
+                      placeholder="Ex: 500"
+                      title="Quantité"
+                    />
+                  </div>
+
+                  <div class="col-md-6">
+                    <label class="form-label">Unité *</label>
+                    <div class="select-wrapper">
+                      <select
+                        class="form-control custom-select"
+                        formControlName="unit"
+                        aria-label="Unité de mesure"
+                        title="Unité de mesure"
+                      >
+                        <option value="">— Sélectionner —</option>
+                        <option value="L">L — Litre</option>
+                        <option value="mL">mL — Millilitre</option>
+                        <option value="cL">cL — Centilitre</option>
+                        <option value="m³">m³ — Mètre cube</option>
+                        <option value="kg">kg — Kilogramme</option>
+                        <option value="g">g — Gramme</option>
+                        <option value="mg">mg — Milligramme</option>
+                        <option value="t">t — Tonne</option>
+                        <option value="unité">Unité</option>
+                        <option value="échantillon">Échantillon</option>
+                      </select>
+                      <span class="select-arrow">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2.5"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        >
+                          <polyline points="6 9 12 15 18 9" />
+                        </svg>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          }
+
+          <button type="button" class="btn btn-light w-100 add-sample-btn" (click)="addSample()">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              class="me-2"
+            >
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Ajouter un échantillon
+          </button>
+        </div>
+      </div>
+    }
+
+    <!-- ==================== ÉTAPE 3 — Analyses ==================== -->
+    @if (currentStep() === 3) {
+      <div>
+        @if (selectedBrand()) {
+          <div
+            class="brand-badge-indicator brand-badge-lg mb-3"
+            [attr.data-brand]="selectedBrand()"
+          >
+            <span class="brand-badge-dot"></span>
+            Analyses — {{ getBrandConfig().label }}
+          </div>
+        }
+
+        <div formArrayName="samples">
+          @for (sample of samples.controls; track $index; let i = $index) {
+            <!-- ← Un seul [formGroupName]="i" sur la card, pas de doublon intérieur -->
+            <div
+              class="card mb-3 sample-card"
+              [attr.data-brand]="selectedBrand()"
+              [formGroupName]="i"
+            >
+              <div class="card-header">
+                Analyses — {{ sample.get('type')!.value || 'Échantillon ' + (i + 1) }}
+              </div>
+
+              <div class="card-body">
+                <p class="text-muted small mb-3">Renseignez les types d'analyses à effectuer :</p>
+
+                <!-- ← formArrayName directement, sans [formGroupName] en plus -->
+                <div formArrayName="analysisNames">
+                  @for (ctrl of getAnalysisNames(i).controls; track $index; let j = $index) {
+                    <div class="analysis-name-row mb-2">
+                      <input
+                        type="text"
+                        class="form-control"
+                        [formControlName]="j"
+                        placeholder="Ex: pH, Viscosité, Bactériologie..."
+                        [id]="'analysis_' + i + '_' + j"
+                        [title]="'Type d\'analyse ' + (j + 1)"
+                      />
+                      @if (getAnalysisNames(i).length > 1) {
+                        <span
+                          class="remove-analysis"
+                          (click)="removeAnalysisName(i, j)"
+                          role="button"
+                          tabindex="0"
+                          title="Supprimer"
+                          (keydown.enter)="removeAnalysisName(i, j)"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          >
+                            <line x1="18" y1="6" x2="6" y2="18" />
+                            <line x1="6" y1="6" x2="18" y2="18" />
+                          </svg>
+                        </span>
+                      }
+                    </div>
+                  }
+                </div>
+
+                <button
+                  type="button"
+                  class="btn btn-sm mt-2 add-analysis-btn"
+                  (click)="addAnalysisName(i)"
+                >
+                  + Ajouter une analyse
+                </button>
+
+                @if (hasNoAnalysisNames(i)) {
+                  <p class="text-danger small mt-2">Ajoutez au moins un type d'analyse.</p>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    }
+  </form>
+
+  <!-- Navigation -->
+  <div class="form-navigation">
+    @if (currentStep() > 1) {
+      <button type="button" class="btn btn-light" (click)="prevStep()">← Précédent</button>
+    } @else {
+      <div></div>
+    }
+    <div class="d-flex gap-2">
+      @if (currentStep() < totalSteps) {
+        <button type="button" class="btn btn-primary" (click)="nextStep()">Suivant →</button>
+      } @else {
+        <button type="button" class="btn btn-light" (click)="submit(true)" [disabled]="isLoading()">
+          Enregistrer comme brouillon
+        </button>
+        <button
+          type="button"
+          class="btn btn-primary"
+          (click)="submit(false)"
+          [disabled]="isLoading()"
+          [title]="!isFormCompleteForSubmit() ? 'Complétez tous les champs pour soumettre' : ''"
+        >
+          @if (isLoading()) {
+            <span class="spinner-border spinner-border-sm me-2"></span>
+          }
+          Soumettre la demande
+        </button>
+      }
+    </div>
+  </div>
+</div>

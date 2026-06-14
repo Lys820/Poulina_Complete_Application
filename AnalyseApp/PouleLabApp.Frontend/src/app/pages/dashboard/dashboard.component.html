@@ -1,0 +1,221 @@
+<div class="dashboard">
+  <!-- En-tête -->
+  <div class="page-header">
+    <div>
+      <h4>{{ greeting }}, {{ authService.currentUser()?.firstName }} 👋</h4>
+      <p class="text-muted mb-0">Voici un aperçu de l'activité du laboratoire</p>
+    </div>
+    @if (authService.hasAnyRole(['Administrator', 'Manager', 'Client'])) {
+      <a routerLink="/app/requests/new" class="btn btn-primary">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="me-2"
+        >
+          <line x1="12" y1="5" x2="12" y2="19" />
+          <line x1="5" y1="12" x2="19" y2="12" />
+        </svg>
+        Nouvelle demande
+      </a>
+    }
+  </div>
+
+  <!-- Stat Cards -->
+  @if (isLoading()) {
+    <div class="text-center py-5">
+      <div class="spinner-border text-primary"></div>
+    </div>
+  } @else {
+    <div class="row g-3 mb-4">
+      <div class="col-xl-3 col-md-6">
+        <div class="stat-card stat-card-primary">
+          <div class="stat-icon">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="white"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+            </svg>
+          </div>
+          <div class="stat-value">{{ totalRequests }}</div>
+          <div class="stat-label">Total des demandes</div>
+        </div>
+      </div>
+
+      <div class="col-xl-3 col-md-6">
+        <div class="stat-card stat-card-warning">
+          <div class="stat-icon">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="white"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
+            </svg>
+          </div>
+          <div class="stat-value">{{ pendingRequests }}</div>
+          <div class="stat-label">En attente</div>
+        </div>
+      </div>
+
+      <div class="col-xl-3 col-md-6">
+        <div class="stat-card stat-card-info">
+          <div class="stat-icon">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="white"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+            </svg>
+          </div>
+          <div class="stat-value">{{ inProgressRequests }}</div>
+          <div class="stat-label">En cours d'analyse</div>
+        </div>
+      </div>
+
+      <div class="col-xl-3 col-md-6">
+        <div class="stat-card stat-card-success">
+          <div class="stat-icon">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="white"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </div>
+          <div class="stat-value">{{ validatedRequests }}</div>
+          <div class="stat-label">Validées</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tableau des dernières demandes -->
+    <div class="card">
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <span>Dernières demandes</span>
+        <a routerLink="/app/requests" class="btn btn-light btn-sm"> Voir tout → </a>
+      </div>
+      <div class="card-body p-0">
+        @if (recentRequests.length === 0) {
+          <div class="empty-state">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="48"
+              height="48"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#ccc"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+            </svg>
+            <p>Aucune demande pour le moment</p>
+            @if (authService.hasAnyRole(['Administrator', 'Manager', 'Client'])) {
+              <a routerLink="/app/requests/new" class="btn btn-primary btn-sm">
+                Créer une demande
+              </a>
+            }
+          </div>
+        } @else {
+          <div class="table-responsive">
+            <table class="table table-hover mb-0">
+              <thead>
+                <tr>
+                  <th>N° Demande</th>
+                  <th>Client</th>
+                  <th>Laboratoire</th>
+                  <th>Échantillons</th>
+                  <th>Date</th>
+                  <th>Statut</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (req of recentRequests; track req.id) {
+                  <tr class="clickable-row" (click)="router.navigate(['/app/requests', req.id])">
+                    <td>
+                      <strong>#{{ req.id | number: '6.0-0' }}</strong>
+                    </td>
+                    <td>{{ req.clientName }}</td>
+                    <td>
+                      <span class="lab-badge">{{ req.laboratoryName }}</span>
+                    </td>
+                    <td>{{ req.samplesCount }} échantillon(s)</td>
+                    <td>{{ req.createdAt | date: 'dd/MM/yyyy' }}</td>
+                    <td>
+                      <span class="badge" [ngClass]="getStatusBadge(req.status)">
+                        {{ getStatusLabel(req.status) }}
+                      </span>
+                    </td>
+                    <td>
+                      <a
+                        [routerLink]="'/app/requests/' + req.id"
+                        class="btn btn-icon btn-light"
+                        title="Voir le détail"
+                        (click)="$event.stopPropagation()"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="15"
+                          height="15"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        >
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                          <circle cx="12" cy="12" r="3" />
+                        </svg>
+                      </a>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+    </div>
+  }
+</div>

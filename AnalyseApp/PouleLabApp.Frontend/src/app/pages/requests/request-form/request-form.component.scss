@@ -1,0 +1,317 @@
+.request-form {
+  max-width: 860px;
+
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-muted);
+    font-size: 13px;
+    transition: color 0.2s;
+    &:hover {
+      color: var(--primary);
+    }
+  }
+
+  .page-header h4 {
+    margin: 0 0 4px;
+  }
+}
+
+// =============================================
+// STEPPER
+// =============================================
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+
+  .step-circle {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--border-color);
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 14px;
+    transition: all 0.3s;
+  }
+
+  span {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 500;
+    transition: color 0.3s;
+    white-space: nowrap;
+  }
+
+  &.active {
+    .step-circle {
+      background: var(--primary);
+      color: white;
+      box-shadow: 0 4px 12px rgba(115, 102, 255, 0.4);
+    }
+    span {
+      color: var(--primary);
+    }
+  }
+
+  &.done .step-circle {
+    background: var(--success);
+    color: white;
+  }
+}
+
+.step-line {
+  flex: 1;
+  height: 2px;
+  background: var(--border-color);
+  margin: 0 8px;
+  margin-bottom: 22px;
+  transition: background 0.3s;
+  &.done {
+    background: var(--success);
+  }
+}
+
+// =============================================
+// NAVIGATION
+// =============================================
+.form-navigation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-color);
+}
+
+// =============================================
+// BOUTON AJOUTER ÉCHANTILLON
+// =============================================
+.add-sample-btn {
+  border: 2px dashed var(--border-color);
+  color: var(--text-muted);
+  margin-top: 4px;
+  transition: all 0.2s;
+
+  &:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: rgba(115, 102, 255, 0.04);
+  }
+}
+
+// =============================================
+// SELECT WRAPPER
+// =============================================
+.select-wrapper {
+  position: relative;
+
+  select.custom-select {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    padding-right: 40px;
+    cursor: pointer;
+    background: white;
+
+    &:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(115, 102, 255, 0.15);
+      outline: none;
+    }
+  }
+
+  .select-arrow {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+  }
+}
+
+// =============================================
+// ANALYSES
+// =============================================
+.analysis-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .form-control {
+    flex: 1;
+  }
+}
+
+.remove-analysis {
+  color: var(--text-muted);
+  cursor: pointer;
+  opacity: 0.6;
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.15s;
+
+  &:hover {
+    color: var(--danger);
+    opacity: 1;
+    background: #fff0f0;
+  }
+}
+
+.add-analysis-btn {
+  border: 1.5px dashed var(--border-color);
+  color: var(--text-muted);
+  font-size: 12px;
+  transition: all 0.2s;
+
+  &:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+  }
+}
+
+// =============================================
+// SÉLECTEUR DE MARQUE — Pills
+// =============================================
+.brand-selector {
+  display: flex;
+  gap: 10px;
+}
+
+.brand-pill {
+  flex: 1;
+  padding: 10px 16px;
+  border: 1.5px solid var(--border-color);
+  border-radius: 8px;
+  background: white;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+  -webkit-user-select: none;
+  user-select: none;
+
+  &:hover {
+    border-color: var(--primary);
+    color: var(--dark);
+  }
+
+  &[data-brand='DICK'].brand-pill-active {
+    background: #991b1b;
+    border-color: #991b1b;
+    color: white;
+  }
+  &[data-brand='SNA'].brand-pill-active {
+    background: #1e3a8a;
+    border-color: #1e3a8a;
+    color: white;
+  }
+  &[data-brand='GIPA'].brand-pill-active {
+    background: #7c3aed;
+    border-color: #7c3aed;
+    color: white;
+  }
+  &[data-brand='MEDOIL'].brand-pill-active {
+    background: #b45309;
+    border-color: #b45309;
+    color: white;
+  }
+}
+
+// =============================================
+// BADGE INDICATEUR MARQUE — discret
+// =============================================
+.brand-badge-indicator {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1.5px solid;
+
+  &[data-brand='DICK'] {
+    background: #fef2f2;
+    border-color: #991b1b;
+    color: #7f1d1d;
+  }
+  &[data-brand='SNA'] {
+    background: #eff6ff;
+    border-color: #1e3a8a;
+    color: #1e3a8a;
+  }
+  &[data-brand='GIPA'] {
+    background: #f5f3ff;
+    border-color: #7c3aed;
+    color: #6d28d9;
+  }
+  &[data-brand='MEDOIL'] {
+    background: #fffbeb;
+    border-color: #b45309;
+    color: #92400e;
+  }
+}
+
+// Badge légèrement plus visible pour étape 2
+.brand-badge-lg {
+  padding: 6px 14px;
+  font-size: 13px;
+  gap: 8px;
+
+  .brand-badge-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  &[data-brand='DICK'] .brand-badge-dot {
+    background: #991b1b;
+  }
+  &[data-brand='SNA'] .brand-badge-dot {
+    background: #1e3a8a;
+  }
+  &[data-brand='GIPA'] .brand-badge-dot {
+    background: #7c3aed;
+  }
+  &[data-brand='MEDOIL'] .brand-badge-dot {
+    background: #b45309;
+  }
+}
+
+// Card échantillon avec bordure gauche colorée
+.sample-card {
+  border-left-width: 3px !important;
+  border-left-style: solid !important;
+
+  &[data-brand='DICK'] {
+    border-left-color: #991b1b !important;
+  }
+  &[data-brand='SNA'] {
+    border-left-color: #1e3a8a !important;
+  }
+  &[data-brand='GIPA'] {
+    border-left-color: #7c3aed !important;
+  }
+  &[data-brand='MEDOIL'] {
+    border-left-color: #b45309 !important;
+  }
+}

@@ -1,0 +1,462 @@
+<div class="user-list">
+  <!-- En-tête -->
+  <div class="page-header">
+    <div>
+      <h4>Gestion des utilisateurs</h4>
+      <p class="text-muted mb-0">{{ filteredUsers.length }} utilisateur(s)</p>
+    </div>
+    @if (authService.hasRole('Administrator')) {
+      <button class="btn btn-primary btn-sm" (click)="showCreateModal.set(true)">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="me-1"
+        >
+          <line x1="12" y1="5" x2="12" y2="19" />
+          <line x1="5" y1="12" x2="19" y2="12" />
+        </svg>
+        Nouvel utilisateur
+      </button>
+    }
+  </div>
+
+  <!-- Messages -->
+  @if (successMsg()) {
+    <div class="alert alert-success mb-3">{{ successMsg() }}</div>
+  }
+  @if (errorMsg()) {
+    <div class="alert alert-danger mb-3">{{ errorMsg() }}</div>
+  }
+
+  <!-- Comptes en attente de validation -->
+  @if (pendingUsers().length > 0) {
+    <div class="card mb-4">
+      <div class="card-header d-flex align-items-center gap-2">
+        <span class="pending-dot"></span>
+        Comptes en attente de validation
+        <span class="badge badge-submitted ms-1">{{ pendingUsers().length }}</span>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table mb-0">
+            <thead>
+              <tr>
+                <th>Utilisateur</th>
+                <th>Email</th>
+                <th>Rôle</th>
+                <th>Organisation</th>
+                <th>Créé le</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (user of pendingUsers(); track user.id) {
+                <tr>
+                  <td>
+                    <div class="user-cell">
+                      <div class="user-avatar">{{ user.firstName[0] }}{{ user.lastName[0] }}</div>
+                      <strong>{{ user.firstName }} {{ user.lastName }}</strong>
+                    </div>
+                  </td>
+                  <td>{{ user.email }}</td>
+                  <td>
+                    <span class="role-badge" [ngClass]="getRoleBadgeClass(user.role)">
+                      {{ roleLabels[user.role] || user.role }}
+                    </span>
+                  </td>
+                  <td>{{ getOrganisationLabel(user) }}</td>
+                  <td>{{ user.createdAt | date: 'dd/MM/yyyy' }}</td>
+                  <td>
+                    <div class="actions">
+                      <button class="btn btn-success btn-sm me-1" (click)="approveUser(user)">
+                        ✓ Approuver
+                      </button>
+                      <button class="btn btn-danger btn-sm" (click)="confirmDelete(user)">
+                        ✗ Rejeter
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Filtres -->
+  <div class="filters-bar mb-3">
+    <select
+      class="form-control filter-select"
+      [(ngModel)]="roleFilter"
+      aria-label="Filtrer par rôle"
+    >
+      <option value="">Tous les rôles</option>
+      @for (role of roles; track role) {
+        <option [value]="role">{{ roleLabels[role] }}</option>
+      }
+    </select>
+  </div>
+
+  <!-- Tableau -->
+  <div class="card">
+    <div class="card-body p-0">
+      @if (isLoading()) {
+        <div class="text-center py-5">
+          <div class="spinner-border text-primary"></div>
+        </div>
+      } @else if (filteredUsers.length === 0) {
+        <div class="empty-state">
+          <p>Aucun utilisateur trouvé.</p>
+        </div>
+      } @else {
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead>
+              <tr>
+                <th>Utilisateur</th>
+                <th>Email</th>
+                <th>Organisation</th>
+                <th>Rôle</th>
+                <th>Statut</th>
+                <th>Créé le</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (user of filteredUsers; track user.id) {
+                <tr [class.inactive-row]="!user.isActive">
+                  <td>
+                    <div class="user-cell">
+                      <div class="user-avatar">{{ user.firstName[0] }}{{ user.lastName[0] }}</div>
+                      <div>
+                        <strong>{{ user.firstName }} {{ user.lastName }}</strong>
+                      </div>
+                    </div>
+                  </td>
+                  <td>{{ user.email }}</td>
+                  <td>{{ getOrganisationLabel(user) }}</td>
+                  <td>
+                    <span class="role-badge" [ngClass]="getRoleBadgeClass(user.role)">
+                      {{ roleLabels[user.role] || user.role }}
+                    </span>
+                  </td>
+                  <td>
+                    @if (user.isActive) {
+                      <span class="badge badge-validated">✓ Actif</span>
+                    } @else {
+                      <span class="badge badge-closed">Inactif</span>
+                    }
+                  </td>
+                  <td>{{ user.createdAt | date: 'dd/MM/yyyy' }}</td>
+                  <td>
+                    <div class="actions">
+                      <!-- Modifier -->
+                      <button
+                        class="btn btn-icon btn-light"
+                        title="Modifier"
+                        (click)="openEdit(user)"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        >
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                        </svg>
+                      </button>
+
+                      <!-- Désactiver -->
+                      @if (user.isActive) {
+                        <button
+                          class="btn btn-icon btn-light"
+                          title="Désactiver"
+                          (click)="deactivate(user)"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          >
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+                          </svg>
+                        </button>
+                      }
+
+                      <!-- Supprimer — Admin uniquement, pas son propre compte -->
+                      @if (
+                        authService.hasRole('Administrator') &&
+                        user.id !== authService.currentUser()?.userId
+                      ) {
+                        <button
+                          class="btn btn-icon btn-danger ms-1"
+                          title="Supprimer"
+                          (click)="confirmDelete(user)"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          >
+                            <polyline points="3 6 5 6 21 6" />
+                            <path d="M19 6l-1 14H6L5 6" />
+                            <path d="M10 11v6" />
+                            <path d="M14 11v6" />
+                            <path d="M9 6V4h6v2" />
+                          </svg>
+                        </button>
+                      }
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- Modal édition -->
+  @if (showEditModal() && editingUser()) {
+    <div class="modal-overlay" (click)="showEditModal.set(false)">
+      <div class="modal-box" (click)="$event.stopPropagation()">
+        <div class="modal-header-custom">
+          <h5>Modifier l'utilisateur</h5>
+          <button class="modal-close" (click)="showEditModal.set(false)" aria-label="Fermer">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+
+        <form [formGroup]="editForm">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label" for="editFirstName">Prénom</label>
+              <input
+                id="editFirstName"
+                type="text"
+                class="form-control"
+                formControlName="firstName"
+              />
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="editLastName">Nom</label>
+              <input
+                id="editLastName"
+                type="text"
+                class="form-control"
+                formControlName="lastName"
+              />
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label" for="editEmail">Email</label>
+              <input id="editEmail" type="email" class="form-control" formControlName="email" />
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label" for="editPhone">Téléphone</label>
+              <input
+                id="editPhone"
+                type="tel"
+                class="form-control"
+                formControlName="phoneNumber"
+                placeholder="+216 XX XXX XXX"
+              />
+            </div>
+
+            <!-- Labo — Receptionist, Analyst, LabChief -->
+            @if (isStaffRole(editingUser()?.role)) {
+              <div class="col-12">
+                <label class="form-label" for="editLab">Laboratoire</label>
+                <select
+                  id="editLab"
+                  class="form-control"
+                  formControlName="laboratoryId"
+                  aria-label="Sélectionner un laboratoire"
+                >
+                  <option [value]="null">— Sélectionner —</option>
+                  @for (lab of laboratories(); track lab.id) {
+                    <option [value]="lab.id">{{ lab.name }}</option>
+                  }
+                </select>
+              </div>
+            }
+
+            <!-- Filiale — Client uniquement -->
+            @if (isClientRole(editingUser()?.role)) {
+              <div class="col-12">
+                <label class="form-label" for="editFiliale">Filiale</label>
+                <input
+                  id="editFiliale"
+                  type="text"
+                  class="form-control"
+                  formControlName="filialeName"
+                />
+              </div>
+            }
+
+            <div class="col-md-6">
+              <label class="form-label" for="editRole">Rôle</label>
+              <select
+                id="editRole"
+                class="form-control"
+                formControlName="role"
+                aria-label="Sélectionner un rôle"
+              >
+                @for (role of roles; track role) {
+                  <option [value]="role">{{ roleLabels[role] }}</option>
+                }
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="editStatus">Statut</label>
+              <select
+                id="editStatus"
+                class="form-control"
+                formControlName="isActive"
+                aria-label="Statut du compte"
+              >
+                <option [ngValue]="true">Actif</option>
+                <option [ngValue]="false">Inactif</option>
+              </select>
+            </div>
+          </div>
+        </form>
+
+        <div class="d-flex gap-2 mt-4">
+          <button class="btn btn-primary flex-fill" (click)="saveEdit()">Enregistrer</button>
+          <button class="btn btn-light flex-fill" (click)="showEditModal.set(false)">
+            Annuler
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Modal création -->
+  @if (showCreateModal()) {
+    <div class="modal-overlay" (click)="showCreateModal.set(false)">
+      <div class="modal-box modal-box-large" (click)="$event.stopPropagation()">
+        <!-- ← stopper la propagation -->
+        <div class="modal-header-custom mb-3">
+          <h5 class="mb-0">Créer un utilisateur</h5>
+          <button class="modal-close" (click)="showCreateModal.set(false)" aria-label="Fermer">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+        <app-register-form (onCreated)="onUserCreated()" />
+      </div>
+    </div>
+  }
+
+<<<<<<< HEAD
+  <!-- Modal confirmation suppression -->
+  @if (deleteUserId()) {
+    <div class="modal-overlay" (click)="deleteUserId.set(null)">
+      <div class="modal-box" (click)="$event.stopPropagation()">
+        <h5>Supprimer le compte</h5>
+        <p class="text-muted">
+          Êtes-vous sûr de vouloir supprimer le compte de
+          <strong>{{ deleteUserName() }}</strong> ? Cette action est <strong>irréversible</strong>.
+        </p>
+=======
+  <!-- Modal confirmation mot de passe admin -->
+  @if (showPasswordModal()) {
+    <div class="modal-overlay" (click)="showPasswordModal.set(false)">
+      <div class="modal-box" (click)="$event.stopPropagation()">
+        <h5>
+          @if (passwordModalAction() === 'delete') {
+            Supprimer le compte de {{ pendingActionName() }}
+          } @else {
+            {{ pendingUserActive() ? 'Désactiver' : 'Réactiver' }}
+            le compte de {{ pendingActionName() }}
+          }
+        </h5>
+        <p class="text-muted small">Entrez votre mot de passe administrateur pour confirmer.</p>
+        <div class="mb-3">
+          <label class="form-label small">Mot de passe administrateur *</label>
+          <input
+            type="password"
+            class="form-control"
+            placeholder="Votre mot de passe"
+            [ngModel]="adminPassword()"
+            (ngModelChange)="adminPassword.set($event)"
+          />
+        </div>
+        @if (errorMsg()) {
+          <div class="alert alert-danger py-2 px-3 mb-3">
+            <small>{{ errorMsg() }}</small>
+          </div>
+        }
+>>>>>>> origin/Lilia
+        <div class="d-flex gap-2 mt-3">
+          <button class="btn btn-light flex-fill" (click)="showPasswordModal.set(false)">
+            Annuler
+          </button>
+          <button
+            class="btn btn-danger flex-fill"
+            (click)="confirmAction()"
+            [disabled]="!adminPassword()"
+          >
+            Confirmer
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

@@ -1,0 +1,435 @@
+.request-detail {
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-muted);
+    font-size: 13px;
+    transition: color 0.2s;
+    &:hover {
+      color: var(--primary);
+    }
+  }
+}
+
+// =============================================
+// EN-TÊTE DÉTAIL
+// =============================================
+.detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 12px;
+
+  h4 {
+    margin: 0 0 6px;
+    font-size: 22px;
+  }
+
+  .pdf-actions {
+    display: flex;
+    gap: 8px;
+  }
+}
+
+// =============================================
+// INFOS CLIENT
+// =============================================
+.info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.info-item {
+  .info-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+  .info-value {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--dark);
+  }
+}
+
+.lab-badge {
+  padding: 3px 8px;
+  background: var(--light);
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.notes-box {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 13px;
+  color: var(--dark);
+}
+
+.anomaly-row {
+  background: #fff5f5 !important;
+}
+
+// =============================================
+// ACTIONS
+// =============================================
+.actions-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+// =============================================
+// HISTORIQUE
+// =============================================
+.history-item {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color);
+  &:last-child {
+    border-bottom: none;
+  }
+
+  .history-action {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--dark);
+  }
+
+  .history-meta {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  .history-change {
+    font-size: 11px;
+    color: var(--primary);
+    margin-top: 2px;
+  }
+}
+
+// =============================================
+// MODALES
+// =============================================
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.modal-box {
+  background: white;
+  border-radius: 16px;
+  padding: 28px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  animation: slideUp 0.2s ease;
+
+  h5 {
+    margin-bottom: 8px;
+    font-size: 17px;
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+// =============================================
+// ASSIGNATION — Laborantins
+// =============================================
+.analysts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.analyst-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1.5px solid var(--border-color);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+
+  &:hover {
+    border-color: var(--primary);
+    background: rgba(115, 102, 255, 0.04);
+  }
+
+  &.selected {
+    border-color: var(--primary);
+    background: rgba(115, 102, 255, 0.08);
+  }
+
+  .analyst-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 15px;
+    flex-shrink: 0;
+  }
+
+  .analyst-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+
+    strong {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--dark);
+      line-height: 1.3;
+    }
+
+    small {
+      display: block;
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.3;
+    }
+  }
+
+  .check-icon {
+    color: var(--primary);
+    flex-shrink: 0;
+  }
+}
+
+// =============================================
+// URGENCE & PÉREMPTION — Formulaire
+// =============================================
+.deadline-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sample-deadline-card {
+  border: 1.5px solid var(--border-color);
+  border-radius: 12px;
+  overflow: hidden;
+  background: white;
+  transition: box-shadow 0.2s;
+
+  &:hover {
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  }
+}
+
+.sample-deadline-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: var(--light);
+  border-bottom: 1px solid var(--border-color);
+
+  strong {
+    font-size: 14px;
+    color: var(--dark);
+  }
+
+  .sample-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--primary);
+    flex-shrink: 0;
+  }
+}
+
+.deadline-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  padding: 16px;
+}
+
+.deadline-field {
+  .form-label {
+    font-weight: 500;
+    margin-bottom: 6px;
+  }
+}
+
+// =============================================
+// URGENCE & PÉREMPTION — Affichage
+// =============================================
+.urgency-card {
+  border: 1.5px solid var(--border-color);
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin-bottom: 12px;
+  position: relative;
+  background: white;
+  transition: box-shadow 0.2s;
+  border-left-width: 4px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+  &:hover {
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.07);
+  }
+
+  // Couleur bordure gauche selon urgence
+  &.urgency-card-normal {
+    border-left-color: #10b981;
+  }
+  &.urgency-card-urgent {
+    border-left-color: #f59e0b;
+  }
+  &.urgency-card-tresurgent,
+  &.urgency-card-tr-surgent {
+    border-left-color: #ef4444;
+  }
+  &.urgency-card-critique {
+    border-left-color: #7c3aed;
+  }
+}
+
+.urgency-sample-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+
+  strong {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--dark);
+  }
+
+  .sample-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--primary);
+    flex-shrink: 0;
+  }
+}
+
+.urgency-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.urgency-badge {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+
+  &.urgency-normal {
+    background: #ecfdf5;
+    color: #059669;
+  }
+  &.urgency-urgent {
+    background: #fffbeb;
+    color: #d97706;
+  }
+  &.urgency-tresurgent,
+  &.urgency-tr-surgent {
+    background: #fef2f2;
+    color: #dc2626;
+  }
+  &.urgency-critique {
+    background: #f5f3ff;
+    color: #7c3aed;
+  }
+}
+
+.urgency-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.expiry-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  width: fit-content;
+
+  color: #dc2626;
+  background: #fef2f2;
+
+  &.not-perishable {
+    color: #059669;
+    background: #ecfdf5;
+  }
+
+  svg {
+    flex-shrink: 0;
+  }
+}
+
+.delete-deadline-btn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: var(--text-muted);
+  opacity: 0.4;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 6px;
+  transition: all 0.2s;
+
+  &:hover {
+    opacity: 1;
+    color: var(--danger);
+    background: #fef2f2;
+  }
+}
+
+.deadline-separator {
+  margin: 15px 0;
+  border-color: var(--border-color);
+}
