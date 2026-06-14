@@ -23,8 +23,8 @@ export class UserService {
   }
 
   // Activer/désactiver un compte
-  toggleStatus(id: string): Observable<any> {
-    return this.http.patch(`${this.url}/${id}/status`, {});
+  toggleStatus(id: string, password: string): Observable<any> {
+    return this.http.patch(`${this.url}/${id}/status`, { password });
   }
 
   getRoles(): Observable<{ id: string; name: string }[]> {
@@ -47,8 +47,10 @@ export class UserService {
     return this.http.post(`${this.url}`, dto);
   }
 
-  deleteUser(id: string): Observable<any> {
-    return this.http.delete(`${this.url}/${id}`);
+  deleteUser(id: string, password: string): Observable<any> {
+    return this.http.request('DELETE', `${this.url}/${id}`, {
+      body: { password },
+    });
   }
 
   getMyProfile(): Observable<any> {
@@ -59,7 +61,15 @@ export class UserService {
     return this.http.put(`${this.url}/me`, dto);
   }
 
-  deleteMyAccount(): Observable<any> {
-    return this.http.delete(`${this.url}/me`);
+  deleteMyAccount(password: string): Observable<any> {
+    return this.http.post(`${this.url}/me/delete`, { password });
+  }
+
+  getLaboratories(): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.apiUrl}/laboratories`);
+  }
+
+  approveUser(id: string): Observable<any> {
+    return this.http.post(`${this.url}/${id}/approve`, {});
   }
 }

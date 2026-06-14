@@ -10,9 +10,8 @@ import {
 import { UserService } from '../../../core/services/user.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { UserDto } from '../../../core/models/user.model';
-import { RegisterComponent } from '../../auth/register/register.component';
 import { RegisterFormComponent } from '../../auth/register/register-form.component';
-
+import { extractErrorMessage } from '../../../core/utils/error.utils';
 @Component({
   selector: 'app-user-list',
   standalone: true,
@@ -34,8 +33,14 @@ export class UserListComponent implements OnInit {
   editingUser = signal<UserDto | null>(null);
   editForm!: FormGroup;
   showCreateModal = signal(false);
-  deleteUserId = signal<string | null>(null);
-  deleteUserName = signal('');
+  laboratories = signal<any[]>([]);
+  pendingUsers = signal<UserDto[]>([]);
+  adminPassword = signal('');
+  showPasswordModal = signal(false);
+  passwordModalAction = signal<'delete' | 'toggle' | null>(null);
+  pendingActionUserId = signal<string | null>(null);
+  pendingActionName = signal('');
+  pendingUserActive = signal(false);
 
   readonly roles = ['Administrator', 'Manager', 'Receptionist', 'Analyst', 'LabChief', 'Client'];
 
@@ -53,26 +58,33 @@ export class UserListComponent implements OnInit {
     private fb: FormBuilder,
     public authService: AuthService,
   ) {
-    // ← Initialiser editForm ici
     this.editForm = this.fb.group({
       firstName: ['', Validators.required],
       lastName: ['', Validators.required],
       email: ['', [Validators.required, Validators.email]],
       phoneNumber: [''],
       filialeName: [''],
+      laboratoryId: [null], // ← ajouter
       role: ['', Validators.required],
       isActive: [true],
     });
   }
   ngOnInit(): void {
     this.loadUsers();
+    this.userService.getLaboratories().subscribe({
+      next: (labs: any[]) => this.laboratories.set(labs),
+      error: () => {},
+    });
   }
 
   loadUsers(): void {
     this.isLoading.set(true);
     this.userService.getAll().subscribe({
-      next: (data) => {
-        this.users.set(data);
+      next: (data: UserDto[]) => {
+        // ← Comptes en attente = pas encore approuvés
+        this.pendingUsers.set(data.filter((u) => !u.isApproved));
+        // ← Comptes actifs ET désactivés (déjà approuvés)
+        this.users.set(data.filter((u) => u.isApproved));
         this.isLoading.set(false);
       },
       error: () => this.isLoading.set(false),
@@ -90,9 +102,10 @@ export class UserListComponent implements OnInit {
     this.editForm.patchValue({
       firstName: user.firstName,
       lastName: user.lastName,
-      email: user.email, // ← nouveau
-      phoneNumber: user.phoneNumber, // ← nouveau
+      email: user.email,
+      phoneNumber: user.phoneNumber,
       filialeName: user.filialeName,
+      laboratoryId: user.laboratoryId ?? null, // ← ajouter
       role: user.role,
       isActive: user.isActive,
     });
@@ -116,18 +129,18 @@ export class UserListComponent implements OnInit {
         this.loadUsers();
         this.showSuccess('Utilisateur mis à jour avec succès.');
       },
-      error: (err) => this.showError(err.error?.message),
+      error: (err) => this.showError(extractErrorMessage(err)),
     });
   }
 
   deactivate(user: any): void {
-    const action = user.isActive ? 'désactiver' : 'réactiver';
-    if (!confirm(`Voulez-vous ${action} le compte de ${user.firstName} ${user.lastName} ?`)) return;
-
-    this.userService.toggleStatus(user.id).subscribe({
-      next: () => this.loadUsers(),
-      error: (err) => this.errorMsg.set(err.error?.message ?? 'Erreur.'),
-    });
+    this.pendingActionUserId.set(user.id);
+    this.pendingActionName.set(`${user.firstName} ${user.lastName}`);
+    this.pendingUserActive.set(user.isActive);
+    this.passwordModalAction.set('toggle');
+    this.adminPassword.set('');
+    this.errorMsg.set('');
+    this.showPasswordModal.set(true);
   }
 
   getRoleBadgeClass(role: string): string {
@@ -160,20 +173,63 @@ export class UserListComponent implements OnInit {
 
   // Confirmer suppression
   confirmDelete(user: any): void {
-    this.deleteUserId.set(user.id);
-    this.deleteUserName.set(`${user.firstName} ${user.lastName}`);
+    this.pendingActionUserId.set(user.id);
+    this.pendingActionName.set(`${user.firstName} ${user.lastName}`);
+    this.passwordModalAction.set('delete');
+    this.adminPassword.set('');
+    this.errorMsg.set('');
+    this.showPasswordModal.set(true);
   }
 
-  deleteUser(): void {
-    const id = this.deleteUserId();
+  isClientRole(role?: string): boolean {
+    return (role ?? this.editForm.get('role')?.value) === 'Client';
+  }
+
+  isStaffRole(role?: string): boolean {
+    return ['Receptionist', 'Analyst', 'LabChief'].includes(
+      role ?? this.editForm.get('role')?.value,
+    );
+  }
+
+  getOrganisationLabel(user: UserDto): string {
+    if (user.role === 'Client') return user.filialeName ?? '—';
+    if (user.role === 'Administrator' || user.role === 'Manager') return 'Poulina Group Holding';
+    return user.laboratoryName ?? '—';
+  }
+
+  approveUser(user: UserDto): void {
+    this.userService.approveUser(user.id).subscribe({
+      next: () => {
+        this.loadUsers();
+        this.showSuccess(`Compte de ${user.firstName} ${user.lastName} approuvé.`);
+      },
+      error: (err: unknown) => this.showError(extractErrorMessage(err)),
+    });
+  }
+
+  confirmAction(): void {
+    if (!this.adminPassword()) return;
+    const id = this.pendingActionUserId();
     if (!id) return;
 
-    this.userService.deleteUser(id).subscribe({
-      next: () => {
-        this.deleteUserId.set(null);
-        this.loadUsers();
-      },
-      error: (err) => alert(err.error?.message ?? 'Erreur.'),
-    });
+    if (this.passwordModalAction() === 'delete') {
+      this.userService.deleteUser(id, this.adminPassword()).subscribe({
+        next: () => {
+          this.showPasswordModal.set(false);
+          this.loadUsers();
+          this.showSuccess('Compte supprimé.');
+        },
+        error: (err: unknown) => this.showError(extractErrorMessage(err)),
+      });
+    } else {
+      this.userService.toggleStatus(id, this.adminPassword()).subscribe({
+        next: () => {
+          this.showPasswordModal.set(false);
+          this.loadUsers();
+          this.showSuccess('Statut mis à jour.');
+        },
+        error: (err: unknown) => this.showError(extractErrorMessage(err)),
+      });
+    }
   }
 }

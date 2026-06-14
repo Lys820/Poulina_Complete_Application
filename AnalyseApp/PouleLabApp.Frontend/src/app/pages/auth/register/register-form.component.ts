@@ -26,6 +26,10 @@ export class RegisterFormComponent {
   showPassword = signal(false);
   showConfirm = signal(false);
   laboratories = signal<any[]>([]);
+<<<<<<< HEAD
+=======
+  readonly staffRoles = ['Receptionist', 'Analyst', 'LabChief'];
+>>>>>>> origin/Lilia
 
   readonly roles = [
     { value: 'Client', label: 'Client' },
@@ -49,8 +53,9 @@ export class RegisterFormComponent {
         firstName: ['', [Validators.required, Validators.minLength(2)]],
         lastName: ['', [Validators.required, Validators.minLength(2)]],
         email: ['', [Validators.required, Validators.email]],
-        phoneNumber: ['', [Validators.pattern(/^[+]?[\d\s\-().]{8,15}$/)]],
+        phoneNumber: ['', [Validators.pattern(/^(\+216 ?)?(\d{8}|\d{2} \d{3} \d{3})$/)]],
         filialeName: [''],
+        laboratoryId: [null],
         role: ['Client', Validators.required],
         laboratoryId: [null],
         password: [
@@ -61,6 +66,7 @@ export class RegisterFormComponent {
       },
       { validators: this.passwordMatchValidator },
     );
+<<<<<<< HEAD
 
     // ← URL correcte
     this.http.get<any[]>(`${environment.apiUrl}/laboratories`).subscribe({
@@ -87,6 +93,42 @@ export class RegisterFormComponent {
 
   isClientRole(): boolean {
     return this.form.get('role')?.value === 'Client';
+=======
+    // Charger les labos
+    this.http.get<any[]>(`${environment.apiUrl}/laboratories`).subscribe({
+      next: (labs: any[]) => this.laboratories.set(labs),
+      error: () => {},
+    });
+
+    // Rendre laboratoryId obligatoire pour les rôles staff
+    // ← Initialiser selon rôle par défaut (Client)
+    this.form.get('filialeName')?.setValidators(Validators.required);
+    this.form.get('filialeName')?.updateValueAndValidity();
+
+    // ← Mettre à jour selon rôle
+    this.form.get('role')?.valueChanges.subscribe((role: string) => {
+      const labCtrl = this.form.get('laboratoryId');
+      const filialeCtrl = this.form.get('filialeName');
+
+      if (this.staffRoles.includes(role)) {
+        labCtrl?.setValidators(Validators.required);
+        filialeCtrl?.clearValidators();
+        filialeCtrl?.setValue('');
+      } else if (role === 'Client') {
+        filialeCtrl?.setValidators(Validators.required);
+        labCtrl?.clearValidators();
+        labCtrl?.setValue(null);
+      } else {
+        filialeCtrl?.clearValidators();
+        labCtrl?.clearValidators();
+        labCtrl?.setValue(null);
+        filialeCtrl?.setValue('');
+      }
+
+      labCtrl?.updateValueAndValidity();
+      filialeCtrl?.updateValueAndValidity();
+    });
+>>>>>>> origin/Lilia
   }
 
   passwordStrengthValidator(control: AbstractControl) {
@@ -158,5 +200,9 @@ export class RegisterFormComponent {
         this.errorMessage.set(err.error?.message ?? 'Erreur.');
       },
     });
+  }
+
+  isStaffRole(): boolean {
+    return this.staffRoles.includes(this.form.get('role')?.value);
   }
 }

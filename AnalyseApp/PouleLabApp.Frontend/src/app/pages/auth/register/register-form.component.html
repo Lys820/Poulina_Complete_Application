@@ -47,6 +47,9 @@
     @if (hasError('email', 'email')) {
       <div class="invalid-feedback">Email invalide.</div>
     }
+    @if (hasError('email', 'required')) {
+      <div class="invalid-feedback">Email obligatoire.</div>
+    }
   </div>
 
   <div class="mb-3">
@@ -59,7 +62,13 @@
       [class.is-invalid]="hasError('phoneNumber', 'pattern')"
     />
     @if (hasError('phoneNumber', 'pattern')) {
+<<<<<<< HEAD
       <div class="invalid-feedback">Numéro de téléphone invalide.</div>
+=======
+      <div class="invalid-feedback">
+        Formats acceptés : 12345678 · 12 345 678 · +21612345678 · +216 12345678 · +216 12 345 678
+      </div>
+>>>>>>> origin/Lilia
     }
   </div>
 
@@ -95,7 +104,10 @@
     </div>
   </div>
 
+<<<<<<< HEAD
   <!-- Laboratoire — Receptionist, Analyst, LabChief -->
+=======
+>>>>>>> origin/Lilia
   @if (isStaffRole()) {
     <div class="mb-3">
       <label class="form-label">Laboratoire *</label>
@@ -104,10 +116,16 @@
           class="form-control custom-select"
           formControlName="laboratoryId"
           title="Laboratoire"
+<<<<<<< HEAD
           aria-label="Laboratoire"
           [class.is-invalid]="hasError('laboratoryId', 'required')"
         >
           <option [value]="null">— Sélectionner un laboratoire —</option>
+=======
+          [class.is-invalid]="hasError('laboratoryId', 'required')"
+        >
+          <option [value]="null">— Sélectionner —</option>
+>>>>>>> origin/Lilia
           @for (lab of laboratories(); track lab.id) {
             <option [value]="lab.id">{{ lab.name }}</option>
           }
@@ -134,7 +152,10 @@
     </div>
   }
 
+<<<<<<< HEAD
   <!-- Filiale — Client uniquement -->
+=======
+>>>>>>> origin/Lilia
   @if (isClientRole()) {
     <div class="mb-3">
       <label class="form-label">Filiale</label>
@@ -144,6 +165,7 @@
           formControlName="filialeName"
           title="Filiale"
           aria-label="Filiale"
+          [class.is-invalid]="hasError('filialeName', 'required')"
         >
           <option value="">— Sélectionner —</option>
           @for (brand of brands; track brand) {
@@ -166,6 +188,9 @@
           </svg>
         </span>
       </div>
+      @if (hasError('filialeName', 'required')) {
+        <div class="text-danger small mt-1">Veuillez sélectionner une filiale.</div>
+      }
     </div>
   }
 
@@ -275,6 +300,15 @@
         </svg>
       </button>
     </div>
+    @if (hasError('password', 'required')) {
+      <div class="text-danger small mt-1">Mot de passe obligatoire.</div>
+    }
+    @if (hasError('password', 'weakPassword')) {
+      <div class="text-danger small mt-1">
+        Le mot de passe doit contenir une majuscule, une minuscule, un chiffre et un caractère
+        spécial.
+      </div>
+    }
     @if (form.get('confirmPassword')?.touched && form.errors?.['mismatch']) {
       <div class="text-danger small mt-1">Les mots de passe ne correspondent pas.</div>
     }

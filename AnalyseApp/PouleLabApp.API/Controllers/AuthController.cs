@@ -23,15 +23,19 @@ namespace PouleLabApp.API.Controllers
         // Notre service JWT pour générer les tokens
         private readonly IJwtTokenService _jwtTokenService;
 
+        private readonly Data.ApplicationDbContext _context;
+
         // Injection de dépendances via le constructeur
         public AuthController(
             UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager,
-            IJwtTokenService jwtTokenService)
+            IJwtTokenService jwtTokenService,
+            Data.ApplicationDbContext context) // ← ajouter
         {
-            _userManager = userManager;
-            _signInManager = signInManager;
+            _userManager     = userManager;
+            _signInManager   = signInManager;
             _jwtTokenService = jwtTokenService;
+            _context         = context;        // ← ajouter
         }
 
         // -------------------------------------------------------
@@ -52,6 +56,20 @@ namespace PouleLabApp.API.Controllers
             if (existing != null)
                 return BadRequest(new { message = "Cet email est déjà utilisé." });
 
+            //Vérifier si le numéro de téléphone existe déjà
+            if (!string.IsNullOrEmpty(dto.PhoneNumber))
+            {
+                var normalizedNew = NormalizePhone(dto.PhoneNumber);
+                var phoneExists = _userManager.Users
+                    .AsEnumerable()
+                    .Any(u => u.PhoneNumber != null
+                        && NormalizePhone(u.PhoneNumber) == normalizedNew);
+                if (phoneExists)
+                    return BadRequest(new {
+                        message = "Ce numéro de téléphone est déjà utilisé."
+                    });
+            }
+
             var user = new ApplicationUser
             {
                 UserName    = dto.Email,
@@ -59,8 +77,15 @@ namespace PouleLabApp.API.Controllers
                 FirstName   = dto.FirstName,
                 LastName    = dto.LastName,
                 PhoneNumber = dto.PhoneNumber,
+<<<<<<< HEAD
                 FilialeName = dto.FilialeName,
                 IsActive    = true,
+=======
+                FilialeName = dto.FilialeName ?? string.Empty,
+                LaboratoryId = dto.LaboratoryId,
+                IsActive    = false, // inactif jusqu'à validation admin
+                IsApproved = false,
+>>>>>>> origin/Lilia
                 CreatedAt   = DateTime.UtcNow
             };
 
@@ -72,7 +97,24 @@ namespace PouleLabApp.API.Controllers
 
             await _userManager.AddToRoleAsync(user, "Client");
 
-            return Ok(new { message = "Compte créé avec succès." });
+            // ← Notifier tous les admins du nouveau compte en attente
+            var admins = await _userManager.GetUsersInRoleAsync("Administrator");
+            foreach (var admin in admins)
+            {
+                _context.Notifications.Add(new Notification
+                {
+                    RecipientId = admin.Id,
+                    RequestId   = null, // ← pas lié à une demande
+                    Message     = $"Nouveau compte en attente de validation : " +
+                                $"{user.FirstName} {user.LastName} ({dto.Role}).",
+                    IsRead      = false,
+                    CreatedAt   = DateTime.UtcNow
+                });
+            }
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Compte créé avec succès. En attente de validation par un administrateur." });
+
         }
                 
 
@@ -105,6 +147,13 @@ namespace PouleLabApp.API.Controllers
                 return Unauthorized(new { message = "Email ou mot de passe incorrect." });
             }
 
+            if (!user.IsActive)
+            {
+                return Unauthorized(new {
+                    message = "Votre compte est en attente de validation par un administrateur."
+                });
+            }
+            
             // Récupérer les rôles pour les embarquer dans le token
             var roles = await _userManager.GetRolesAsync(user);
             var token = _jwtTokenService.GenerateToken(user, roles);
@@ -183,6 +232,16 @@ namespace PouleLabApp.API.Controllers
                 LastName = user.LastName,
                 Role = roles.FirstOrDefault() ?? "Client"
             });
+        }
+
+        private static string NormalizePhone(string phone)
+        {
+            // Supprimer tous les espaces
+            var cleaned = phone.Replace(" ", "");
+            // Supprimer le préfixe +216 si présent
+            if (cleaned.StartsWith("+216"))
+                cleaned = cleaned.Substring(4);
+            return cleaned;
         }
     }
 }

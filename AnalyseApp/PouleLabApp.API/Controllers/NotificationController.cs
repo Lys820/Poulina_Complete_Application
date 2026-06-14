@@ -44,7 +44,7 @@ namespace PouleLabApp.API.Controllers
                     IsRead = n.IsRead,
                     CreatedAt = n.CreatedAt,
                     RequestId = n.RequestId,
-                    RequestStatus = n.Request.Status.ToString()
+                    RequestStatus = n.Request != null ? n.Request.Status.ToString() : "System"
                 })
                 .ToListAsync();
 
@@ -72,7 +72,7 @@ namespace PouleLabApp.API.Controllers
                     IsRead = n.IsRead,
                     CreatedAt = n.CreatedAt,
                     RequestId = n.RequestId,
-                    RequestStatus = n.Request.Status.ToString()
+                   RequestStatus = n.Request != null ? n.Request.Status.ToString() : "System"
                 })
                 .ToListAsync();
 

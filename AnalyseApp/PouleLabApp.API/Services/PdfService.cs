@@ -481,11 +481,19 @@ namespace PouleLabApp.API.Services
                                 RenderInfoTable(container, new List<(string, string)>
                                 {
                                     ("NOM ET PRÉNOM :", $"{request.Client?.FirstName} {request.Client?.LastName}"),
+<<<<<<< HEAD
                                     ("N° DEMANDE :",    $"{request.Id:D6}"),
                                     ("EMAIL :",          request.Client?.Email ?? ""),
                                     ("DATE :",           request.CreatedAt.ToString("dd/MM/yyyy HH:mm")),
                                     ("MARQUE :",         request.Brand ?? ""),              // ← Brand
                                     ("LABORATOIRE :",    request.Laboratory?.Name ?? "")    // ← Nom réel du labo
+=======
+                                    ("N° DEMANDE :", $"{request.Id:D6}"),
+                                    ("EMAIL :", request.Client?.Email ?? ""),
+                                    ("DATE :", request.CreatedAt.ToString("dd/MM/yyyy HH:mm")),
+                                    ("MARQUE :",      request.Brand ?? ""),
+                                    ("LABORATOIRE :", request.Laboratory?.Name ?? "")
+>>>>>>> origin/Lilia
                                 }));
                         });
 
@@ -729,7 +737,11 @@ namespace PouleLabApp.API.Services
                 "DICK"   => "#991B1B",
                 "GIPA"   => "#7C3AED",
                 "MEDOIL" => "#B45309",
+<<<<<<< HEAD
                 _        => "#1E3A8A" 
+=======
+                _        => "#1E3A8A"  // ← bleu SNA correct
+>>>>>>> origin/Lilia
             };
 
             return Document.Create(container =>
@@ -803,11 +815,17 @@ namespace PouleLabApp.API.Services
                                 RenderInfoTable(container, new List<(string, string)>
                                 {
                                     ("NOM ET PRÉNOM :", $"{request.Client?.FirstName} {request.Client?.LastName}"),
+<<<<<<< HEAD
                                     ("N° DEMANDE :",    $"{request.Id:D6}"),
                                     ("EMAIL :",          request.Client?.Email ?? ""),
                                     ("DATE :",           request.CreatedAt.ToString("dd/MM/yyyy HH:mm")),
                                     ("MARQUE :",         request.Brand ?? ""),              // ← Brand
                                     ("LABORATOIRE :",    request.Laboratory?.Name ?? "")    // ← Nom réel du labo
+=======
+                                    ("DATE SOUMISSION :", request.SubmittedAt.ToString("dd/MM/yyyy")),
+                                    ("MARQUE :",      request.Brand ?? ""),
+                                    ("LABORATOIRE :", request.Laboratory?.Name ?? "")
+>>>>>>> origin/Lilia
                                 }));
                         });
 

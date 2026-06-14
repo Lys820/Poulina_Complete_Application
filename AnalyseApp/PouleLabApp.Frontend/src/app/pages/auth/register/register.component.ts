@@ -7,7 +7,7 @@ import {
   ReactiveFormsModule,
   AbstractControl,
 } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
 
@@ -22,15 +22,17 @@ export class RegisterComponent {
   form: FormGroup;
   isLoading = signal(false);
   errorMessage = signal('');
+  successMessage = signal(''); // ← remplace la navigation
   showPassword = signal(false);
   showConfirm = signal(false);
+  laboratories = signal<any[]>([]);
 
   // ← Plus de sélection de rôle — uniquement les filiales
   readonly brands = ['DICK', 'SNA', 'GIPA', 'MEDOIL'];
+  readonly staffRoles = ['Receptionist', 'Analyst', 'LabChief'];
 
   constructor(
     private fb: FormBuilder,
-    private router: Router,
     private http: HttpClient,
   ) {
     this.form = this.fb.group(
@@ -38,8 +40,18 @@ export class RegisterComponent {
         firstName: ['', [Validators.required, Validators.minLength(2)]],
         lastName: ['', [Validators.required, Validators.minLength(2)]],
         email: ['', [Validators.required, Validators.email]],
+<<<<<<< HEAD
         phoneNumber: ['', [Validators.pattern(/^[+]?[\d\s\-().]{8,15}$/)]],
         filialeName: ['', Validators.required], // ← obligatoire
+=======
+        phoneNumber: [
+          '',
+          [Validators.required, Validators.pattern(/^(\+216 ?)?(\d{8}|\d{2} \d{3} \d{3})$/)],
+        ],
+        filialeName: [''],
+        role: ['Client', Validators.required],
+        laboratoryId: [null],
+>>>>>>> origin/Lilia
         password: [
           '',
           [Validators.required, Validators.minLength(8), this.passwordStrengthValidator],
@@ -48,17 +60,52 @@ export class RegisterComponent {
       },
       { validators: this.passwordMatchValidator },
     );
+
+    // Charger les labos
+    this.http.get<any[]>(`${environment.apiUrl}/laboratories`).subscribe({
+      next: (labs) => this.laboratories.set(labs),
+      error: () => {},
+    });
+
+    // Rendre laboratoryId obligatoire pour les rôles staff
+    // ← Initialiser les validateurs selon le rôle par défaut (Client)
+    this.form.get('filialeName')?.setValidators(Validators.required);
+    this.form.get('filialeName')?.updateValueAndValidity();
+
+    // ← Mettre à jour les validateurs quand le rôle change
+    this.form.get('role')?.valueChanges.subscribe((role) => {
+      const labCtrl = this.form.get('laboratoryId');
+      const filialeCtrl = this.form.get('filialeName');
+
+      if (this.staffRoles.includes(role)) {
+        // Staff : labo obligatoire, filiale non
+        labCtrl?.setValidators(Validators.required);
+        filialeCtrl?.clearValidators();
+        filialeCtrl?.setValue('');
+      } else if (role === 'Client') {
+        // Client : filiale obligatoire, labo non
+        filialeCtrl?.setValidators(Validators.required);
+        labCtrl?.clearValidators();
+        labCtrl?.setValue(null);
+      } else {
+        // Admin, Manager : ni l'un ni l'autre
+        filialeCtrl?.clearValidators();
+        labCtrl?.clearValidators();
+        labCtrl?.setValue(null);
+        filialeCtrl?.setValue('');
+      }
+
+      labCtrl?.updateValueAndValidity();
+      filialeCtrl?.updateValueAndValidity();
+    });
   }
 
   passwordStrengthValidator(control: AbstractControl) {
     const v = control.value as string;
     if (!v) return null;
-    const hasUpper = /[A-Z]/.test(v);
-    const hasLower = /[a-z]/.test(v);
-    const hasNumber = /[0-9]/.test(v);
-    const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(v);
-    if (!hasUpper || !hasLower || !hasNumber || !hasSpecial) return { weakPassword: true };
-    return null;
+    const ok =
+      /[A-Z]/.test(v) && /[a-z]/.test(v) && /[0-9]/.test(v) && /[!@#$%^&*(),.?":{}|<>]/.test(v);
+    return ok ? null : { weakPassword: true };
   }
 
   passwordMatchValidator(group: AbstractControl) {
@@ -69,13 +116,13 @@ export class RegisterComponent {
 
   get passwordStrength(): number {
     const v = (this.form.get('password')?.value as string) ?? '';
-    let score = 0;
-    if (v.length >= 8) score++;
-    if (/[A-Z]/.test(v)) score++;
-    if (/[a-z]/.test(v)) score++;
-    if (/[0-9]/.test(v)) score++;
-    if (/[!@#$%^&*(),.?":{}|<>]/.test(v)) score++;
-    return score;
+    let s = 0;
+    if (v.length >= 8) s++;
+    if (/[A-Z]/.test(v)) s++;
+    if (/[a-z]/.test(v)) s++;
+    if (/[0-9]/.test(v)) s++;
+    if (/[!@#$%^&*(),.?":{}|<>]/.test(v)) s++;
+    return s;
   }
 
   get strengthLabel(): string {
@@ -95,6 +142,22 @@ export class RegisterComponent {
     return '#059669';
   }
 
+<<<<<<< HEAD
+=======
+  isClientRole(): boolean {
+    return this.form.get('role')?.value === 'Client';
+  }
+
+  isStaffRole(): boolean {
+    return this.staffRoles.includes(this.form.get('role')?.value);
+  }
+
+  hasError(field: string, error: string): boolean {
+    const ctrl = this.form.get(field);
+    return !!(ctrl?.touched && ctrl?.errors?.[error]);
+  }
+
+>>>>>>> origin/Lilia
   submit(): void {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -107,21 +170,18 @@ export class RegisterComponent {
     const { confirmPassword, ...dto } = this.form.value;
 
     this.http.post(`${environment.apiUrl}/auth/register`, dto).subscribe({
-      next: () => {
+      next: (res: any) => {
         this.isLoading.set(false);
-        this.router.navigate(['/login'], {
-          queryParams: { registered: 'true' },
-        });
+        // ← Afficher message succès au lieu de naviguer
+        this.successMessage.set(
+          res.message ?? 'Compte créé. En attente de validation par un administrateur.',
+        );
+        this.form.reset();
       },
-      error: (err) => {
+      error: (err: any) => {
         this.isLoading.set(false);
         this.errorMessage.set(err.error?.message ?? 'Erreur lors de la création du compte.');
       },
     });
-  }
-
-  hasError(field: string, error: string): boolean {
-    const ctrl = this.form.get(field);
-    return !!(ctrl?.touched && ctrl?.errors?.[error]);
   }
 }

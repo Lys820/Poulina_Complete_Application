@@ -304,22 +304,28 @@ export class RequestDetailComponent implements OnInit {
 
   // Supprimer un brouillon
   deleteRequest(): void {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer cette demande ?')) return;
+    const status = this.request()?.status;
 
+    if (status !== 'Draft' && status !== 'Submitted') {
+      this.showError('Cette demande ne peut pas être supprimée.');
+      return;
+    }
+
+    const message =
+      status === 'Submitted'
+        ? 'Êtes-vous sûr de vouloir annuler et supprimer cette demande soumise (non encore réceptionnée) ?'
+        : 'Êtes-vous sûr de vouloir supprimer ce brouillon ?';
+
+    if (!confirm(message)) return;
+
+    this.actionLoading.set(true);
     this.requestService.delete(this.requestId).subscribe({
       next: () => this.router.navigate(['/app/requests']),
-      error: (err) => this.showError(err.error?.message),
+      error: (err) => {
+        this.showError(err.error?.message);
+        this.actionLoading.set(false);
+      },
     });
-  }
-
-  get deadlinesBySample(): Map<number | null, DeadlineDto[]> {
-    const map = new Map<number | null, DeadlineDto[]>();
-    this.deadlines().forEach((d) => {
-      const key = d.sampleId ?? null;
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(d);
-    });
-    return map;
   }
 
   // Vérifier si les échéances peuvent être modifiées

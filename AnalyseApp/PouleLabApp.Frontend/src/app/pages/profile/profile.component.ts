@@ -6,6 +6,7 @@ import {
   Validators,
   ReactiveFormsModule,
   AbstractControl,
+  FormsModule,
 } from '@angular/forms';
 import { UserService } from '../../core/services/user.service';
 import { AuthService } from '../../core/services/auth.service';
@@ -14,7 +15,7 @@ import { Router } from '@angular/router';
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule],
   templateUrl: './profile.component.html',
   styleUrls: ['./profile.component.scss'],
 })
@@ -29,6 +30,7 @@ export class ProfileComponent implements OnInit {
   showConfirm = signal(false);
   changePassword = signal(false);
   showDeleteModal = signal(false);
+  deletePassword = signal('');
 
   readonly brands = ['DICK', 'SNA', 'GIPA', 'MEDOIL'];
 
@@ -50,7 +52,7 @@ export class ProfileComponent implements OnInit {
         firstName: ['', [Validators.required, Validators.minLength(2)]],
         lastName: ['', [Validators.required, Validators.minLength(2)]],
         email: [{ value: '', disabled: true }],
-        phoneNumber: ['', [Validators.pattern(/^[+]?[\d\s\-().]{8,15}$/)]],
+        phoneNumber: ['', [Validators.pattern(/^(\+216 ?)?(\d{8}|\d{2} \d{3} \d{3})$/)]],
         filialeName: [''],
         role: [{ value: '', disabled: true }],
         currentPassword: [''],
@@ -131,11 +133,17 @@ export class ProfileComponent implements OnInit {
   }
 
   save(): void {
+    this.form.markAllAsTouched();
     if (this.form.invalid) {
-      this.form.markAllAsTouched();
       return;
     }
 
+    const phone = this.form.get('phoneNumber')?.value;
+    const phoneRegex = /^(\+216 ?)?(\d{8}|\d{2} \d{3} \d{3})$/;
+    if (phone && !phoneRegex.test(phone)) {
+      this.errorMsg.set('Format de téléphone invalide.');
+      return;
+    }
     this.isSaving.set(true);
     this.successMsg.set('');
     this.errorMsg.set('');
@@ -156,6 +164,7 @@ export class ProfileComponent implements OnInit {
       next: () => {
         this.isSaving.set(false);
         this.successMsg.set('Profil mis à jour avec succès !');
+        this.authService.updateUserInfo(dto.firstName, dto.lastName);
         this.changePassword.set(false);
         this.form.get('currentPassword')!.setValue('');
         this.form.get('newPassword')!.setValue('');
@@ -170,10 +179,15 @@ export class ProfileComponent implements OnInit {
   }
 
   deleteAccount(): void {
-    this.userService.deleteMyAccount().subscribe({
+    if (!this.deletePassword()) {
+      this.errorMsg.set('Veuillez entrer votre mot de passe.');
+      return;
+    }
+
+    this.userService.deleteMyAccount(this.deletePassword()).subscribe({
       next: () => {
-        this.authService.logout(); // vider le token
-        this.router.navigate(['/login']);
+        this.authService.logout();
+        this.router.navigate(['/auth/login']);
       },
       error: (err) => {
         this.errorMsg.set(err.error?.message ?? 'Erreur lors de la suppression.');

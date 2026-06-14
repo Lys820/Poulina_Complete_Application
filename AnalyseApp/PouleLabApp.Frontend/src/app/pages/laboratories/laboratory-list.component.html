@@ -1,5 +1,8 @@
 <div class="lab-list">
+<<<<<<< HEAD
   <!-- En-tête -->
+=======
+>>>>>>> origin/Lilia
   <div class="page-header">
     <div>
       <h4>Gestion des laboratoires</h4>
@@ -25,7 +28,10 @@
     </button>
   </div>
 
+<<<<<<< HEAD
   <!-- Messages -->
+=======
+>>>>>>> origin/Lilia
   @if (successMsg()) {
     <div class="alert alert-success mb-3">{{ successMsg() }}</div>
   }
@@ -33,7 +39,10 @@
     <div class="alert alert-danger mb-3">{{ errorMsg() }}</div>
   }
 
+<<<<<<< HEAD
   <!-- Tableau -->
+=======
+>>>>>>> origin/Lilia
   <div class="card">
     <div class="card-body p-0">
       @if (isLoading()) {
@@ -52,7 +61,10 @@
                 <th>Nom</th>
                 <th>Description</th>
                 <th>Adresse</th>
+<<<<<<< HEAD
                 <th>Membres</th>
+=======
+>>>>>>> origin/Lilia
                 <th>Actions</th>
               </tr>
             </thead>
@@ -65,9 +77,12 @@
                   <td class="text-muted">{{ lab.description || '—' }}</td>
                   <td class="text-muted">{{ lab.address || '—' }}</td>
                   <td>
+<<<<<<< HEAD
                     <span class="badge badge-submitted"> {{ lab.memberCount }} membre(s) </span>
                   </td>
                   <td>
+=======
+>>>>>>> origin/Lilia
                     <div class="actions">
                       <button
                         class="btn btn-icon btn-light"
@@ -125,8 +140,13 @@
 
   <!-- Modal création -->
   @if (showCreateModal()) {
+<<<<<<< HEAD
     <div class="modal-overlay">
       <div class="modal-box">
+=======
+    <div class="modal-overlay" (click)="showCreateModal.set(false)">
+      <div class="modal-box" (click)="$event.stopPropagation()">
+>>>>>>> origin/Lilia
         <div class="modal-header-custom">
           <h5>Nouveau laboratoire</h5>
           <button class="modal-close" (click)="showCreateModal.set(false)" aria-label="Fermer">
@@ -146,7 +166,11 @@
             </svg>
           </button>
         </div>
+<<<<<<< HEAD
         <ng-container *ngTemplateOutlet="labForm" />
+=======
+        <ng-container [ngTemplateOutlet]="labForm" />
+>>>>>>> origin/Lilia
         <div class="d-flex gap-2 mt-4">
           <button class="btn btn-primary flex-fill" (click)="create()" [disabled]="isSaving()">
             @if (isSaving()) {
@@ -164,8 +188,13 @@
 
   <!-- Modal édition -->
   @if (showEditModal()) {
+<<<<<<< HEAD
     <div class="modal-overlay">
       <div class="modal-box">
+=======
+    <div class="modal-overlay" (click)="showEditModal.set(false)">
+      <div class="modal-box" (click)="$event.stopPropagation()">
+>>>>>>> origin/Lilia
         <div class="modal-header-custom">
           <h5>Modifier le laboratoire</h5>
           <button class="modal-close" (click)="showEditModal.set(false)" aria-label="Fermer">
@@ -185,7 +214,11 @@
             </svg>
           </button>
         </div>
+<<<<<<< HEAD
         <ng-container *ngTemplateOutlet="labForm" />
+=======
+        <ng-container [ngTemplateOutlet]="labForm" />
+>>>>>>> origin/Lilia
         <div class="d-flex gap-2 mt-4">
           <button class="btn btn-primary flex-fill" (click)="saveEdit()" [disabled]="isSaving()">
             @if (isSaving()) {
@@ -203,8 +236,13 @@
 
   <!-- Modal suppression -->
   @if (showDeleteModal()) {
+<<<<<<< HEAD
     <div class="modal-overlay">
       <div class="modal-box">
+=======
+    <div class="modal-overlay" (click)="showDeleteModal.set(false)">
+      <div class="modal-box" (click)="$event.stopPropagation()">
+>>>>>>> origin/Lilia
         <h5>Supprimer le laboratoire</h5>
         <p class="text-muted">
           Êtes-vous sûr de vouloir supprimer
@@ -246,13 +284,25 @@
         />
       </div>
       <div class="mb-3">
+<<<<<<< HEAD
         <label class="form-label">Adresse</label>
+=======
+        <label class="form-label">Adresse *</label>
+>>>>>>> origin/Lilia
         <input
           type="text"
           class="form-control"
           formControlName="address"
           placeholder="Ex: Zone industrielle, Tunis"
+<<<<<<< HEAD
         />
+=======
+          [class.is-invalid]="form.get('address')?.touched && form.get('address')?.invalid"
+        />
+        @if (form.get('address')?.touched && form.get('address')?.invalid) {
+          <div class="invalid-feedback">L'adresse est obligatoire.</div>
+        }
+>>>>>>> origin/Lilia
       </div>
     </form>
   </ng-template>

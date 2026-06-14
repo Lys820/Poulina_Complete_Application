@@ -35,6 +35,63 @@
     <div class="alert alert-danger mb-3">{{ errorMsg() }}</div>
   }
 
+  <!-- Comptes en attente de validation -->
+  @if (pendingUsers().length > 0) {
+    <div class="card mb-4">
+      <div class="card-header d-flex align-items-center gap-2">
+        <span class="pending-dot"></span>
+        Comptes en attente de validation
+        <span class="badge badge-submitted ms-1">{{ pendingUsers().length }}</span>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table mb-0">
+            <thead>
+              <tr>
+                <th>Utilisateur</th>
+                <th>Email</th>
+                <th>Rôle</th>
+                <th>Organisation</th>
+                <th>Créé le</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (user of pendingUsers(); track user.id) {
+                <tr>
+                  <td>
+                    <div class="user-cell">
+                      <div class="user-avatar">{{ user.firstName[0] }}{{ user.lastName[0] }}</div>
+                      <strong>{{ user.firstName }} {{ user.lastName }}</strong>
+                    </div>
+                  </td>
+                  <td>{{ user.email }}</td>
+                  <td>
+                    <span class="role-badge" [ngClass]="getRoleBadgeClass(user.role)">
+                      {{ roleLabels[user.role] || user.role }}
+                    </span>
+                  </td>
+                  <td>{{ getOrganisationLabel(user) }}</td>
+                  <td>{{ user.createdAt | date: 'dd/MM/yyyy' }}</td>
+                  <td>
+                    <div class="actions">
+                      <button class="btn btn-success btn-sm me-1" (click)="approveUser(user)">
+                        ✓ Approuver
+                      </button>
+                      <button class="btn btn-danger btn-sm" (click)="confirmDelete(user)">
+                        ✗ Rejeter
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  }
+
   <!-- Filtres -->
   <div class="filters-bar mb-3">
     <select
@@ -67,7 +124,7 @@
               <tr>
                 <th>Utilisateur</th>
                 <th>Email</th>
-                <th>Filiale</th>
+                <th>Organisation</th>
                 <th>Rôle</th>
                 <th>Statut</th>
                 <th>Créé le</th>
@@ -86,7 +143,7 @@
                     </div>
                   </td>
                   <td>{{ user.email }}</td>
-                  <td>{{ user.filialeName }}</td>
+                  <td>{{ getOrganisationLabel(user) }}</td>
                   <td>
                     <span class="role-badge" [ngClass]="getRoleBadgeClass(user.role)">
                       {{ roleLabels[user.role] || user.role }}
@@ -249,15 +306,37 @@
               />
             </div>
 
-            <div class="col-12">
-              <label class="form-label" for="editFiliale">Filiale</label>
-              <input
-                id="editFiliale"
-                type="text"
-                class="form-control"
-                formControlName="filialeName"
-              />
-            </div>
+            <!-- Labo — Receptionist, Analyst, LabChief -->
+            @if (isStaffRole(editingUser()?.role)) {
+              <div class="col-12">
+                <label class="form-label" for="editLab">Laboratoire</label>
+                <select
+                  id="editLab"
+                  class="form-control"
+                  formControlName="laboratoryId"
+                  aria-label="Sélectionner un laboratoire"
+                >
+                  <option [value]="null">— Sélectionner —</option>
+                  @for (lab of laboratories(); track lab.id) {
+                    <option [value]="lab.id">{{ lab.name }}</option>
+                  }
+                </select>
+              </div>
+            }
+
+            <!-- Filiale — Client uniquement -->
+            @if (isClientRole(editingUser()?.role)) {
+              <div class="col-12">
+                <label class="form-label" for="editFiliale">Filiale</label>
+                <input
+                  id="editFiliale"
+                  type="text"
+                  class="form-control"
+                  formControlName="filialeName"
+                />
+              </div>
+            }
+
             <div class="col-md-6">
               <label class="form-label" for="editRole">Rôle</label>
               <select
@@ -325,6 +404,7 @@
     </div>
   }
 
+<<<<<<< HEAD
   <!-- Modal confirmation suppression -->
   @if (deleteUserId()) {
     <div class="modal-overlay" (click)="deleteUserId.set(null)">
@@ -334,11 +414,47 @@
           Êtes-vous sûr de vouloir supprimer le compte de
           <strong>{{ deleteUserName() }}</strong> ? Cette action est <strong>irréversible</strong>.
         </p>
+=======
+  <!-- Modal confirmation mot de passe admin -->
+  @if (showPasswordModal()) {
+    <div class="modal-overlay" (click)="showPasswordModal.set(false)">
+      <div class="modal-box" (click)="$event.stopPropagation()">
+        <h5>
+          @if (passwordModalAction() === 'delete') {
+            Supprimer le compte de {{ pendingActionName() }}
+          } @else {
+            {{ pendingUserActive() ? 'Désactiver' : 'Réactiver' }}
+            le compte de {{ pendingActionName() }}
+          }
+        </h5>
+        <p class="text-muted small">Entrez votre mot de passe administrateur pour confirmer.</p>
+        <div class="mb-3">
+          <label class="form-label small">Mot de passe administrateur *</label>
+          <input
+            type="password"
+            class="form-control"
+            placeholder="Votre mot de passe"
+            [ngModel]="adminPassword()"
+            (ngModelChange)="adminPassword.set($event)"
+          />
+        </div>
+        @if (errorMsg()) {
+          <div class="alert alert-danger py-2 px-3 mb-3">
+            <small>{{ errorMsg() }}</small>
+          </div>
+        }
+>>>>>>> origin/Lilia
         <div class="d-flex gap-2 mt-3">
-          <button class="btn btn-danger flex-fill" (click)="deleteUser()">
-            Supprimer définitivement
+          <button class="btn btn-light flex-fill" (click)="showPasswordModal.set(false)">
+            Annuler
           </button>
-          <button class="btn btn-light flex-fill" (click)="deleteUserId.set(null)">Annuler</button>
+          <button
+            class="btn btn-danger flex-fill"
+            (click)="confirmAction()"
+            [disabled]="!adminPassword()"
+          >
+            Confirmer
+          </button>
         </div>
       </div>
     </div>

@@ -8,6 +8,10 @@ import {
   Validators,
 } from '@angular/forms';
 import { LaboratoryService } from '../../core/services/laboratory.service';
+<<<<<<< HEAD
+=======
+import { extractErrorMessage } from '../../core/utils/error.utils';
+>>>>>>> origin/Lilia
 
 @Component({
   selector: 'app-laboratory-list',
@@ -45,18 +49,33 @@ export class LaboratoryListComponent implements OnInit {
     this.form = this.fb.group({
       name: ['', Validators.required],
       description: [''],
+<<<<<<< HEAD
       address: [''],
+=======
+      address: ['', Validators.required],
+>>>>>>> origin/Lilia
     });
   }
 
   loadLabs(): void {
     this.isLoading.set(true);
     this.labService.getAll().subscribe({
+<<<<<<< HEAD
       next: (data) => {
         this.labs.set(data);
         this.isLoading.set(false);
       },
       error: () => this.isLoading.set(false),
+=======
+      next: (data: any[]) => {
+        this.labs.set(data);
+        this.isLoading.set(false);
+      },
+      error: (err: unknown) => {
+        this.isLoading.set(false);
+        this.showError(extractErrorMessage(err));
+      },
+>>>>>>> origin/Lilia
     });
   }
 
@@ -93,9 +112,15 @@ export class LaboratoryListComponent implements OnInit {
         this.loadLabs();
         this.showSuccess('Laboratoire créé avec succès.');
       },
+<<<<<<< HEAD
       error: (err) => {
         this.isSaving.set(false);
         this.showError(err.error?.message);
+=======
+      error: (err: unknown) => {
+        this.isSaving.set(false);
+        this.showError(extractErrorMessage(err));
+>>>>>>> origin/Lilia
       },
     });
   }
@@ -113,11 +138,19 @@ export class LaboratoryListComponent implements OnInit {
         this.isSaving.set(false);
         this.showEditModal.set(false);
         this.loadLabs();
+<<<<<<< HEAD
         this.showSuccess('Laboratoire mis à jour avec succès.');
       },
       error: (err) => {
         this.isSaving.set(false);
         this.showError(err.error?.message);
+=======
+        this.showSuccess('Laboratoire mis à jour.');
+      },
+      error: (err: unknown) => {
+        this.isSaving.set(false);
+        this.showError(extractErrorMessage(err));
+>>>>>>> origin/Lilia
       },
     });
   }
@@ -131,9 +164,15 @@ export class LaboratoryListComponent implements OnInit {
         this.loadLabs();
         this.showSuccess('Laboratoire supprimé.');
       },
+<<<<<<< HEAD
       error: (err) => {
         this.showDeleteModal.set(false);
         this.showError(err.error?.message);
+=======
+      error: (err: unknown) => {
+        this.showDeleteModal.set(false);
+        this.showError(extractErrorMessage(err));
+>>>>>>> origin/Lilia
       },
     });
   }

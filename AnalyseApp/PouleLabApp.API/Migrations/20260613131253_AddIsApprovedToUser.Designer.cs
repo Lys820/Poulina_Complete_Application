@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PouleLabApp.API.Data;
 
@@ -11,9 +12,11 @@ using PouleLabApp.API.Data;
 namespace PouleLabApp.API.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260613131253_AddIsApprovedToUser")]
+    partial class AddIsApprovedToUser
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -287,12 +290,9 @@ namespace PouleLabApp.API.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
-<<<<<<< HEAD
-=======
                     b.Property<bool>("IsApproved")
                         .HasColumnType("bit");
 
->>>>>>> origin/Lilia
                     b.Property<int?>("LaboratoryId")
                         .HasColumnType("int");
 
@@ -388,44 +388,6 @@ namespace PouleLabApp.API.Migrations
                     b.ToTable("AuditLogs");
                 });
 
-            modelBuilder.Entity("PouleLabApp.API.Models.Breed", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<double>("AverageScore")
-                        .HasColumnType("float");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Origin")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ProductionType")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Breeds");
-                });
-
             modelBuilder.Entity("PouleLabApp.API.Models.Deadline", b =>
                 {
                     b.Property<int>("Id")
@@ -461,44 +423,6 @@ namespace PouleLabApp.API.Migrations
                     b.HasIndex("SampleId");
 
                     b.ToTable("Deadlines");
-                });
-
-            modelBuilder.Entity("PouleLabApp.API.Models.FarmCenter", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Address")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("Capacity")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("FarmingType")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Governorate")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("FarmCenters");
                 });
 
             modelBuilder.Entity("PouleLabApp.API.Models.Laboratory", b =>
@@ -698,12 +622,7 @@ namespace PouleLabApp.API.Migrations
                 {
                     b.HasOne("PouleLabApp.API.Models.Laboratory", "Laboratory")
                         .WithMany()
-<<<<<<< HEAD
-                        .HasForeignKey("LaboratoryId")
-                        .OnDelete(DeleteBehavior.SetNull);
-=======
                         .HasForeignKey("LaboratoryId");
->>>>>>> origin/Lilia
 
                     b.Navigation("Laboratory");
                 });
