@@ -1,5 +1,5 @@
 """
-Configuration centralisée - Variables d'environnement pour SQL Server
+Configuration centralisée — MySQL local
 """
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
@@ -13,37 +13,34 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # LLM Provider
-    LLM_PROVIDER: str = "gemini"
-
-    # API Keys
+    # LLM
+    LLM_PROVIDER: str = "genai"
     GENAI_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-2.5-flash-lite"
     ANTHROPIC_API_KEY: str = ""
     MISTRAL_API_KEY: str = ""
     OPENAI_API_KEY: str = ""
 
-    # ML Model
+    # ML
     ML_MODEL: Literal["random_forest", "gradient_boosting", "xgboost", "auto"] = "auto"
 
     # RAG
     TOP_K: int = 5
     EMBEDDING_METHOD: Literal["tfidf", "bm25", "sentence_transformers"] = "tfidf"
 
-    # SQL Server Database
-    SQLSERVER_SERVER: str = ""
-    SQLSERVER_DATABASE: str = ""
-    SQLSERVER_DRIVER: str = "ODBC Driver 17 for SQL Server"
-    SQLSERVER_USER: str = ""
-    SQLSERVER_PASSWORD: str = ""
-    SQLSERVER_TRUSTED: str = "yes"
+    # MySQL
+    MYSQL_HOST: str = ""
+    MYSQL_PORT: int = 3306
+    MYSQL_DATABASE: str = ""
+    MYSQL_USER: str = ""
+    MYSQL_PASSWORD: str = ""
 
     # Redis
     REDIS_URL: str = ""
     CACHE_TTL_HOURS: int = 2
     MEMORY_ENABLED: bool = True
 
-    # CSV Upload
+    # CSV
     MAX_CSV_SIZE_MB: int = 50
 
     # JWT

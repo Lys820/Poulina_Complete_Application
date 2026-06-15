@@ -95,12 +95,47 @@ def decode_token(token: str, secret_key: str = "") -> dict:
         raise HTTPException(status_code=401, detail="Token manquant.")
     key = secret_key or _get_jwt_secret()
     try:
-        return jwt.decode(token, key, algorithms=[_ALGORITHM])
+        payload = jwt.decode(
+            token,
+            key,
+            algorithms=[_ALGORITHM],
+            options={
+                "verify_aud": False,   # le token .NET a aud="PouleLabApp"
+                "verify_iss": False,   # le token .NET a iss="PouleLabApp"
+            },
+        )
+
+        # Le token .NET ne contient pas "permissions" — on le déduit du rôle
+        if "permissions" not in payload:
+            role = payload.get("role", "")
+            # Récupérer le rôle depuis le claim Microsoft Identity si présent
+            ms_role_claim = "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"
+            if not role and ms_role_claim in payload:
+                role = payload[ms_role_claim]
+            payload["permissions"] = _permissions_for_role(role)
+
+        return payload
+
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expiré.")
     except jwt.InvalidTokenError as exc:
         raise HTTPException(status_code=401, detail=f"Token invalide : {exc}")
 
+
+def _permissions_for_role(role: str) -> list[str]:
+    """
+    Déduit les permissions du chatbot à partir du rôle ASP.NET Identity.
+    Miroir de la logique définie dans DataSeeder / AspNetUserClaims.
+    """
+    mapping = {
+        "Administrator": ["CHAT_READ", "CHAT_ML", "ADMIN_TRAIN", "DATA_READ"],
+        "Manager":       ["CHAT_READ", "CHAT_ML", "DATA_READ"],
+        "Analyst":       ["CHAT_READ", "CHAT_ML", "DATA_READ"],
+        "LabChief":      ["CHAT_READ", "DATA_READ"],
+        "Receptionist":  ["CHAT_READ", "DATA_READ"],
+        "Client":        ["CHAT_READ"],
+    }
+    return mapping.get(role, [])
 
 def get_current_user(credentials: HTTPAuthorizationCredentials, secret_key: str = "") -> dict:
     return decode_token(credentials.credentials, secret_key)

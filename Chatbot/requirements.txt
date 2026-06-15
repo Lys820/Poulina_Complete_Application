@@ -10,26 +10,22 @@ anthropic
 openai
 google-genai
 python-dotenv
-pyodbc
-
-# SQL Server Driver
-pyodbc
+mysql-connector-python
 PyJWT
 
-
-# Optional ML
+# ML optionnel
 xgboost
 
-# Optional embeddings
+# Embeddings optionnels
 sentence-transformers
 
-# Testing
+# Tests
 pytest
 pytest-asyncio
 httpx
 python-multipart
 
-#memoire
+# Memoire
 redis>=4.5.0
 fastapi-sessions
 python-jose[cryptography]
