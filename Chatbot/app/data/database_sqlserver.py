@@ -1,15 +1,6 @@
 """
-app/data/database_mysql.py  (remplace database_sqlserver.py)
-Couche d'accès aux données — base PouleLabDB sur MySQL local.
-
-Tables ciblées (schéma EF Core / ASP.NET Identity migré vers MySQL) :
-  - AspNetUsers / AspNetRoles / AspNetUserRoles  → authentification
-  - Laboratories                                  → labos d'analyse
-  - AnalysisRequests                              → demandes
-  - Samples                                       → échantillons
-  - AnalysisResults                               → résultats
-  - Breeds                                        → souches avicoles
-  - FarmCenters                                   → centres d'élevage
+app/data/database_sqlserver.py
+Couche d'accès aux données — base PouleLabDB (localhost)
 """
 from __future__ import annotations
 
@@ -18,57 +9,39 @@ import os
 from typing import Optional
 
 import pandas as pd
+import pyodbc
 from dotenv import load_dotenv
 
 load_dotenv()
 
 log = logging.getLogger(__name__)
 
+_DEFAULT_CONN_STR = (
+    "DRIVER={ODBC Driver 17 for SQL Server};"
+    "Server=localhost;"
+    "Database=PouleLabDB;"
+    "Trusted_Connection=yes;"
+    "TrustServerCertificate=yes;"
+)
+
 
 class SqlServerDatabase:
-    """
-    Connexion MySQL locale à PouleLabDB.
-    Le nom de classe est conservé pour ne pas modifier les imports existants.
-    """
+    """Connexion à PouleLabDB via chaîne de connexion ODBC."""
 
-    def __init__(
-        self,
-        server: Optional[str] = None,
-        database: Optional[str] = None,
-        driver: Optional[str] = None,
-        host: Optional[str] = None,
-        port: Optional[int] = None,
-        user: Optional[str] = None,
-        password: Optional[str] = None,
-    ) -> None:
-        # Accepte les anciens paramètres (server, database) ET les nouveaux (host, port)
-        self._host     = host or server or os.getenv("MYSQL_HOST", "localhost")
-        self._port     = port or int(os.getenv("MYSQL_PORT", "3306"))
-        self._database = database or os.getenv("MYSQL_DATABASE", "PouleLabDB")
-        self._user     = user or os.getenv("MYSQL_USER", "root")
-        self._password = password or os.getenv("MYSQL_PASSWORD", "")
-        self._conn     = None
-
-    # ------------------------------------------------------------------
-    # Connexion
-    # ------------------------------------------------------------------
+    def __init__(self, connection_string: Optional[str] = None) -> None:
+        self._conn_str = (
+            connection_string
+            or os.getenv("SQLSERVER_CONNECTION_STRING", _DEFAULT_CONN_STR)
+        )
+        self._conn: Optional[pyodbc.Connection] = None
 
     def connect(self) -> bool:
         try:
-            import mysql.connector
-            self._conn = mysql.connector.connect(
-                host=self._host,
-                port=self._port,
-                database=self._database,
-                user=self._user,
-                password=self._password,
-                connection_timeout=5,
-                charset="utf8mb4",
-            )
-            log.info("Connexion MySQL OK — %s:%s / %s", self._host, self._port, self._database)
+            self._conn = pyodbc.connect(self._conn_str, timeout=5)
+            log.info("Connexion SQL Server OK")
             return True
-        except Exception as exc:
-            log.error("Connexion MySQL impossible : %s", exc)
+        except Exception as e:
+            log.error("Connexion SQL Server impossible : %s", e)
             self._conn = None
             return False
 
@@ -83,11 +56,9 @@ class SqlServerDatabase:
     def _ensure_connected(self) -> bool:
         if self._conn is None:
             return self.connect()
-        try:
-            self._conn.ping(reconnect=True)
-            return True
-        except Exception:
-            return self.connect()
+        return True
+
+    # ... (le reste des méthodes — get_utilisateur_par_email, get_all_data, etc. — reste identique)
 
     def _cursor(self):
         """Retourne un curseur avec dictionnaire activé."""
@@ -101,44 +72,45 @@ class SqlServerDatabase:
         if not self._ensure_connected():
             return None
         try:
-            cursor = self._cursor()
+            cursor = self._conn.cursor()
             cursor.execute(
                 """
                 SELECT
-                    u.Id              AS id_utilisateur,
-                    u.PasswordHash    AS password_hash,
-                    u.LastName        AS nom,
-                    u.FirstName       AS prenom,
-                    u.FilialeName     AS filiale,
-                    u.IsActive        AS actif,
-                    IFNULL(r.Name, '') AS nom_role,
-                    c.ClaimValue      AS permissions
+                    u.Id                AS id_utilisateur,
+                    u.PasswordHash      AS password_hash,
+                    u.LastName          AS nom,
+                    u.FirstName         AS prenom,
+                    u.FilialeName       AS filiale,
+                    u.IsActive          AS actif,
+                    ISNULL(r.Name, '')  AS nom_role,
+                    c.ClaimValue        AS permissions
                 FROM AspNetUsers u
-                LEFT JOIN AspNetUserRoles ur ON ur.UserId  = u.Id
-                LEFT JOIN AspNetRoles r      ON r.Id       = ur.RoleId
-                LEFT JOIN AspNetUserClaims c ON c.UserId   = u.Id
+                LEFT JOIN AspNetUserRoles ur  ON ur.UserId  = u.Id
+                LEFT JOIN AspNetRoles r       ON r.Id       = ur.RoleId
+                LEFT JOIN AspNetUserClaims c  ON c.UserId   = u.Id
                                             AND c.ClaimType = 'permissions'
-                WHERE UPPER(u.NormalizedEmail) = %s
+                WHERE u.NormalizedEmail = ?
                 """,
-                (email.upper(),),
+                email.upper(),
             )
             row = cursor.fetchone()
             if row is None:
                 return None
+            # Accès par index (0-7) — pyodbc ne supporte pas l'accès par attribut
+            # sur les alias SQL en dehors du mode Row Factory
             return {
-                "id_utilisateur": row["id_utilisateur"],
-                "password_hash":  row["password_hash"],
-                "nom":            row["nom"],
-                "prenom":         row["prenom"],
-                "filiale":        row["filiale"],
-                "actif":          int(row["actif"]) if row["actif"] is not None else 0,
-                "nom_role":       row["nom_role"],
-                "permissions":    row["permissions"],
+                "id_utilisateur": str(row[0]),
+                "password_hash":  row[1],
+                "nom":            row[2],
+                "prenom":         row[3],
+                "filiale":        row[4],
+                "actif":          int(row[5]) if row[5] is not None else 0,
+                "nom_role":       row[6],
+                "permissions":    row[7],
             }
         except Exception as exc:
             log.error("get_utilisateur_par_email(%s) : %s", email, exc)
             return None
-
     # ------------------------------------------------------------------
     # Données d'entraînement ML / RAG
     # ------------------------------------------------------------------
@@ -153,7 +125,7 @@ class SqlServerDatabase:
                     ar.Status                               AS statut,
                     l.Name                                  AS nom_laboratoire,
                     l.Address                               AS adresse_laboratoire,
-                    IFNULL(ar.Brand, 'Standard')            AS meilleure_souche,
+                    ISNULL(ar.Brand, 'Standard')            AS meilleure_souche,
                     7.0                                     AS biosecurite_score,
                     3.0                                     AS taux_mortalite,
                     90.0                                    AS fertilite_visee,
@@ -166,7 +138,7 @@ class SqlServerDatabase:
                     50000                                   AS budget,
                     25.0                                    AS temperature_moyenne,
                     60.0                                    AS humidite,
-                    IFNULL(s.Type, 'Poulet de chair')       AS type_production,
+                    ISNULL(s.Type, 'Poulet de chair')       AS type_production,
                     CASE
                         WHEN MONTH(ar.CreatedAt) IN (12,1,2)  THEN 'Hiver'
                         WHEN MONTH(ar.CreatedAt) IN (3,4,5)   THEN 'Printemps'
@@ -180,7 +152,7 @@ class SqlServerDatabase:
                              AND (res.IsAnomaly IS NULL OR res.IsAnomaly = 0)
                         THEN 1 ELSE 0
                     END                                     AS conforme,
-                    IFNULL(res.AnalysisName, 'Aucune')      AS historique_maladie
+                    ISNULL(res.AnalysisName, 'Aucune')      AS historique_maladie
                 FROM AnalysisRequests ar
                 INNER JOIN Laboratories l   ON l.Id = ar.LaboratoryId
                 INNER JOIN AspNetUsers  u   ON u.Id = ar.ClientId
@@ -376,11 +348,6 @@ class SqlServerDatabase:
 
 def get_db(settings=None) -> SqlServerDatabase:
     if settings is not None:
-        return SqlServerDatabase(
-            host=getattr(settings, "MYSQL_HOST", "localhost"),
-            port=getattr(settings, "MYSQL_PORT", 3306),
-            database=getattr(settings, "MYSQL_DATABASE", "PouleLabDB"),
-            user=getattr(settings, "MYSQL_USER", "root"),
-            password=getattr(settings, "MYSQL_PASSWORD", ""),
-        )
+        conn_str = getattr(settings, "SQLSERVER_CONNECTION_STRING", None)
+        return SqlServerDatabase(connection_string=conn_str)
     return SqlServerDatabase()

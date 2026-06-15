@@ -55,7 +55,7 @@ async def chat(
         raise HTTPException(status_code=503, detail="Base de données inaccessible")
 
     try:
-        memory = MemoryService(db._conn)
+        memory = MemoryService(db)
 
         # Création ou récupération de session
         user_id = current_user["sub"]
