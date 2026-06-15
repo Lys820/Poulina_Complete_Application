@@ -1,5 +1,5 @@
 {
-  "version": 4,
+  "version": 3,
   "targets": {
     "net10.0": {
       "Azure.Core/1.47.1": {
@@ -4305,19 +4305,19 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\lysia\\.nuget\\packages\\": {}
+    "C:\\Users\\lilia\\.nuget\\packages\\": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\lysia\\Documents\\IUT1\\Stage\\Projet\\Poulina_Complete_Application\\AnalyseApp\\PouleLabApp.API\\PouleLabApp.API.csproj",
+      "projectUniqueName": "C:\\Users\\lilia\\Desktop\\Stage\\Poulina_Complete_Application\\AnalyseApp\\PouleLabApp.API\\PouleLabApp.API.csproj",
       "projectName": "PouleLabApp.API",
-      "projectPath": "C:\\Users\\lysia\\Documents\\IUT1\\Stage\\Projet\\Poulina_Complete_Application\\AnalyseApp\\PouleLabApp.API\\PouleLabApp.API.csproj",
-      "packagesPath": "C:\\Users\\lysia\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\lysia\\Documents\\IUT1\\Stage\\Projet\\Poulina_Complete_Application\\AnalyseApp\\PouleLabApp.API\\obj\\",
+      "projectPath": "C:\\Users\\lilia\\Desktop\\Stage\\Poulina_Complete_Application\\AnalyseApp\\PouleLabApp.API\\PouleLabApp.API.csproj",
+      "packagesPath": "C:\\Users\\lilia\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\lilia\\Desktop\\Stage\\Poulina_Complete_Application\\AnalyseApp\\PouleLabApp.API\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
-        "C:\\Users\\lysia\\AppData\\Roaming\\NuGet\\NuGet.Config"
+        "C:\\Users\\lilia\\AppData\\Roaming\\NuGet\\NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "net10.0"
@@ -4327,7 +4327,6 @@
       },
       "frameworks": {
         "net10.0": {
-          "framework": "net10.0",
           "targetAlias": "net10.0",
           "projectReferences": {}
         }
@@ -4342,11 +4341,10 @@
         "auditLevel": "low",
         "auditMode": "all"
       },
-      "SdkAnalysisLevel": "10.0.300"
+      "SdkAnalysisLevel": "10.0.200"
     },
     "frameworks": {
       "net10.0": {
-        "framework": "net10.0",
         "targetAlias": "net10.0",
         "dependencies": {
           "FluentValidation.AspNetCore": {
@@ -4421,7 +4419,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.300/PortableRuntimeIdentifierGraph.json",
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.203/PortableRuntimeIdentifierGraph.json",
         "packagesToPrune": {
           "Microsoft.AspNetCore": "(,10.0.32767]",
           "Microsoft.AspNetCore.Antiforgery": "(,10.0.32767]",

@@ -1,7 +1,7 @@
-import { Component, ElementRef, OnInit, ViewChild, signal } from '@angular/core';
+﻿import { Component, ElementRef, OnInit, ViewChild, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ChatService, ChatResponse } from '../../../core/services/chat.service';
+import { ChatService, ChatResponse } from '../../core/services/chat.service';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -34,7 +34,7 @@ export class ChatComponent implements OnInit {
   ];
 
   get showSuggestions() { return this.messages.length === 0; }
-  get sessionShort()    { return this.sessionId ? this.sessionId.slice(0, 8) + '…' : '—'; }
+  get sessionShort()    { return this.sessionId ? this.sessionId.slice(0, 8) + 'â€¦' : 'â€”'; }
 
   constructor(private chatService: ChatService) {}
 
@@ -65,7 +65,7 @@ export class ChatComponent implements OnInit {
       session_id: this.sessionId,
       filtre_ville: this.ville || undefined,
     }).subscribe({
-      next: (res) => {
+      next: (res: ChatResponse) => {
         this.sessionId = res.session_id;
         this.messages[this.messages.length - 1] = {
           role: 'assistant',
@@ -114,3 +114,4 @@ export class ChatComponent implements OnInit {
     }, 50);
   }
 }
+

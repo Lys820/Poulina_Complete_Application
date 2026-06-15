@@ -1,11 +1,8 @@
-import { Component, signal } from '@angular/core';
+﻿import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
-  FormBuilder,
-  FormGroup,
-  Validators,
-  ReactiveFormsModule,
-  AbstractControl,
+  FormBuilder, FormGroup, Validators,
+  ReactiveFormsModule, AbstractControl,
 } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
@@ -20,81 +17,64 @@ import { environment } from '../../../../environments/environment';
 })
 export class RegisterComponent {
   form: FormGroup;
-  isLoading = signal(false);
-  errorMessage = signal('');
-  successMessage = signal(''); // ← remplace la navigation
-  showPassword = signal(false);
-  showConfirm = signal(false);
-  laboratories = signal<any[]>([]);
+  isLoading      = signal(false);
+  errorMessage   = signal('');
+  successMessage = signal('');
+  showPassword   = signal(false);
+  showConfirm    = signal(false);
+  laboratories   = signal<any[]>([]);
 
-  // ← Plus de sélection de rôle — uniquement les filiales
-  readonly brands = ['DICK', 'SNA', 'GIPA', 'MEDOIL'];
   readonly staffRoles = ['Receptionist', 'Analyst', 'LabChief'];
+  readonly roles = [
+    { value: 'Client',       label: 'Client' },
+    { value: 'Receptionist', label: 'Réceptionniste' },
+    { value: 'Analyst',      label: 'Laborantin' },
+    { value: 'LabChief',     label: 'Chef de laboratoire' },
+    { value: 'Manager',      label: 'Manager' },
+  ];
+  readonly brands = ['DICK', 'SNA', 'GIPA', 'MEDOIL'];
 
-  constructor(
-    private fb: FormBuilder,
-    private http: HttpClient,
-  ) {
+  constructor(private fb: FormBuilder, private http: HttpClient) {
     this.form = this.fb.group(
       {
-        firstName: ['', [Validators.required, Validators.minLength(2)]],
-        lastName: ['', [Validators.required, Validators.minLength(2)]],
-        email: ['', [Validators.required, Validators.email]],
-<<<<<<< HEAD
-        phoneNumber: ['', [Validators.pattern(/^[+]?[\d\s\-().]{8,15}$/)]],
-        filialeName: ['', Validators.required], // ← obligatoire
-=======
-        phoneNumber: [
-          '',
-          [Validators.required, Validators.pattern(/^(\+216 ?)?(\d{8}|\d{2} \d{3} \d{3})$/)],
-        ],
-        filialeName: [''],
-        role: ['Client', Validators.required],
-        laboratoryId: [null],
->>>>>>> origin/Lilia
-        password: [
-          '',
-          [Validators.required, Validators.minLength(8), this.passwordStrengthValidator],
-        ],
+        firstName:       ['', [Validators.required, Validators.minLength(2)]],
+        lastName:        ['', [Validators.required, Validators.minLength(2)]],
+        email:           ['', [Validators.required, Validators.email]],
+        phoneNumber:     ['', [Validators.pattern(/^(\+216 ?)?(\d{8}|\d{2} \d{3} \d{3})$/)]],
+        filialeName:     [''],
+        role:            ['Client', Validators.required],
+        laboratoryId:    [null],
+        password:        ['', [Validators.required, Validators.minLength(8), this.passwordStrengthValidator]],
         confirmPassword: ['', Validators.required],
       },
       { validators: this.passwordMatchValidator },
     );
 
-    // Charger les labos
     this.http.get<any[]>(`${environment.apiUrl}/laboratories`).subscribe({
-      next: (labs) => this.laboratories.set(labs),
-      error: () => {},
+      next: (labs: any[]) => this.laboratories.set(labs),
+      error: () => {}
     });
 
-    // Rendre laboratoryId obligatoire pour les rôles staff
-    // ← Initialiser les validateurs selon le rôle par défaut (Client)
     this.form.get('filialeName')?.setValidators(Validators.required);
     this.form.get('filialeName')?.updateValueAndValidity();
 
-    // ← Mettre à jour les validateurs quand le rôle change
-    this.form.get('role')?.valueChanges.subscribe((role) => {
-      const labCtrl = this.form.get('laboratoryId');
+    this.form.get('role')?.valueChanges.subscribe((role: string) => {
+      const labCtrl     = this.form.get('laboratoryId');
       const filialeCtrl = this.form.get('filialeName');
-
       if (this.staffRoles.includes(role)) {
-        // Staff : labo obligatoire, filiale non
         labCtrl?.setValidators(Validators.required);
         filialeCtrl?.clearValidators();
         filialeCtrl?.setValue('');
       } else if (role === 'Client') {
-        // Client : filiale obligatoire, labo non
         filialeCtrl?.setValidators(Validators.required);
         labCtrl?.clearValidators();
         labCtrl?.setValue(null);
       } else {
-        // Admin, Manager : ni l'un ni l'autre
         filialeCtrl?.clearValidators();
         labCtrl?.clearValidators();
         labCtrl?.setValue(null);
         filialeCtrl?.setValue('');
       }
-
       labCtrl?.updateValueAndValidity();
       filialeCtrl?.updateValueAndValidity();
     });
@@ -103,13 +83,12 @@ export class RegisterComponent {
   passwordStrengthValidator(control: AbstractControl) {
     const v = control.value as string;
     if (!v) return null;
-    const ok =
-      /[A-Z]/.test(v) && /[a-z]/.test(v) && /[0-9]/.test(v) && /[!@#$%^&*(),.?":{}|<>]/.test(v);
+    const ok = /[A-Z]/.test(v) && /[a-z]/.test(v) && /[0-9]/.test(v) && /[!@#$%^&*(),.?":{}|<>]/.test(v);
     return ok ? null : { weakPassword: true };
   }
 
   passwordMatchValidator(group: AbstractControl) {
-    const pass = group.get('password')?.value;
+    const pass    = group.get('password')?.value;
     const confirm = group.get('confirmPassword')?.value;
     return pass === confirm ? null : { mismatch: true };
   }
@@ -142,8 +121,6 @@ export class RegisterComponent {
     return '#059669';
   }
 
-<<<<<<< HEAD
-=======
   isClientRole(): boolean {
     return this.form.get('role')?.value === 'Client';
   }
@@ -157,24 +134,26 @@ export class RegisterComponent {
     return !!(ctrl?.touched && ctrl?.errors?.[error]);
   }
 
->>>>>>> origin/Lilia
   submit(): void {
-    if (this.form.invalid) {
-      this.form.markAllAsTouched();
+    this.form.markAllAsTouched();
+    if (this.form.invalid) return;
+
+    const phone = this.form.get('phoneNumber')?.value;
+    const phoneRegex = /^(\+216 ?)?(\d{8}|\d{2} \d{3} \d{3})$/;
+    if (phone && !phoneRegex.test(phone)) {
+      this.errorMessage.set('Format de téléphone invalide.');
       return;
     }
 
     this.isLoading.set(true);
     this.errorMessage.set('');
-
     const { confirmPassword, ...dto } = this.form.value;
 
     this.http.post(`${environment.apiUrl}/auth/register`, dto).subscribe({
-      next: (res: any) => {
+      next: () => {
         this.isLoading.set(false);
-        // ← Afficher message succès au lieu de naviguer
         this.successMessage.set(
-          res.message ?? 'Compte créé. En attente de validation par un administrateur.',
+          'Compte créé avec succès ! Votre compte est en attente de validation par un administrateur.'
         );
         this.form.reset();
       },

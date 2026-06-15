@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using PouleLabApp.API.DTOs.Request;
@@ -71,28 +71,13 @@ namespace PouleLabApp.API.Controllers
             var userId = _userManager.GetUserId(User);
             var user   = await _userManager.FindByIdAsync(userId!);
 
-<<<<<<< HEAD
-            // Admin et Manager voient tout
-            var isAdminOrManager = User.IsInRole("Administrator") ||
-                                User.IsInRole("Manager");
-
-            // Client voit uniquement ses propres demandes
-=======
             // Client — voit uniquement ses demandes
->>>>>>> origin/Lilia
             if (User.IsInRole("Client"))
             {
                 var clientRequests = await _requestService.GetByClientAsync(userId!);
                 return Ok(clientRequests);
             }
 
-<<<<<<< HEAD
-            // Réceptionniste, Laborantin, Chef de labo →
-            // uniquement les demandes de leur labo
-            int? laboratoryId = isAdminOrManager ? null : user?.LaboratoryId;
-
-            var requests = await _requestService.GetAllAsync(status, userId, laboratoryId);
-=======
             // ← Staff — voit uniquement les demandes de son labo
             if (User.IsInRole("Receptionist") ||
                 User.IsInRole("Analyst") ||
@@ -109,7 +94,6 @@ namespace PouleLabApp.API.Controllers
 
             // Admin / Manager — voit tout
             var requests = await _requestService.GetAllAsync(status);
->>>>>>> origin/Lilia
             return Ok(requests);
         }
 

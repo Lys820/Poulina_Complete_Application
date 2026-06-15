@@ -1,23 +1,17 @@
-.lab-list {
+﻿.lab-list {
   .page-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     margin-bottom: 24px;
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/Lilia
-    h4 {
-      margin: 0 0 4px;
-    }
+    h4 { margin: 0 0 4px; }
   }
 }
 
 .empty-state {
   text-align: center;
   padding: 48px 24px;
-  color: var(--text-muted);
 }
 
 .actions {
@@ -25,12 +19,6 @@
   align-items: center;
 }
 
-<<<<<<< HEAD
-// =============================================
-// MODALS
-// =============================================
-=======
->>>>>>> origin/Lilia
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -39,7 +27,6 @@
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  -webkit-backdrop-filter: blur(2px);
   backdrop-filter: blur(2px);
 }
 
@@ -50,7 +37,6 @@
   width: 100%;
   max-width: 480px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
-  animation: modalIn 0.2s ease;
 }
 
 .modal-header-custom {
@@ -58,14 +44,8 @@
   align-items: center;
   justify-content: space-between;
   margin-bottom: 20px;
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/Lilia
-  h5 {
-    margin: 0;
-    font-weight: 700;
-  }
+  h5 { margin: 0; font-weight: 700; }
 }
 
 .modal-close {
@@ -73,28 +53,7 @@
   border: none;
   padding: 4px;
   cursor: pointer;
-  color: var(--text-muted);
-  border-radius: 6px;
   display: flex;
   align-items: center;
-  transition: all 0.15s;
-<<<<<<< HEAD
-
-=======
->>>>>>> origin/Lilia
-  &:hover {
-    background: var(--light);
-    color: var(--dark);
-  }
-}
-
-@keyframes modalIn {
-  from {
-    opacity: 0;
-    transform: translateY(-12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  &:hover { opacity: 0.7; }
 }

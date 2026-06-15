@@ -1,11 +1,8 @@
-import { Component, Output, EventEmitter, signal } from '@angular/core';
+﻿import { Component, Output, EventEmitter, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
-  FormBuilder,
-  FormGroup,
-  Validators,
-  ReactiveFormsModule,
-  AbstractControl,
+  FormBuilder, FormGroup, Validators,
+  ReactiveFormsModule, AbstractControl,
 } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
@@ -19,97 +16,51 @@ import { environment } from '../../../../environments/environment';
 })
 export class RegisterFormComponent {
   @Output() onCreated = new EventEmitter<void>();
-
   form: FormGroup;
-  isLoading = signal(false);
-  errorMessage = signal('');
-  showPassword = signal(false);
-  showConfirm = signal(false);
-  laboratories = signal<any[]>([]);
-<<<<<<< HEAD
-=======
-  readonly staffRoles = ['Receptionist', 'Analyst', 'LabChief'];
->>>>>>> origin/Lilia
+  isLoading      = signal(false);
+  errorMessage   = signal('');
+  showPassword   = signal(false);
+  showConfirm    = signal(false);
+  laboratories   = signal<any[]>([]);
 
+  readonly staffRoles = ['Receptionist', 'Analyst', 'LabChief'];
   readonly roles = [
-    { value: 'Client', label: 'Client' },
-    { value: 'Receptionist', label: 'Réceptionniste' },
-    { value: 'Analyst', label: 'Laborantin' },
-    { value: 'LabChief', label: 'Chef de laboratoire' },
-    { value: 'Manager', label: 'Manager' },
+    { value: 'Client',        label: 'Client' },
+    { value: 'Receptionist',  label: 'Réceptionniste' },
+    { value: 'Analyst',       label: 'Laborantin' },
+    { value: 'LabChief',      label: 'Chef de laboratoire' },
+    { value: 'Manager',       label: 'Manager' },
     { value: 'Administrator', label: 'Administrateur' },
   ];
-
   readonly brands = ['DICK', 'SNA', 'GIPA', 'MEDOIL'];
 
-  readonly staffRoles = ['Receptionist', 'Analyst', 'LabChief'];
-
-  constructor(
-    private fb: FormBuilder,
-    private http: HttpClient,
-  ) {
+  constructor(private fb: FormBuilder, private http: HttpClient) {
     this.form = this.fb.group(
       {
-        firstName: ['', [Validators.required, Validators.minLength(2)]],
-        lastName: ['', [Validators.required, Validators.minLength(2)]],
-        email: ['', [Validators.required, Validators.email]],
-        phoneNumber: ['', [Validators.pattern(/^(\+216 ?)?(\d{8}|\d{2} \d{3} \d{3})$/)]],
-        filialeName: [''],
-        laboratoryId: [null],
-        role: ['Client', Validators.required],
-        laboratoryId: [null],
-        password: [
-          '',
-          [Validators.required, Validators.minLength(8), this.passwordStrengthValidator],
-        ],
+        firstName:       ['', [Validators.required, Validators.minLength(2)]],
+        lastName:        ['', [Validators.required, Validators.minLength(2)]],
+        email:           ['', [Validators.required, Validators.email]],
+        phoneNumber:     ['', [Validators.pattern(/^(\+216 ?)?(\d{8}|\d{2} \d{3} \d{3})$/)]],
+        filialeName:     [''],
+        role:            ['Client', Validators.required],
+        laboratoryId:    [null],
+        password:        ['', [Validators.required, Validators.minLength(8), this.passwordStrengthValidator]],
         confirmPassword: ['', Validators.required],
       },
       { validators: this.passwordMatchValidator },
     );
-<<<<<<< HEAD
 
-    // ← URL correcte
-    this.http.get<any[]>(`${environment.apiUrl}/laboratories`).subscribe({
-      next: (labs) => this.laboratories.set(labs),
-      error: () => {},
-    });
-
-    // ← Rendre laboratoryId obligatoire dynamiquement selon le rôle
-    this.form.get('role')?.valueChanges.subscribe((role) => {
-      const labCtrl = this.form.get('laboratoryId');
-      if (this.staffRoles.includes(role)) {
-        labCtrl?.setValidators(Validators.required);
-      } else {
-        labCtrl?.clearValidators();
-        labCtrl?.setValue(null);
-      }
-      labCtrl?.updateValueAndValidity();
-    });
-  }
-
-  isStaffRole(): boolean {
-    return this.staffRoles.includes(this.form.get('role')?.value);
-  }
-
-  isClientRole(): boolean {
-    return this.form.get('role')?.value === 'Client';
-=======
-    // Charger les labos
     this.http.get<any[]>(`${environment.apiUrl}/laboratories`).subscribe({
       next: (labs: any[]) => this.laboratories.set(labs),
-      error: () => {},
+      error: () => {}
     });
 
-    // Rendre laboratoryId obligatoire pour les rôles staff
-    // ← Initialiser selon rôle par défaut (Client)
     this.form.get('filialeName')?.setValidators(Validators.required);
     this.form.get('filialeName')?.updateValueAndValidity();
 
-    // ← Mettre à jour selon rôle
     this.form.get('role')?.valueChanges.subscribe((role: string) => {
-      const labCtrl = this.form.get('laboratoryId');
+      const labCtrl     = this.form.get('laboratoryId');
       const filialeCtrl = this.form.get('filialeName');
-
       if (this.staffRoles.includes(role)) {
         labCtrl?.setValidators(Validators.required);
         filialeCtrl?.clearValidators();
@@ -124,23 +75,20 @@ export class RegisterFormComponent {
         labCtrl?.setValue(null);
         filialeCtrl?.setValue('');
       }
-
       labCtrl?.updateValueAndValidity();
       filialeCtrl?.updateValueAndValidity();
     });
->>>>>>> origin/Lilia
   }
 
   passwordStrengthValidator(control: AbstractControl) {
     const v = control.value as string;
     if (!v) return null;
-    const ok =
-      /[A-Z]/.test(v) && /[a-z]/.test(v) && /[0-9]/.test(v) && /[!@#$%^&*(),.?":{}|<>]/.test(v);
+    const ok = /[A-Z]/.test(v) && /[a-z]/.test(v) && /[0-9]/.test(v) && /[!@#$%^&*(),.?":{}|<>]/.test(v);
     return ok ? null : { weakPassword: true };
   }
 
   passwordMatchValidator(group: AbstractControl) {
-    const pass = group.get('password')?.value;
+    const pass    = group.get('password')?.value;
     const confirm = group.get('confirmPassword')?.value;
     return pass === confirm ? null : { mismatch: true };
   }
@@ -173,6 +121,14 @@ export class RegisterFormComponent {
     return '#059669';
   }
 
+  isClientRole(): boolean {
+    return this.form.get('role')?.value === 'Client';
+  }
+
+  isStaffRole(): boolean {
+    return this.staffRoles.includes(this.form.get('role')?.value);
+  }
+
   hasError(field: string, error: string): boolean {
     const ctrl = this.form.get(field);
     return !!(ctrl?.touched && ctrl?.errors?.[error]);
@@ -183,26 +139,18 @@ export class RegisterFormComponent {
       this.form.markAllAsTouched();
       return;
     }
-
     this.isLoading.set(true);
     this.errorMessage.set('');
-
     const { confirmPassword, ...dto } = this.form.value;
-
-    // ← Appel à /user (endpoint admin) et non /auth/register
-    this.http.post(`${environment.apiUrl}/user`, dto).subscribe({
+    this.http.post(`${environment.apiUrl}/auth/register`, dto).subscribe({
       next: () => {
         this.isLoading.set(false);
         this.onCreated.emit();
       },
-      error: (err) => {
+      error: (err: any) => {
         this.isLoading.set(false);
         this.errorMessage.set(err.error?.message ?? 'Erreur.');
       },
     });
-  }
-
-  isStaffRole(): boolean {
-    return this.staffRoles.includes(this.form.get('role')?.value);
   }
 }

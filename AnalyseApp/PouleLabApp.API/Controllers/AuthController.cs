@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using PouleLabApp.API.DTOs.Auth;
 using PouleLabApp.API.Models;
@@ -77,15 +77,10 @@ namespace PouleLabApp.API.Controllers
                 FirstName   = dto.FirstName,
                 LastName    = dto.LastName,
                 PhoneNumber = dto.PhoneNumber,
-<<<<<<< HEAD
-                FilialeName = dto.FilialeName,
-                IsActive    = true,
-=======
                 FilialeName = dto.FilialeName ?? string.Empty,
                 LaboratoryId = dto.LaboratoryId,
                 IsActive    = false, // inactif jusqu'à validation admin
                 IsApproved = false,
->>>>>>> origin/Lilia
                 CreatedAt   = DateTime.UtcNow
             };
 

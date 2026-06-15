@@ -1,5 +1,5 @@
-<div class="user-list">
-  <!-- En-tête -->
+﻿<div class="user-list">
+  <!-- En-tÃªte -->
   <div class="page-header">
     <div>
       <h4>Gestion des utilisateurs</h4>
@@ -50,9 +50,9 @@
               <tr>
                 <th>Utilisateur</th>
                 <th>Email</th>
-                <th>Rôle</th>
+                <th>RÃ´le</th>
                 <th>Organisation</th>
-                <th>Créé le</th>
+                <th>CrÃ©Ã© le</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -76,10 +76,10 @@
                   <td>
                     <div class="actions">
                       <button class="btn btn-success btn-sm me-1" (click)="approveUser(user)">
-                        ✓ Approuver
+                        âœ“ Approuver
                       </button>
                       <button class="btn btn-danger btn-sm" (click)="confirmDelete(user)">
-                        ✗ Rejeter
+                        âœ— Rejeter
                       </button>
                     </div>
                   </td>
@@ -97,9 +97,9 @@
     <select
       class="form-control filter-select"
       [(ngModel)]="roleFilter"
-      aria-label="Filtrer par rôle"
+      aria-label="Filtrer par rÃ´le"
     >
-      <option value="">Tous les rôles</option>
+      <option value="">Tous les rÃ´les</option>
       @for (role of roles; track role) {
         <option [value]="role">{{ roleLabels[role] }}</option>
       }
@@ -115,7 +115,7 @@
         </div>
       } @else if (filteredUsers.length === 0) {
         <div class="empty-state">
-          <p>Aucun utilisateur trouvé.</p>
+          <p>Aucun utilisateur trouvÃ©.</p>
         </div>
       } @else {
         <div class="table-responsive">
@@ -125,9 +125,9 @@
                 <th>Utilisateur</th>
                 <th>Email</th>
                 <th>Organisation</th>
-                <th>Rôle</th>
+                <th>RÃ´le</th>
                 <th>Statut</th>
-                <th>Créé le</th>
+                <th>CrÃ©Ã© le</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -151,7 +151,7 @@
                   </td>
                   <td>
                     @if (user.isActive) {
-                      <span class="badge badge-validated">✓ Actif</span>
+                      <span class="badge badge-validated">âœ“ Actif</span>
                     } @else {
                       <span class="badge badge-closed">Inactif</span>
                     }
@@ -181,11 +181,11 @@
                         </svg>
                       </button>
 
-                      <!-- Désactiver -->
+                      <!-- DÃ©sactiver -->
                       @if (user.isActive) {
                         <button
                           class="btn btn-icon btn-light"
-                          title="Désactiver"
+                          title="DÃ©sactiver"
                           (click)="deactivate(user)"
                         >
                           <svg
@@ -205,7 +205,7 @@
                         </button>
                       }
 
-                      <!-- Supprimer — Admin uniquement, pas son propre compte -->
+                      <!-- Supprimer â€” Admin uniquement, pas son propre compte -->
                       @if (
                         authService.hasRole('Administrator') &&
                         user.id !== authService.currentUser()?.userId
@@ -245,7 +245,7 @@
     </div>
   </div>
 
-  <!-- Modal édition -->
+  <!-- Modal Ã©dition -->
   @if (showEditModal() && editingUser()) {
     <div class="modal-overlay" (click)="showEditModal.set(false)">
       <div class="modal-box" (click)="$event.stopPropagation()">
@@ -272,7 +272,7 @@
         <form [formGroup]="editForm">
           <div class="row g-3">
             <div class="col-md-6">
-              <label class="form-label" for="editFirstName">Prénom</label>
+              <label class="form-label" for="editFirstName">PrÃ©nom</label>
               <input
                 id="editFirstName"
                 type="text"
@@ -296,7 +296,7 @@
             </div>
 
             <div class="col-md-6">
-              <label class="form-label" for="editPhone">Téléphone</label>
+              <label class="form-label" for="editPhone">TÃ©lÃ©phone</label>
               <input
                 id="editPhone"
                 type="tel"
@@ -306,7 +306,7 @@
               />
             </div>
 
-            <!-- Labo — Receptionist, Analyst, LabChief -->
+            <!-- Labo â€” Receptionist, Analyst, LabChief -->
             @if (isStaffRole(editingUser()?.role)) {
               <div class="col-12">
                 <label class="form-label" for="editLab">Laboratoire</label>
@@ -314,9 +314,9 @@
                   id="editLab"
                   class="form-control"
                   formControlName="laboratoryId"
-                  aria-label="Sélectionner un laboratoire"
+                  aria-label="SÃ©lectionner un laboratoire"
                 >
-                  <option [value]="null">— Sélectionner —</option>
+                  <option [value]="null">â€” SÃ©lectionner â€”</option>
                   @for (lab of laboratories(); track lab.id) {
                     <option [value]="lab.id">{{ lab.name }}</option>
                   }
@@ -324,7 +324,7 @@
               </div>
             }
 
-            <!-- Filiale — Client uniquement -->
+            <!-- Filiale â€” Client uniquement -->
             @if (isClientRole(editingUser()?.role)) {
               <div class="col-12">
                 <label class="form-label" for="editFiliale">Filiale</label>
@@ -338,12 +338,12 @@
             }
 
             <div class="col-md-6">
-              <label class="form-label" for="editRole">Rôle</label>
+              <label class="form-label" for="editRole">RÃ´le</label>
               <select
                 id="editRole"
                 class="form-control"
                 formControlName="role"
-                aria-label="Sélectionner un rôle"
+                aria-label="SÃ©lectionner un rÃ´le"
               >
                 @for (role of roles; track role) {
                   <option [value]="role">{{ roleLabels[role] }}</option>
@@ -375,13 +375,13 @@
     </div>
   }
 
-  <!-- Modal création -->
+  <!-- Modal crÃ©ation -->
   @if (showCreateModal()) {
     <div class="modal-overlay" (click)="showCreateModal.set(false)">
       <div class="modal-box modal-box-large" (click)="$event.stopPropagation()">
-        <!-- ← stopper la propagation -->
+        <!-- â† stopper la propagation -->
         <div class="modal-header-custom mb-3">
-          <h5 class="mb-0">Créer un utilisateur</h5>
+          <h5 class="mb-0">CrÃ©er un utilisateur</h5>
           <button class="modal-close" (click)="showCreateModal.set(false)" aria-label="Fermer">
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -404,59 +404,6 @@
     </div>
   }
 
-<<<<<<< HEAD
-  <!-- Modal confirmation suppression -->
-  @if (deleteUserId()) {
-    <div class="modal-overlay" (click)="deleteUserId.set(null)">
-      <div class="modal-box" (click)="$event.stopPropagation()">
-        <h5>Supprimer le compte</h5>
-        <p class="text-muted">
-          Êtes-vous sûr de vouloir supprimer le compte de
-          <strong>{{ deleteUserName() }}</strong> ? Cette action est <strong>irréversible</strong>.
-        </p>
-=======
-  <!-- Modal confirmation mot de passe admin -->
-  @if (showPasswordModal()) {
-    <div class="modal-overlay" (click)="showPasswordModal.set(false)">
-      <div class="modal-box" (click)="$event.stopPropagation()">
-        <h5>
-          @if (passwordModalAction() === 'delete') {
-            Supprimer le compte de {{ pendingActionName() }}
-          } @else {
-            {{ pendingUserActive() ? 'Désactiver' : 'Réactiver' }}
-            le compte de {{ pendingActionName() }}
-          }
-        </h5>
-        <p class="text-muted small">Entrez votre mot de passe administrateur pour confirmer.</p>
-        <div class="mb-3">
-          <label class="form-label small">Mot de passe administrateur *</label>
-          <input
-            type="password"
-            class="form-control"
-            placeholder="Votre mot de passe"
-            [ngModel]="adminPassword()"
-            (ngModelChange)="adminPassword.set($event)"
-          />
-        </div>
-        @if (errorMsg()) {
-          <div class="alert alert-danger py-2 px-3 mb-3">
-            <small>{{ errorMsg() }}</small>
-          </div>
-        }
->>>>>>> origin/Lilia
-        <div class="d-flex gap-2 mt-3">
-          <button class="btn btn-light flex-fill" (click)="showPasswordModal.set(false)">
-            Annuler
-          </button>
-          <button
-            class="btn btn-danger flex-fill"
-            (click)="confirmAction()"
-            [disabled]="!adminPassword()"
-          >
-            Confirmer
-          </button>
-        </div>
-      </div>
-    </div>
-  }
 </div>
+
+
